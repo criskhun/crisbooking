@@ -40,12 +40,11 @@ class ProfileLocationController extends Controller
         $code = $validated['city_code'];
         $items = $this->get("/cities-municipalities/{$code}/barangays");
 
-        if ($items === []) {
-            $legacyCode = substr($code, 0, 6);
-            $items = $this->getAbsolute('https://psgc.cloud/api/v1/barangays?'.http_build_query([
-                'city_code' => $legacyCode,
-                'per_page' => 2000,
-            ]));
+        if ($items === [] && $code === '1380600000') {
+            $items = collect($this->get('/regions/'.self::NCR_CODE.'/cities-municipalities'))
+                ->where('type', 'SubMun')
+                ->values()
+                ->all();
         }
 
         return response()->json($this->sorted($items));

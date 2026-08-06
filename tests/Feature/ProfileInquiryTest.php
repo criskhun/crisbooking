@@ -90,11 +90,11 @@ class ProfileInquiryTest extends TestCase
 
         $this->actingAs($user)->get(route('profile.edit'))
             ->assertOk()
-            ->assertSee('data-searchable-select', false)
-            ->assertSee('data-country-select', false)
-            ->assertSee('data-province-select', false)
-            ->assertSee('data-city-select', false)
-            ->assertSee('data-barangay-select', false)
+            ->assertSee('class="searchable-combobox"', false)
+            ->assertSee('data-country-input', false)
+            ->assertSee('data-province-input', false)
+            ->assertSee('data-city-input', false)
+            ->assertSee('data-barangay-input', false)
             ->assertSee('data-id-preview-image', false)
             ->assertSee('max="'.today()->subYears(17)->format('Y-m-d').'"', false);
     }
@@ -109,9 +109,7 @@ class ProfileInquiryTest extends TestCase
                 ['code' => '1380600000', 'name' => 'City of Manila', 'type' => 'City'],
                 ['code' => '1380608000', 'name' => 'Ermita', 'type' => 'SubMun'],
             ]]),
-            'psgc.cloud/api/v2/cities-municipalities/1380600000/barangays' => Http::response(['data' => [
-                ['code' => '1380600100', 'name' => 'Barangay 1'],
-            ]]),
+            'psgc.cloud/api/v2/cities-municipalities/1380600000/barangays' => Http::response(['data' => []]),
         ]);
         $user = User::factory()->create();
 
@@ -120,7 +118,7 @@ class ProfileInquiryTest extends TestCase
         $this->getJson(route('profile.locations.cities', ['province_code' => '1300000000']))
             ->assertOk()->assertJsonFragment(['name' => 'City of Manila'])->assertJsonMissing(['name' => 'Ermita']);
         $this->getJson(route('profile.locations.barangays', ['city_code' => '1380600000']))
-            ->assertOk()->assertJsonFragment(['name' => 'Barangay 1']);
+            ->assertOk()->assertJsonFragment(['name' => 'Ermita']);
     }
 
     public function test_incomplete_profiles_cannot_inquire_or_register_listings(): void

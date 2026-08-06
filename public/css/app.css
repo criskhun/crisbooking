@@ -764,18 +764,18 @@ html[data-color-mode="dark"] .button-selected { color: var(--lime); }
 .verification-section-heading > span { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 8px; color: var(--forest); background: var(--mint); font-size: .62rem; font-weight: 900; }.verification-section-heading h2 { margin: 0; font: 800 1rem Manrope; }.verification-section-heading p { margin: .2rem 0 0; color: var(--muted); font-size: .65rem; }
 .verification-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }.verification-wide { grid-column: 1 / -1; }
 .verification-grid input[type="file"] { padding: .65rem; background: var(--surface-soft); }
-.searchable-select { display: grid; gap: .4rem; }
-.searchable-select .select-search { min-height: 2.5rem; padding: .55rem .75rem; border-style: dashed; border-radius: 9px; font-size: .68rem; background: var(--surface-soft); }
-.searchable-select select[size] { min-height: 0; height: auto; padding: .3rem; }
-.searchable-select select[size] option { padding: .45rem .55rem; border-radius: 6px; }
+.searchable-combobox { position: relative; }
+.searchable-combobox input { padding-right: 2.6rem; }
+.searchable-combobox > span { position: absolute; top: 50%; right: 1rem; color: var(--muted); font-size: .85rem; pointer-events: none; transform: translateY(-50%); }
 .phone-verification-row, .phone-code-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .55rem; }
 .phone-verification-row .button, .phone-code-row .button { min-height: 3.35rem; white-space: nowrap; }
 .phone-code-row { margin-top: .5rem; }
 .phone-code-row[hidden] { display: none; }
 .phone-status.verified { color: #2f735d; font-weight: 800; }
-.id-document-preview { display: grid; gap: .6rem; margin-top: .35rem; padding: .7rem; border: 1px solid var(--card-line); border-radius: 12px; background: var(--surface-soft); }
+.id-document-preview { display: grid; gap: .6rem; width: min(420px, 100%); margin-top: .35rem; padding: .7rem; border: 1px solid var(--card-line); border-radius: 12px; background: var(--surface-soft); }
 .id-document-preview[hidden] { display: none; }
-.id-document-preview img, .id-document-preview object { display: block; width: 100%; height: min(480px, 55vw); min-height: 260px; border: 0; border-radius: 9px; object-fit: contain; background: white; }
+.id-document-preview img { display: block; width: 100%; height: 220px; border: 0; border-radius: 9px; object-fit: contain; background: white; }
+.id-document-preview object { display: block; width: 100%; height: 300px; border: 0; border-radius: 9px; background: white; }
 .id-preview-meta { display: flex; align-items: center; justify-content: space-between; gap: .7rem; padding: .15rem .2rem; }
 .id-preview-meta strong { overflow: hidden; font-size: .65rem; text-overflow: ellipsis; white-space: nowrap; }
 .id-preview-meta a, .id-preview-meta small { color: var(--forest); font-size: .6rem; font-weight: 800; }
@@ -807,7 +807,7 @@ html[data-color-mode="dark"] .profile-required-banner, html[data-color-mode="dar
     .conversation-layout { grid-template-columns: 1fr; }.inquiry-context-card { width: 100%; }
 }
 @media (max-width: 740px) {
-    .profile-required-banner, .public-profile-hero { grid-template-columns: auto 1fr; }.profile-required-banner .button, .public-profile-hero > strong { grid-column: 1 / -1; }.verification-grid, .profile-validation-grid { grid-template-columns: 1fr; }.verification-wide { grid-column: auto; }.profile-validation-grid > section { border-right: 0; }.verification-actions { align-items: stretch; flex-direction: column; }.chat-composer { grid-template-columns: 1fr; }.chat-message { max-width: 88%; }.chat-heading { flex-direction: column; }.inquiry-row { grid-template-columns: auto 1fr; }.inquiry-row-meta { grid-column: 2; grid-template-columns: auto auto auto; justify-content: end; align-items: center; }.phone-verification-row, .phone-code-row { grid-template-columns: 1fr; }.id-document-preview img, .id-document-preview object { height: 360px; }
+    .profile-required-banner, .public-profile-hero { grid-template-columns: auto 1fr; }.profile-required-banner .button, .public-profile-hero > strong { grid-column: 1 / -1; }.verification-grid, .profile-validation-grid { grid-template-columns: 1fr; }.verification-wide { grid-column: auto; }.profile-validation-grid > section { border-right: 0; }.verification-actions { align-items: stretch; flex-direction: column; }.chat-composer { grid-template-columns: 1fr; }.chat-message { max-width: 88%; }.chat-heading { flex-direction: column; }.inquiry-row { grid-template-columns: auto 1fr; }.inquiry-row-meta { grid-column: 2; grid-template-columns: auto auto auto; justify-content: end; align-items: center; }.phone-verification-row, .phone-code-row { grid-template-columns: 1fr; }.id-document-preview img { height: 190px; }.id-document-preview object { height: 240px; }
 }
 
 /* Property amenity access */

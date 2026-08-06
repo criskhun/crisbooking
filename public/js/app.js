@@ -599,7 +599,7 @@
 
         const verificationForm = document.querySelector('[data-verification-form]');
 
-        if (verificationForm) {
+        if (false && verificationForm) {
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
             const countrySelect = verificationForm.querySelector('[data-country-select]');
             const provinceSelect = verificationForm.querySelector('[data-province-select]');
@@ -836,6 +836,247 @@
                 name.textContent = file.name;
                 const size = document.createElement('small');
                 size.textContent = `${(file.size / 1024 / 1024).toFixed(2)} MB — new document preview`;
+                meta.append(name, size);
+                idPreview.append(preview, meta);
+                idPreview.hidden = false;
+            });
+        }
+
+        if (verificationForm) {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+            const countryInput = verificationForm.querySelector('[data-country-input]');
+            const provinceInput = verificationForm.querySelector('[data-province-input]');
+            const cityInput = verificationForm.querySelector('[data-city-input]');
+            const barangayInput = verificationForm.querySelector('[data-barangay-input]');
+            const locationStatus = verificationForm.querySelector('[data-location-status]');
+
+            const normalizeLocationName = (value = '') => value.toLocaleLowerCase()
+                .replace(/\b(city|municipality|province|of)\b/g, '')
+                .replace(/[^a-z0-9]/g, '');
+            const optionFor = (input) => Array.from(input?.list?.options || [])
+                .find((option) => normalizeLocationName(option.value) === normalizeLocationName(input.value));
+            const setLocationStatus = (message, error = false) => {
+                if (! locationStatus) return;
+                locationStatus.textContent = message;
+                locationStatus.classList.toggle('error-text', error);
+            };
+            const setLocationOptions = (input, items, placeholder, selectedValue = '') => {
+                const list = input?.list;
+                if (! input || ! list) return;
+                list.replaceChildren();
+                items.forEach((item) => {
+                    const option = document.createElement('option');
+                    option.value = item.name;
+                    option.dataset.code = String(item.code);
+                    list.append(option);
+                });
+                const match = items.find((item) => normalizeLocationName(item.name) === normalizeLocationName(selectedValue));
+                if (match) input.value = match.name;
+                input.placeholder = placeholder;
+                input.disabled = false;
+            };
+            const clearLocation = (input, placeholder, keepValue = false) => {
+                if (! input) return;
+                if (! keepValue) input.value = '';
+                input.list?.replaceChildren();
+                input.placeholder = placeholder;
+            };
+            const fetchLocations = async (url) => {
+                const response = await fetch(url, {headers: {'Accept': 'application/json'}, cache: 'no-store'});
+                const data = await response.json().catch(() => null);
+                if (! response.ok || ! Array.isArray(data)) throw new Error(data?.message || 'Address suggestions are unavailable.');
+                return data;
+            };
+            const manualLocationFallback = () => {
+                [provinceInput, cityInput, barangayInput].forEach((input) => {
+                    if (input) input.disabled = false;
+                });
+                setLocationStatus('Address suggestions are unavailable right now. You can type the address manually.', true);
+            };
+            const loadBarangays = async (selectedValue = '') => {
+                const city = optionFor(cityInput);
+                clearLocation(barangayInput, city ? 'Loading barangays…' : 'Select city first', true);
+                if (! city) return;
+                const items = await fetchLocations(`${verificationForm.dataset.locationBarangaysUrl}?city_code=${encodeURIComponent(city.dataset.code)}`);
+                setLocationOptions(barangayInput, items, 'Search barangay…', selectedValue);
+                setLocationStatus(`${items.length} barangay choices loaded.`);
+            };
+            const loadCities = async (selectedValue = '', barangayValue = '') => {
+                const province = optionFor(provinceInput);
+                clearLocation(cityInput, province ? 'Loading cities…' : 'Select province first', true);
+                clearLocation(barangayInput, 'Select city first', true);
+                if (! province) return;
+                const items = await fetchLocations(`${verificationForm.dataset.locationCitiesUrl}?province_code=${encodeURIComponent(province.dataset.code)}`);
+                setLocationOptions(cityInput, items, 'Search city or municipality…', selectedValue);
+                setLocationStatus(`${items.length} city and municipality choices loaded.`);
+                if (optionFor(cityInput)) await loadBarangays(barangayValue);
+            };
+            const loadProvinces = async (selectedValue = '', cityValue = '', barangayValue = '') => {
+                provinceInput.placeholder = 'Loading provinces…';
+                const items = await fetchLocations(verificationForm.dataset.locationProvincesUrl);
+                setLocationOptions(provinceInput, items, 'Search province…', selectedValue);
+                setLocationStatus(`${items.length} province choices loaded.`);
+                if (optionFor(provinceInput)) await loadCities(cityValue, barangayValue);
+            };
+
+            let countryCode = optionFor(countryInput)?.dataset.code || '';
+            let provinceCode = '';
+            let cityCode = '';
+            const syncCountry = () => {
+                const isPhilippines = normalizeLocationName(countryInput?.value) === 'philippines';
+                if (isPhilippines) {
+                    loadProvinces(provinceInput.value, cityInput.value, barangayInput.value).catch(manualLocationFallback);
+                } else {
+                    clearLocation(provinceInput, 'Type state or province', true);
+                    clearLocation(cityInput, 'Type city or municipality', true);
+                    clearLocation(barangayInput, 'Type district or barangay', true);
+                    setLocationStatus('For addresses outside the Philippines, type the location fields manually.');
+                }
+            };
+            countryInput?.addEventListener('input', () => {
+                const code = optionFor(countryInput)?.dataset.code || '';
+                if (! code || code === countryCode) return;
+                countryCode = code;
+                syncCountry();
+            });
+            provinceInput?.addEventListener('input', () => {
+                const code = optionFor(provinceInput)?.dataset.code || '';
+                if (! code) {
+                    provinceCode = '';
+                    clearLocation(cityInput, 'Select province first');
+                    clearLocation(barangayInput, 'Select city first');
+                    return;
+                }
+                if (code === provinceCode) return;
+                provinceCode = code;
+                loadCities().catch(manualLocationFallback);
+            });
+            cityInput?.addEventListener('input', () => {
+                const code = optionFor(cityInput)?.dataset.code || '';
+                if (! code) {
+                    cityCode = '';
+                    clearLocation(barangayInput, 'Select city first');
+                    return;
+                }
+                if (code === cityCode) return;
+                cityCode = code;
+                loadBarangays().catch(manualLocationFallback);
+            });
+            syncCountry();
+
+            const birthDate = verificationForm.querySelector('#date_of_birth');
+            const ageResult = verificationForm.querySelector('[data-age-result]');
+            const updateAge = () => {
+                if (! birthDate?.value || ! ageResult) return;
+                const today = new Date();
+                const dob = new Date(`${birthDate.value}T00:00:00`);
+                let age = today.getFullYear() - dob.getFullYear();
+                if (today.getMonth() < dob.getMonth() || (today.getMonth() === dob.getMonth() && today.getDate() < dob.getDate())) age--;
+                ageResult.textContent = age >= 17 ? `Age: ${age} — eligible for verification.` : `Age: ${age} — you must be at least 17.`;
+                ageResult.classList.toggle('error-text', age < 17);
+            };
+            birthDate?.addEventListener('change', updateAge);
+            updateAge();
+
+            const phoneInput = verificationForm.querySelector('[data-phone-input]');
+            const phoneStatus = verificationForm.querySelector('[data-phone-status]');
+            const phoneCodeRow = verificationForm.querySelector('[data-phone-code-row]');
+            const phoneCode = verificationForm.querySelector('[data-phone-code]');
+            const sendCode = verificationForm.querySelector('[data-send-phone-code]');
+            const verifyCode = verificationForm.querySelector('[data-verify-phone-code]');
+            const normalizePhone = (value = '') => {
+                let phone = value.trim().replace(/[^0-9+]/g, '');
+                if (phone.startsWith('09')) phone = `+63${phone.slice(1)}`;
+                else if (phone.startsWith('639')) phone = `+${phone}`;
+                return phone;
+            };
+            const showPhoneStatus = (message, state = '') => {
+                if (! phoneStatus) return;
+                phoneStatus.textContent = message;
+                phoneStatus.classList.toggle('verified', state === 'verified');
+                phoneStatus.classList.toggle('error-text', state === 'error');
+            };
+            const postJson = async (url, body) => {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken},
+                    body: JSON.stringify(body),
+                });
+                const data = await response.json().catch(() => ({}));
+                if (! response.ok) throw new Error(Object.values(data.errors || {})[0]?.[0] || data.message || 'The request could not be completed.');
+                return data;
+            };
+            phoneInput?.addEventListener('input', () => {
+                const verified = normalizePhone(phoneInput.value) === normalizePhone(phoneInput.dataset.verifiedPhone);
+                showPhoneStatus(verified ? '✓ Mobile number verified' : 'Verify this number before saving your profile.', verified ? 'verified' : '');
+            });
+            sendCode?.addEventListener('click', async () => {
+                if (! phoneInput.value.trim()) {
+                    showPhoneStatus('Enter your mobile number first.', 'error');
+                    phoneInput.focus();
+                    return;
+                }
+                sendCode.disabled = true;
+                sendCode.textContent = 'Sending…';
+                showPhoneStatus('Sending verification code…');
+                try {
+                    const data = await postJson(verificationForm.dataset.phoneSendUrl, {phone: phoneInput.value});
+                    phoneCodeRow.hidden = false;
+                    if (data.debug_code) phoneCode.value = data.debug_code;
+                    showPhoneStatus(data.debug_code ? `${data.message} Code: ${data.debug_code}` : data.message);
+                    phoneCode.focus();
+                } catch (error) {
+                    showPhoneStatus(error.message, 'error');
+                } finally {
+                    sendCode.disabled = false;
+                    sendCode.textContent = 'Send OTP';
+                }
+            });
+            verifyCode?.addEventListener('click', async () => {
+                if (! /^\d{6}$/.test(phoneCode.value)) {
+                    showPhoneStatus('Enter the complete 6-digit code.', 'error');
+                    phoneCode.focus();
+                    return;
+                }
+                verifyCode.disabled = true;
+                verifyCode.textContent = 'Verifying…';
+                try {
+                    const data = await postJson(verificationForm.dataset.phoneVerifyUrl, {phone: phoneInput.value, code: phoneCode.value});
+                    phoneInput.value = data.phone;
+                    phoneInput.dataset.verifiedPhone = data.phone;
+                    phoneCodeRow.hidden = true;
+                    showPhoneStatus(`✓ ${data.message}`, 'verified');
+                } catch (error) {
+                    showPhoneStatus(error.message, 'error');
+                } finally {
+                    verifyCode.disabled = false;
+                    verifyCode.textContent = 'Verify number';
+                }
+            });
+
+            const idInput = verificationForm.querySelector('[data-id-document-input]');
+            const idPreview = verificationForm.querySelector('[data-id-document-preview]');
+            let idPreviewUrl = null;
+            idInput?.addEventListener('change', () => {
+                const file = idInput.files?.[0];
+                if (! file || ! idPreview) return;
+                if (idPreviewUrl) URL.revokeObjectURL(idPreviewUrl);
+                idPreviewUrl = URL.createObjectURL(file);
+                idPreview.replaceChildren();
+                const preview = file.type === 'application/pdf' ? document.createElement('object') : document.createElement('img');
+                if (preview instanceof HTMLObjectElement) {
+                    preview.data = idPreviewUrl;
+                    preview.type = 'application/pdf';
+                } else {
+                    preview.src = idPreviewUrl;
+                    preview.alt = `Preview of ${file.name}`;
+                }
+                const meta = document.createElement('div');
+                meta.className = 'id-preview-meta';
+                const name = document.createElement('strong');
+                name.textContent = file.name;
+                const size = document.createElement('small');
+                size.textContent = `${(file.size / 1024 / 1024).toFixed(2)} MB — new preview`;
                 meta.append(name, size);
                 idPreview.append(preview, meta);
                 idPreview.hidden = false;
