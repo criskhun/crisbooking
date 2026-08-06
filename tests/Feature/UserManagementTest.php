@@ -10,6 +10,32 @@ class UserManagementTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_an_existing_account_can_be_promoted_to_admin_from_the_console(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'owner@example.com',
+            'is_admin' => false,
+            'is_active' => false,
+        ]);
+
+        $this->artisan('user:make-admin', ['email' => 'OWNER@example.com'])
+            ->expectsOutput('owner@example.com is now an active administrator.')
+            ->assertSuccessful();
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'is_admin' => true,
+            'is_active' => true,
+        ]);
+    }
+
+    public function test_admin_promotion_command_fails_for_an_unknown_account(): void
+    {
+        $this->artisan('user:make-admin', ['email' => 'missing@example.com'])
+            ->expectsOutput('No account exists for missing@example.com. Register or sign in first, then run this command again.')
+            ->assertFailed();
+    }
+
     public function test_admin_can_update_a_users_name_role_and_status(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
