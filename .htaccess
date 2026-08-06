@@ -1,0 +1,23 @@
+Options -Indexes
+
+# This file is only used when the repository is deployed directly into
+# public_html. The preferred setup is to point the domain document root at
+# this project's public directory.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Never let Apache serve hidden files such as .env or .git.
+    RewriteRule "(^|/)\." - [F]
+
+    # Keep one HTTPS origin for secure sessions and OAuth callbacks.
+    RewriteCond %{HTTP_HOST} ^www\.davaorentzone\.com$ [NC]
+    RewriteRule ^ https://davaorentzone.com%{REQUEST_URI} [R=301,L,NE]
+
+    RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP:X-Forwarded-Proto} !https [NC]
+    RewriteRule ^ https://davaorentzone.com%{REQUEST_URI} [R=301,L,NE]
+
+    # Internally send every clean URL and public asset through /public.
+    RewriteCond %{REQUEST_URI} !^/public(?:/|$)
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
