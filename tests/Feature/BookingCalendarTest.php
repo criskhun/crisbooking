@@ -1,0 +1,983 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Booking;
+use App\Models\Inquiry;
+use App\Models\Unit;
+use App\Models\User;
+use Carbon\Carbon;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Tests\TestCase;
+
+class BookingCalendarTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_host_can_register_a_unit_and_client_cannot(): void
+    {
+        Storage::fake('public');
+        $host = User::factory()->host()->create();
+        $client = User::factory()->create();
+
+        $payload = [
+            'name' => 'City Condo 12A',
+            'kind' => 'unit',
+            'category' => 'condo',
+            'location' => 'Makati',
+            'latitude' => 14.5547,
+            'longitude' => 121.0244,
+            'description' => 'One-bedroom condo',
+            'rules' => "No smoking.\nQuiet hours start at 10 PM.",
+            'capacity' => 2,
+            'photos' => [
+                UploadedFile::fake()->image('living-room.jpg', 1200, 800),
+                UploadedFile::fake()->image('bedroom.jpg', 1200, 800),
+            ],
+            'offered_rates' => ['day', 'week', 'month'],
+            'rates' => [
+                'day' => 2500,
+                'week' => 14000,
+                'month' => 45000,
+            ],
+            'property' => [
+                'type' => 'condo',
+                'bedrooms' => 2,
+                'bathrooms' => 1,
+                'beds' => 2,
+                'floor_area_sqm' => 54,
+            ],
+            'property_amenities' => ['wifi', 'kitchen', 'pool'],
+            'wifi' => ['ssid' => 'CityCondoGuest', 'password' => 'condo-password'],
+            'pool' => ['payment_type' => 'included'],
+            'is_active' => 1,
+        ];
+
+        $this->actingAs($host)->post(route('units.store'), $payload)->assertRedirect('/units');
+        $this->assertDatabaseHas('units', ['host_id' => $host->id, 'name' => 'City Condo 12A']);
+        $this->assertDatabaseHas('unit_rates', ['period' => 'week', 'price' => 14000]);
+        $this->assertDatabaseMissing('unit_rates', ['period' => '12_hours']);
+        $this->assertDatabaseCount('unit_images', 2);
+        $unit = Unit::with('images')->firstOrFail();
+        $this->assertSame(2, $unit->property_details['bedrooms']);
+        $this->assertSame('14.5547000', $unit->latitude);
+        $this->assertSame('121.0244000', $unit->longitude);
+        $this->assertSame(['wifi', 'kitchen', 'pool'], $unit->property_details['amenities']);
+        $this->assertSame('included', $unit->property_details['pool']['payment_type']);
+        $unit->images->each(fn ($image) => Storage::disk('public')->assertExists($image->path));
+
+        $this->actingAs($client)->post(route('units.store'), $payload)->assertForbidden();
+    }
+
+    public function test_car_registration_stores_vehicle_details_and_accessories(): void
+    {
+        Storage::fake('public');
+        $host = User::factory()->host()->create();
+
+        $this->actingAs($host)->post(route('units.store'), [
+            'name' => 'Family Car',
+            'kind' => 'unit',
+            'category' => 'car',
+            'location' => 'Quezon City',
+            'capacity' => 5,
+            'rules' => "Return with a full tank.\nOnly registered drivers may use the car.",
+            'photos' => [UploadedFile::fake()->image('front.jpg'), UploadedFile::fake()->image('inside.jpg')],
+            'offered_rates' => ['12_hours', 'day'],
+            'rates' => ['12_hours' => 1800, 'day' => 2800],
+            'car' => [
+                'make' => 'Toyota',
+                'model' => 'Vios',
+                'year' => 2026,
+                'transmission' => 'automatic',
+                'fuel_type' => 'gasoline',
+            ],
+            'car_accessories' => ['air_conditioning', 'bluetooth', 'reverse_camera'],
+            'is_active' => 1,
+        ])->assertRedirect('/units');
+
+        $unit = Unit::firstOrFail();
+        $this->assertSame('Toyota', $unit->car_details['make']);
+        $this->assertSame(['air_conditioning', 'bluetooth', 'reverse_camera'], $unit->car_details['accessories']);
+        $this->assertDatabaseCount('unit_rates', 2);
+        $this->assertDatabaseCount('unit_images', 2);
+    }
+
+    public function test_host_can_add_and_remove_gallery_images_without_removing_them_all(): void
+    {
+        Storage::fake('public');
+        $host = User::factory()->host()->create();
+        $firstPhoto = UploadedFile::fake()->image('one.jpg');
+        $secondPhoto = UploadedFile::fake()->image('two.jpg');
+
+        $this->actingAs($host)->post(route('units.store'), [
+            'name' => 'Airport Transfer',
+            'kind' => 'service',
+            'category' => 'driving',
+            'rules' => 'Maximum waiting time is 30 minutes.',
+            'photos' => [$firstPhoto, $secondPhoto],
+            'primary_image' => 'new:1',
+            'price' => 900,
+            'pricing_unit' => 'session',
+            'is_active' => 1,
+        ])->assertRedirect('/units');
+
+        $unit = Unit::with('images')->firstOrFail();
+        $this->assertSame('listings/'.$secondPhoto->hashName(), $unit->photo_path);
+        $this->assertSame($unit->photo_path, $unit->images->first()->path);
+        $removedImage = $unit->images->first();
+        $replacementPhoto = UploadedFile::fake()->image('three.jpg');
+
+        $this->actingAs($host)->put(route('units.update', $unit), [
+            'name' => 'Airport Transfer',
+            'kind' => 'service',
+            'category' => 'driving',
+            'rules' => 'Maximum waiting time is 30 minutes.',
+            'photos' => [$replacementPhoto],
+            'primary_image' => 'new:0',
+            'remove_images' => [$removedImage->id],
+            'price' => 900,
+            'pricing_unit' => 'session',
+            'is_active' => 1,
+        ])->assertRedirect('/units');
+
+        $unit->refresh()->load('images');
+        $this->assertCount(2, $unit->images);
+        $this->assertSame('listings/'.$replacementPhoto->hashName(), $unit->photo_path);
+        $this->assertSame($unit->photo_path, $unit->images->first()->path);
+        Storage::disk('public')->assertMissing($removedImage->path);
+        $unit->images->each(fn ($image) => Storage::disk('public')->assertExists($image->path));
+    }
+
+    public function test_rental_package_sets_the_booking_duration_and_separate_price(): void
+    {
+        $host = User::factory()->host()->create();
+        $client = User::factory()->create();
+        $unit = $this->createUnit($host, [
+            'name' => 'Family SUV',
+            'kind' => 'unit',
+            'category' => 'car',
+            'price' => 2200,
+            'pricing_unit' => '12_hours',
+        ]);
+        $rate = $unit->rates()->create(['period' => 'week', 'price' => 11500]);
+        $start = now()->addDays(4)->startOfHour();
+        $inquiry = $this->createInquiry($unit, $client, $start, $start->copy()->addWeek());
+
+        $this->actingAs($client)->post(route('bookings.store'), [
+            'unit_id' => $unit->id,
+            'inquiry_id' => $inquiry->id,
+            'unit_rate_id' => $rate->id,
+            'start_at' => $start->toDateTimeString(),
+        ])->assertRedirect();
+
+        $booking = Booking::firstOrFail();
+        $this->assertTrue($booking->end_at->equalTo($start->copy()->addWeek()));
+        $this->assertSame('week', $booking->rate_period);
+        $this->assertSame(1, $booking->rate_quantity);
+        $this->assertSame('11500.00', $booking->total_amount);
+    }
+
+    public function test_client_can_combine_one_day_and_twelve_hours_and_total_is_itemized(): void
+    {
+        $host = User::factory()->host()->create();
+        $client = User::factory()->create();
+        $unit = $this->createUnit($host, [
+            'name' => 'Flexible Family Car',
+            'kind' => 'unit',
+            'category' => 'car',
+            'price' => 1400,
+            'pricing_unit' => '12_hours',
+        ]);
+        $unit->rates()->createMany([
+            ['period' => '12_hours', 'price' => 1400],
+            ['period' => 'day', 'price' => 2500],
+        ]);
+        $start = now()->addDays(4)->startOfHour();
+        $end = $start->copy()->addDay()->addHours(12);
+        $inquiry = $this->createInquiry($unit, $client, $start, $end);
+
+        $this->actingAs($client)->post(route('bookings.store'), [
+            'unit_id' => $unit->id,
+            'inquiry_id' => $inquiry->id,
+            'start_at' => $start->toDateTimeString(),
+            'end_at' => $end->toDateTimeString(),
+            'duration_pricing' => 1,
+        ])->assertRedirect();
+
+        $booking = Booking::firstOrFail();
+        $this->assertTrue($booking->end_at->equalTo($start->copy()->addDay()->addHours(12)));
+        $this->assertSame('mixed', $booking->rate_period);
+        $this->assertSame(2, $booking->rate_quantity);
+        $this->assertNull($booking->unit_rate_id);
+        $this->assertSame('3900.00', $booking->total_amount);
+        $this->assertSame(1, $booking->package_breakdown['12_hours']['quantity']);
+        $this->assertSame(1400, $booking->package_breakdown['12_hours']['subtotal']);
+        $this->assertSame(1, $booking->package_breakdown['day']['quantity']);
+        $this->assertSame(2500, $booking->package_breakdown['day']['subtotal']);
+    }
+
+    public function test_client_dates_can_match_one_month_and_two_weeks_with_the_correct_total(): void
+    {
+        $host = User::factory()->host()->create();
+        $client = User::factory()->create();
+        $unit = $this->createUnit($host, [
+            'name' => 'Extended Stay Condo',
+            'kind' => 'unit',
+            'category' => 'condo',
+            'price' => 14000,
+            'pricing_unit' => 'week',
+        ]);
+        $unit->rates()->createMany([
+            ['period' => 'week', 'price' => 14000],
+            ['period' => 'month', 'price' => 45000],
+        ]);
+        $start = now()->addDays(5)->setTime(9, 30)->startOfMinute();
+        $end = $start->copy()->addMonthNoOverflow()->addWeeks(2);
+        $inquiry = $this->createInquiry($unit, $client, $start, $end);
+
+        $this->actingAs($client)->post(route('bookings.store'), [
+            'unit_id' => $unit->id,
+            'inquiry_id' => $inquiry->id,
+            'start_at' => $start->toDateTimeString(),
+            'end_at' => $end->toDateTimeString(),
+            'duration_pricing' => 1,
+        ])->assertRedirect();
+
+        $booking = Booking::firstOrFail();
+        $this->assertTrue($booking->end_at->equalTo($start->copy()->addMonthNoOverflow()->addWeeks(2)));
+        $this->assertSame('mixed', $booking->rate_period);
+        $this->assertSame(3, $booking->rate_quantity);
+        $this->assertSame('73000.00', $booking->total_amount);
+        $this->assertSame(2, $booking->package_breakdown['week']['quantity']);
+        $this->assertSame(1, $booking->package_breakdown['month']['quantity']);
+
+        $this->actingAs($client)->get(route('bookings.show', $booking))
+            ->assertOk()
+            ->assertSee('2 × 1 week')
+            ->assertSee('1 × 1 month')
+            ->assertSee('₱73,000.00');
+    }
+
+    public function test_client_can_book_later_today_but_not_a_past_time_and_end_must_follow_start(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-08-05 10:00:00'));
+
+        try {
+            $host = User::factory()->host()->create();
+            $client = User::factory()->create();
+            $unit = $this->createUnit($host);
+            $pastStart = now()->subHour();
+            $laterToday = now()->addHours(2);
+
+            $this->actingAs($client)->get(route('calendar.index', [
+                'category' => 'driving',
+                'search' => 1,
+                'search_start' => $pastStart->toDateTimeString(),
+                'search_end' => $pastStart->copy()->addHour()->toDateTimeString(),
+                'party_size' => 1,
+            ]))->assertSessionHasErrors('search_start');
+
+            $this->actingAs($client)->get(route('calendar.index', [
+                'category' => 'driving',
+                'search' => 1,
+                'search_start' => $laterToday->toDateTimeString(),
+                'search_end' => $laterToday->copy()->addHour()->toDateTimeString(),
+                'party_size' => 1,
+            ]))->assertOk()->assertSee($unit->name);
+
+            $pastInquiry = $this->createInquiry($unit, $client, $pastStart, $pastStart->copy()->addHour());
+            $this->actingAs($client)->post(route('bookings.store'), [
+                'unit_id' => $unit->id,
+                'inquiry_id' => $pastInquiry->id,
+                'start_at' => $pastStart->toDateTimeString(),
+                'end_at' => $pastStart->copy()->addHour()->toDateTimeString(),
+            ])->assertSessionHasErrors('start_at');
+
+            $futureInquiry = $this->createInquiry($unit, $client, $laterToday, $laterToday->copy()->addHours(2));
+            $this->actingAs($client)->post(route('bookings.store'), [
+                'unit_id' => $unit->id,
+                'inquiry_id' => $futureInquiry->id,
+                'start_at' => $laterToday->toDateTimeString(),
+                'end_at' => $laterToday->copy()->subMinute()->toDateTimeString(),
+            ])->assertSessionHasErrors('end_at');
+
+            $this->actingAs($client)->post(route('bookings.store'), [
+                'unit_id' => $unit->id,
+                'inquiry_id' => $futureInquiry->id,
+                'start_at' => $laterToday->toDateTimeString(),
+                'end_at' => $laterToday->copy()->addHours(2)->toDateTimeString(),
+            ])->assertRedirect();
+
+            $this->assertDatabaseCount('bookings', 1);
+            $this->assertTrue(Booking::firstOrFail()->start_at->isSameDay(now()));
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_client_and_host_receive_role_specific_overviews(): void
+    {
+        $host = User::factory()->host()->create();
+        $client = User::factory()->create();
+        $unit = $this->createUnit($host, [
+            'name' => 'Dashboard Marketing Condo',
+            'kind' => 'unit',
+            'category' => 'condo',
+            'price' => 2800,
+            'pricing_unit' => 'day',
+            'latitude' => 14.5547,
+            'longitude' => 121.0244,
+        ]);
+        $unit->rates()->create(['period' => 'day', 'price' => 2800]);
+
+        $this->actingAs($client)->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Find the right ride, stay, or service')
+            ->assertSee('What can I book near me?')
+            ->assertSee('Featured rentals and services')
+            ->assertSee('Dashboard Marketing Condo');
+
+        $this->actingAs($host)->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Rental control center')
+            ->assertSee('Live availability')
+            ->assertSee('Dashboard Marketing Condo')
+            ->assertSee('Available now');
+    }
+
+    public function test_gps_access_requires_private_credentials_and_clients_cannot_see_them(): void
+    {
+        Storage::fake('public');
+        $host = User::factory()->host()->create();
+        $client = User::factory()->create();
+        $payload = [
+            'name' => 'Tracked SUV',
+            'kind' => 'unit',
+            'category' => 'car',
+            'photos' => [UploadedFile::fake()->image('suv.jpg')],
+            'offered_rates' => ['day'],
+            'rates' => ['day' => 3500],
+            'car' => [
+                'make' => 'Toyota',
+                'model' => 'Fortuner',
+                'year' => 2026,
+                'transmission' => 'automatic',
+                'fuel_type' => 'diesel',
+            ],
+            'car_accessories' => ['gps'],
+            'rules' => 'No smoking. Return with a full tank.',
+            'is_active' => 1,
+        ];
+
+        $this->actingAs($host)->post(route('units.store'), $payload)
+            ->assertSessionHasErrors(['gps.device_name', 'gps.username', 'gps.password']);
+
+        $payload['gps'] = [
+            'device_name' => 'SinoTrack Pro',
+            'login_url' => 'https://example.com/tracker',
+            'username' => 'fleet-owner',
+            'password' => 'secret-tracker-password',
+            'notes' => 'Tracker ID 1001',
+        ];
+
+        $this->actingAs($host)->post(route('units.store'), $payload)->assertRedirect('/units');
+
+        $unit = Unit::firstOrFail();
+        $this->assertSame('fleet-owner', $unit->gps_details['username']);
+        $this->assertArrayNotHasKey('gps_details', $unit->toArray());
+        $storedGps = DB::table('units')->where('id', $unit->id)->value('gps_details');
+        $this->assertStringNotContainsString('fleet-owner', $storedGps);
+        $this->assertStringNotContainsString('secret-tracker-password', $storedGps);
+
+        $this->actingAs($host)->get(route('units.index'))
+            ->assertOk()
+            ->assertSee('Host-only GPS access')
+            ->assertSee('fleet-owner')
+            ->assertSee('secret-tracker-password');
+
+        $this->actingAs($client)->get(route('calendar.index'))
+            ->assertOk()
+            ->assertSee('Car rules')
+            ->assertSee('No smoking. Return with a full tank.')
+            ->assertDontSee('fleet-owner')
+            ->assertDontSee('secret-tracker-password')
+            ->assertDontSee('Tracker ID 1001');
+    }
+
+    public function test_condo_wifi_access_is_private_until_confirmation_and_amenity_fees_are_public(): void
+    {
+        Storage::fake('public');
+        Storage::fake('local');
+        $host = User::factory()->host()->create();
+        $client = User::factory()->create();
+        $unrelatedClient = User::factory()->create();
+        $qrCode = UploadedFile::fake()->image('wifi-qr.png', 300, 300);
+
+        $this->actingAs($host)->post(route('units.store'), [
+            'name' => 'Connected Condo',
+            'kind' => 'unit',
+            'category' => 'condo',
+            'photos' => [UploadedFile::fake()->image('condo.jpg')],
+            'offered_rates' => ['day'],
+            'rates' => ['day' => 3000],
+            'property' => ['type' => 'condo', 'bedrooms' => 1, 'bathrooms' => 1, 'beds' => 1],
+            'property_amenities' => ['wifi', 'parking', 'pool'],
+            'wifi' => ['ssid' => 'CondoGuest5G', 'password' => 'private-wifi-pass', 'notes' => 'Use the 5 GHz network.'],
+            'wifi_qr' => $qrCode,
+            'parking' => ['payment_type' => 'separate', 'rate' => 450, 'rate_unit' => 'day'],
+            'pool' => ['payment_type' => 'included'],
+            'rules' => 'Observe quiet hours after 10 PM.',
+            'is_active' => 1,
+        ])->assertRedirect('/units');
+
+        $unit = Unit::firstOrFail();
+        $rate = $unit->rates()->firstOrFail();
+        $this->assertSame('CondoGuest5G', $unit->wifi_details['ssid']);
+        $this->assertSame('separate', $unit->property_details['parking']['payment_type']);
+        $this->assertSame(450, $unit->property_details['parking']['rate']);
+        $this->assertSame('included', $unit->property_details['pool']['payment_type']);
+        $this->assertArrayNotHasKey('wifi_details', $unit->toArray());
+        $storedWifi = DB::table('units')->where('id', $unit->id)->value('wifi_details');
+        $this->assertStringNotContainsString('CondoGuest5G', $storedWifi);
+        $this->assertStringNotContainsString('private-wifi-pass', $storedWifi);
+        Storage::disk('local')->assertExists($unit->wifi_qr_path);
+
+        $start = now()->addDays(2)->startOfHour();
+        $booking = Booking::create([
+            'unit_id' => $unit->id,
+            'unit_rate_id' => $rate->id,
+            'client_id' => $client->id,
+            'start_at' => $start,
+            'end_at' => $start->copy()->addDay(),
+            'status' => 'pending',
+            'rate_period' => 'day',
+            'total_amount' => 3000,
+        ]);
+
+        $calendarUrl = route('calendar.index', ['month' => $start->format('Y-m'), 'date' => $start->format('Y-m-d')]);
+        $this->actingAs($client)->get($calendarUrl)
+            ->assertOk()
+            ->assertSee('Parking: ₱450.00 / day')
+            ->assertSee('Swimming pool: Included')
+            ->assertSee('Wi-Fi access will appear here after the host confirms this booking.')
+            ->assertDontSee('CondoGuest5G')
+            ->assertDontSee('private-wifi-pass');
+        $this->actingAs($client)->get(route('units.wifi-qr', $unit))->assertForbidden();
+        $this->actingAs($unrelatedClient)->get(route('units.wifi-qr', $unit))->assertForbidden();
+
+        $this->actingAs($host)->patch(route('bookings.status', $booking), ['status' => 'confirmed'])->assertRedirect();
+
+        $this->actingAs($client)->get($calendarUrl)
+            ->assertOk()
+            ->assertSee('CondoGuest5G')
+            ->assertSee('private-wifi-pass')
+            ->assertSee(route('units.wifi-qr', $unit));
+        $this->actingAs($client)->get(route('units.wifi-qr', $unit))->assertOk();
+        $this->actingAs($unrelatedClient)->get(route('units.wifi-qr', $unit))->assertForbidden();
+    }
+
+    public function test_rental_rate_must_belong_to_the_selected_unit(): void
+    {
+        $host = User::factory()->host()->create();
+        $client = User::factory()->create();
+        $selectedUnit = $this->createUnit($host, ['category' => 'car', 'pricing_unit' => '12_hours']);
+        $otherUnit = $this->createUnit($host, ['name' => 'Other car', 'category' => 'car', 'pricing_unit' => '12_hours']);
+        $otherRate = $otherUnit->rates()->create(['period' => 'day', 'price' => 3000]);
+        $inquiry = $this->createInquiry($selectedUnit, $client, now()->addDays(2), now()->addDays(3));
+
+        $this->actingAs($client)->post(route('bookings.store'), [
+            'unit_id' => $selectedUnit->id,
+            'inquiry_id' => $inquiry->id,
+            'unit_rate_id' => $otherRate->id,
+            'start_at' => now()->addDays(2)->toDateTimeString(),
+        ])->assertSessionHasErrors('unit_rate_id');
+
+        $this->assertDatabaseCount('bookings', 0);
+    }
+
+    public function test_client_can_book_an_available_unit_and_total_is_calculated(): void
+    {
+        $host = User::factory()->host()->create();
+        $client = User::factory()->create();
+        $unit = $this->createUnit($host, ['price' => 500, 'pricing_unit' => 'hour']);
+        $start = now()->addDays(2)->startOfHour();
+        $inquiry = $this->createInquiry($unit, $client, $start, $start->copy()->addMinutes(90));
+
+        $this->actingAs($client)->post(route('bookings.store'), [
+            'unit_id' => $unit->id,
+            'inquiry_id' => $inquiry->id,
+            'start_at' => $start->toDateTimeString(),
+            'end_at' => $start->copy()->addMinutes(90)->toDateTimeString(),
+            'notes' => 'Airport pickup',
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('bookings', [
+            'unit_id' => $unit->id,
+            'client_id' => $client->id,
+            'status' => 'pending',
+            'total_amount' => 1000,
+        ]);
+    }
+
+    public function test_overlapping_bookings_are_rejected_but_cancelled_time_is_released(): void
+    {
+        $host = User::factory()->host()->create();
+        $firstClient = User::factory()->create();
+        $secondClient = User::factory()->create();
+        $unit = $this->createUnit($host);
+        $start = now()->addWeek()->startOfHour();
+
+        $booking = Booking::create([
+            'unit_id' => $unit->id,
+            'client_id' => $firstClient->id,
+            'start_at' => $start,
+            'end_at' => $start->copy()->addHours(2),
+            'status' => 'confirmed',
+            'total_amount' => 1200,
+        ]);
+
+        $payload = [
+            'unit_id' => $unit->id,
+            'inquiry_id' => $this->createInquiry($unit, $secondClient, $start->copy()->addHour(), $start->copy()->addHours(3))->id,
+            'start_at' => $start->copy()->addHour()->toDateTimeString(),
+            'end_at' => $start->copy()->addHours(3)->toDateTimeString(),
+        ];
+
+        $this->actingAs($secondClient)->post(route('bookings.store'), $payload)
+            ->assertSessionHasErrors('start_at');
+        $this->assertDatabaseCount('bookings', 1);
+
+        $booking->update(['status' => 'cancelled']);
+        $this->actingAs($secondClient)->post(route('bookings.store'), $payload)->assertRedirect();
+        $this->assertDatabaseCount('bookings', 2);
+    }
+
+    public function test_same_unit_can_be_booked_again_for_non_overlapping_dates(): void
+    {
+        $host = User::factory()->host()->create();
+        $firstClient = User::factory()->create();
+        $secondClient = User::factory()->create();
+        $unit = $this->createUnit($host);
+        $firstStart = now()->addWeek()->startOfHour();
+        $secondStart = $firstStart->copy()->addHours(2);
+
+        Booking::create([
+            'unit_id' => $unit->id,
+            'client_id' => $firstClient->id,
+            'start_at' => $firstStart,
+            'end_at' => $firstStart->copy()->addHours(2),
+            'status' => 'confirmed',
+            'total_amount' => 1200,
+        ]);
+        $inquiry = $this->createInquiry($unit, $secondClient, $secondStart, $secondStart->copy()->addHours(2));
+
+        $this->actingAs($secondClient)->post(route('bookings.store'), [
+            'unit_id' => $unit->id,
+            'inquiry_id' => $inquiry->id,
+            'start_at' => $secondStart->toDateTimeString(),
+            'end_at' => $secondStart->copy()->addHours(2)->toDateTimeString(),
+            'party_size' => 2,
+        ])->assertRedirect();
+
+        $this->assertDatabaseCount('bookings', 2);
+        $this->assertDatabaseHas('bookings', [
+            'unit_id' => $unit->id,
+            'client_id' => $secondClient->id,
+            'status' => 'pending',
+            'start_at' => $secondStart->toDateTimeString(),
+        ]);
+    }
+
+    public function test_client_change_request_keeps_current_booking_until_host_approval(): void
+    {
+        $host = User::factory()->host()->create();
+        $client = User::factory()->create();
+        $unit = $this->createUnit($host, ['price' => 600, 'pricing_unit' => 'hour']);
+        $originalStart = now()->addDays(5)->startOfHour();
+        $originalEnd = $originalStart->copy()->addHours(2);
+        $requestedStart = $originalStart->copy()->addDays(3);
+        $requestedEnd = $requestedStart->copy()->addHours(3);
+        $inquiry = $this->createInquiry($unit, $client, $originalStart, $originalEnd, 2);
+        $booking = Booking::create([
+            'unit_id' => $unit->id,
+            'inquiry_id' => $inquiry->id,
+            'client_id' => $client->id,
+            'start_at' => $originalStart,
+            'end_at' => $originalEnd,
+            'party_size' => 2,
+            'status' => 'confirmed',
+            'total_amount' => 1200,
+        ]);
+
+        $this->actingAs($client)->patch(route('bookings.change-request', $booking), [
+            'change_start_at' => $requestedStart->toDateTimeString(),
+            'change_end_at' => $requestedEnd->toDateTimeString(),
+            'change_party_size' => 3,
+            'change_request_note' => 'Our flight schedule changed.',
+        ])->assertRedirect();
+
+        $booking->refresh();
+        $this->assertTrue($booking->start_at->equalTo($originalStart));
+        $this->assertTrue($booking->end_at->equalTo($originalEnd));
+        $this->assertSame(2, $booking->party_size);
+        $this->assertSame('pending', $booking->change_request_status);
+        $this->assertTrue($booking->change_start_at->equalTo($requestedStart));
+        $this->actingAs($host)->get(route('bookings.show', $booking))->assertOk()->assertSee('Approve changes');
+
+        $this->actingAs($host)->patch(route('bookings.change-request.review', $booking), ['decision' => 'approve'])->assertRedirect();
+
+        $booking->refresh();
+        $this->assertTrue($booking->start_at->equalTo($requestedStart));
+        $this->assertTrue($booking->end_at->equalTo($requestedEnd));
+        $this->assertSame(3, $booking->party_size);
+        $this->assertSame('approved', $booking->change_request_status);
+        $this->assertSame('1800.00', $booking->total_amount);
+        $this->assertDatabaseHas('inquiries', [
+            'id' => $inquiry->id,
+            'party_size' => 3,
+            'desired_start_at' => $requestedStart->toDateTimeString(),
+            'desired_end_at' => $requestedEnd->toDateTimeString(),
+        ]);
+    }
+
+    public function test_approved_package_date_change_updates_quantity_and_multiplies_locked_rate(): void
+    {
+        $host = User::factory()->host()->create();
+        $client = User::factory()->create();
+        $unit = $this->createUnit($host, [
+            'name' => 'Daily Rental Condo',
+            'kind' => 'unit',
+            'category' => 'condo',
+            'price' => 2500,
+            'pricing_unit' => 'day',
+        ]);
+        $rate = $unit->rates()->create(['period' => 'day', 'price' => 2500]);
+        $originalStart = now()->addDays(5)->startOfHour();
+        $inquiry = $this->createInquiry($unit, $client, $originalStart, $originalStart->copy()->addDay(), 2);
+        $booking = Booking::create([
+            'unit_id' => $unit->id,
+            'unit_rate_id' => $rate->id,
+            'inquiry_id' => $inquiry->id,
+            'client_id' => $client->id,
+            'start_at' => $originalStart,
+            'end_at' => $originalStart->copy()->addDay(),
+            'party_size' => 2,
+            'status' => 'confirmed',
+            'rate_period' => 'day',
+            'rate_quantity' => 1,
+            'total_amount' => 2500,
+        ]);
+        $requestedStart = $originalStart->copy()->addDays(4);
+        $requestedEnd = $requestedStart->copy()->addDays(4);
+
+        $this->actingAs($client)->patch(route('bookings.change-request', $booking), [
+            'change_start_at' => $requestedStart->toDateTimeString(),
+            'change_end_at' => $requestedEnd->toDateTimeString(),
+            'change_party_size' => 2,
+        ])->assertRedirect();
+
+        $this->actingAs($host)->get(route('bookings.show', $booking))
+            ->assertOk()
+            ->assertSee('4 × 1 day')
+            ->assertSee('₱10,000.00');
+        $this->actingAs($host)->patch(route('bookings.change-request.review', $booking), ['decision' => 'approve'])->assertRedirect();
+
+        $booking->refresh();
+        $this->assertSame(4, $booking->rate_quantity);
+        $this->assertSame('10000.00', $booking->total_amount);
+        $this->assertTrue($booking->start_at->equalTo($requestedStart));
+        $this->assertTrue($booking->end_at->equalTo($requestedEnd));
+        $this->actingAs($client)->get(route('bookings.show', $booking))
+            ->assertOk()
+            ->assertSee('4 × 1 day')
+            ->assertSee('₱2,500.00 each')
+            ->assertSee('₱10,000.00');
+    }
+
+    public function test_change_request_and_approval_are_rejected_when_schedule_conflicts(): void
+    {
+        $host = User::factory()->host()->create();
+        $client = User::factory()->create();
+        $otherClient = User::factory()->create();
+        $unit = $this->createUnit($host);
+        $originalStart = now()->addDays(4)->startOfHour();
+        $booking = Booking::create([
+            'unit_id' => $unit->id,
+            'client_id' => $client->id,
+            'start_at' => $originalStart,
+            'end_at' => $originalStart->copy()->addHours(2),
+            'party_size' => 2,
+            'status' => 'confirmed',
+            'total_amount' => 1200,
+        ]);
+        $busyStart = $originalStart->copy()->addDays(2);
+        Booking::create([
+            'unit_id' => $unit->id,
+            'client_id' => $otherClient->id,
+            'start_at' => $busyStart,
+            'end_at' => $busyStart->copy()->addHours(2),
+            'status' => 'confirmed',
+            'total_amount' => 1200,
+        ]);
+
+        $this->actingAs($client)->patch(route('bookings.change-request', $booking), [
+            'change_start_at' => $busyStart->copy()->addHour()->toDateTimeString(),
+            'change_end_at' => $busyStart->copy()->addHours(3)->toDateTimeString(),
+            'change_party_size' => 2,
+        ])->assertSessionHasErrors('change_start_at');
+        $this->assertNull($booking->fresh()->change_request_status);
+
+        $safeStart = $busyStart->copy()->addDays(2);
+        $this->actingAs($client)->patch(route('bookings.change-request', $booking), [
+            'change_start_at' => $safeStart->toDateTimeString(),
+            'change_end_at' => $safeStart->copy()->addHours(2)->toDateTimeString(),
+            'change_party_size' => 2,
+        ])->assertRedirect();
+        Booking::create([
+            'unit_id' => $unit->id,
+            'client_id' => $otherClient->id,
+            'start_at' => $safeStart,
+            'end_at' => $safeStart->copy()->addHours(2),
+            'status' => 'confirmed',
+            'total_amount' => 1200,
+        ]);
+
+        $this->actingAs($host)->patch(route('bookings.change-request.review', $booking), ['decision' => 'approve'])
+            ->assertSessionHasErrors('change_start_at');
+        $booking->refresh();
+        $this->assertTrue($booking->start_at->equalTo($originalStart));
+        $this->assertSame('pending', $booking->change_request_status);
+    }
+
+    public function test_only_owning_host_can_confirm_a_booking(): void
+    {
+        $host = User::factory()->host()->create();
+        $otherHost = User::factory()->host()->create();
+        $client = User::factory()->create();
+        $unit = $this->createUnit($host);
+        $booking = Booking::create([
+            'unit_id' => $unit->id,
+            'client_id' => $client->id,
+            'start_at' => now()->addDay(),
+            'end_at' => now()->addDay()->addHour(),
+            'status' => 'pending',
+            'total_amount' => 600,
+        ]);
+
+        $this->actingAs($otherHost)->patch(route('bookings.status', $booking), ['status' => 'confirmed'])->assertForbidden();
+        $this->actingAs($host)->patch(route('bookings.status', $booking), ['status' => 'confirmed'])->assertRedirect();
+        $this->assertDatabaseHas('bookings', ['id' => $booking->id, 'status' => 'confirmed']);
+    }
+
+    public function test_calendar_shows_availability_and_the_users_booking(): void
+    {
+        $host = User::factory()->host()->create(['name' => 'Calendar Host']);
+        $client = User::factory()->create();
+        $unit = $this->createUnit($host, ['name' => 'Green Sedan']);
+        $date = now()->addDays(3)->startOfDay();
+
+        Booking::create([
+            'unit_id' => $unit->id,
+            'client_id' => $client->id,
+            'start_at' => $date->copy()->setTime(9, 0),
+            'end_at' => $date->copy()->setTime(11, 0),
+            'status' => 'confirmed',
+            'total_amount' => 1200,
+        ]);
+
+        $this->actingAs($client)->get(route('calendar.index', [
+            'month' => $date->format('Y-m'),
+            'date' => $date->format('Y-m-d'),
+        ]))->assertOk()->assertSee('Green Sedan')->assertSee('Booked')->assertSee('Calendar Host');
+    }
+
+    public function test_host_calendar_renders_multi_day_booking_as_a_continuous_span_with_times(): void
+    {
+        $host = User::factory()->host()->create();
+        $client = User::factory()->create(['name' => 'Long Stay Client']);
+        $unit = $this->createUnit($host, ['name' => 'Multi-day Condo']);
+        $weekStart = now()->addWeeks(2)->startOfWeek(\Carbon\Carbon::SUNDAY);
+        $start = $weekStart->copy()->addDay()->setTime(15, 0);
+        $end = $weekStart->copy()->addDays(4)->setTime(10, 0);
+        $booking = Booking::create([
+            'unit_id' => $unit->id,
+            'client_id' => $client->id,
+            'start_at' => $start,
+            'end_at' => $end,
+            'party_size' => 2,
+            'status' => 'confirmed',
+            'total_amount' => 1800,
+        ]);
+
+        $this->actingAs($host)->get(route('calendar.index', [
+            'month' => $start->format('Y-m'),
+            'date' => $start->format('Y-m-d'),
+        ]))->assertOk()
+            ->assertSee('data-booking-id="'.$booking->id.'"', false)
+            ->assertSee('data-segment-start="'.$start->format('Y-m-d').'"', false)
+            ->assertSee('data-segment-end="'.$end->format('Y-m-d').'"', false)
+            ->assertSee('3:00 PM')
+            ->assertSee('→ 10:00 AM')
+            ->assertSee('Check times');
+    }
+
+    public function test_client_search_returns_only_matching_available_listings(): void
+    {
+        $host = User::factory()->host()->create();
+        $client = User::factory()->create();
+        $available = $this->createUnit($host, ['name' => 'Manila Family Driver', 'capacity' => 5]);
+        $this->createUnit($host, ['name' => 'Too Small Driver', 'capacity' => 2]);
+        $this->createUnit($host, ['name' => 'Cebu Driver', 'location' => 'Cebu', 'capacity' => 6]);
+        $busy = $this->createUnit($host, ['name' => 'Busy Manila Driver', 'capacity' => 6]);
+        $start = now()->addDays(5)->startOfHour();
+        $end = $start->copy()->addHours(3);
+
+        Booking::create([
+            'unit_id' => $busy->id,
+            'client_id' => User::factory()->create()->id,
+            'start_at' => $start,
+            'end_at' => $end,
+            'status' => 'confirmed',
+            'total_amount' => 1800,
+        ]);
+
+        $response = $this->actingAs($client)->get(route('calendar.index', [
+            'category' => 'driving',
+            'search' => 1,
+            'search_start' => $start->toDateTimeString(),
+            'search_end' => $end->toDateTimeString(),
+            'party_size' => 4,
+            'location' => 'Manila',
+        ]));
+
+        $response->assertOk()
+            ->assertSee('1 match for your trip')
+            ->assertSee($available->name)
+            ->assertDontSee('Too Small Driver')
+            ->assertDontSee('Cebu Driver')
+            ->assertDontSee('Busy Manila Driver');
+    }
+
+    public function test_client_can_filter_mapped_listings_by_radius(): void
+    {
+        $host = User::factory()->host()->create();
+        $client = User::factory()->create();
+        $nearby = $this->createUnit($host, [
+            'name' => 'Nearby Manila Driver',
+            'latitude' => 14.5995,
+            'longitude' => 120.9842,
+        ]);
+        $this->createUnit($host, [
+            'name' => 'Far Cebu Driver',
+            'location' => 'Cebu',
+            'latitude' => 10.3157,
+            'longitude' => 123.8854,
+        ]);
+        $this->createUnit($host, [
+            'name' => 'Unpinned Manila Driver',
+            'latitude' => null,
+            'longitude' => null,
+        ]);
+        $start = now()->addDays(5)->startOfHour();
+        $end = $start->copy()->addHours(3);
+
+        $response = $this->actingAs($client)->get(route('calendar.index', [
+            'category' => 'driving',
+            'search' => 1,
+            'search_start' => $start->toDateTimeString(),
+            'search_end' => $end->toDateTimeString(),
+            'party_size' => 2,
+            'search_latitude' => 14.5995,
+            'search_longitude' => 120.9842,
+            'radius_km' => 10,
+        ]));
+
+        $response->assertOk()
+            ->assertSee('1 match for your trip')
+            ->assertSee($nearby->name)
+            ->assertSee('0.0 km away')
+            ->assertSee('Choose your search area')
+            ->assertDontSee('Far Cebu Driver')
+            ->assertDontSee('Unpinned Manila Driver');
+    }
+
+    public function test_client_radius_search_defaults_to_five_hundred_kilometres(): void
+    {
+        $client = User::factory()->create();
+
+        $this->actingAs($client)->get(route('calendar.index', ['category' => 'driving']))
+            ->assertOk()
+            ->assertSee('name="radius_km"', false)
+            ->assertSee('max="1000"', false)
+            ->assertSee('value="500"', false)
+            ->assertSee('500 km');
+    }
+
+    public function test_listing_coordinates_must_be_submitted_as_a_valid_pair(): void
+    {
+        $host = User::factory()->host()->create();
+
+        $this->actingAs($host)->post(route('units.store'), [
+            'name' => 'Incomplete Map Pin',
+            'kind' => 'service',
+            'category' => 'driving',
+            'price' => 900,
+            'pricing_unit' => 'session',
+            'latitude' => 14.5995,
+            'is_active' => 1,
+        ])->assertSessionHasErrors('longitude');
+
+        $this->assertDatabaseMissing('units', ['name' => 'Incomplete Map Pin']);
+    }
+
+    public function test_booking_rejects_a_party_larger_than_the_listing_capacity(): void
+    {
+        $host = User::factory()->host()->create();
+        $client = User::factory()->create();
+        $unit = $this->createUnit($host, ['capacity' => 3]);
+        $start = now()->addDays(2)->startOfHour();
+        $inquiry = $this->createInquiry($unit, $client, $start, $start->copy()->addHours(2), 4);
+
+        $this->actingAs($client)->post(route('bookings.store'), [
+            'unit_id' => $unit->id,
+            'inquiry_id' => $inquiry->id,
+            'start_at' => $start->toDateTimeString(),
+            'end_at' => $start->copy()->addHours(2)->toDateTimeString(),
+            'party_size' => 4,
+        ])->assertSessionHasErrors('party_size');
+
+        $this->assertDatabaseCount('bookings', 0);
+    }
+
+    private function createUnit(User $host, array $attributes = []): Unit
+    {
+        return Unit::create(array_merge([
+            'host_id' => $host->id,
+            'name' => 'Driving Service',
+            'kind' => 'service',
+            'category' => 'driving',
+            'location' => 'Manila',
+            'rules' => 'Follow the host instructions for this listing.',
+            'capacity' => 4,
+            'price' => 600,
+            'pricing_unit' => 'session',
+            'is_active' => true,
+        ], $attributes));
+    }
+
+    private function createInquiry(Unit $unit, User $client, mixed $start, mixed $end, int $partySize = 1): Inquiry
+    {
+        return Inquiry::create([
+            'unit_id' => $unit->id,
+            'client_id' => $client->id,
+            'host_id' => $unit->host_id,
+            'desired_start_at' => $start,
+            'desired_end_at' => $end,
+            'party_size' => $partySize,
+            'status' => 'open',
+        ]);
+    }
+}

@@ -1,0 +1,268 @@
+(() => {
+    const defaultCenter = {lat: 12.8797, lng: 121.7740};
+
+    const mapsAvailable = () => Boolean(window.google?.maps?.Map);
+    const numberValue = (input) => {
+        if (!input || input.value.trim() === '') return null;
+        const value = Number(input?.value);
+        return Number.isFinite(value) ? value : null;
+    };
+    const setStatus = (container, message) => {
+        if (container.dataset.mapAuthFailed === '1' && !message.startsWith('Google Maps could not authenticate')) return;
+        const status = container.querySelector('[data-map-status]');
+        if (status) status.textContent = message;
+    };
+    const showMapsAuthFailure = () => {
+        document.querySelectorAll('[data-listing-location-map], [data-search-location-map], [data-overview-nearby-map]').forEach((container) => {
+            container.dataset.mapAuthFailed = '1';
+            setStatus(container, 'Google Maps could not authenticate. Enable billing and confirm this site is allowed by the API key.');
+        });
+    };
+    const watchForMapsAuthFailure = (container) => {
+        const canvas = container.querySelector('[data-map-canvas]');
+        if (!canvas) return;
+        const detectFailure = () => {
+            if (!canvas.textContent.includes("This page can't load Google Maps correctly.")) return false;
+            showMapsAuthFailure();
+            return true;
+        };
+        if (detectFailure()) return;
+        const observer = new MutationObserver(() => {
+            if (detectFailure()) observer.disconnect();
+        });
+        observer.observe(canvas, {childList: true, subtree: true, characterData: true});
+        window.setTimeout(() => observer.disconnect(), 10000);
+    };
+    const mapOptions = (container, center, zoom) => {
+        const options = {center, zoom, streetViewControl: false, mapTypeControl: false, fullscreenControl: true};
+        if (container.dataset.mapId) options.mapId = container.dataset.mapId;
+        return options;
+    };
+    const readUnits = (container) => {
+        try {
+            return JSON.parse(container.querySelector('[data-map-units]')?.textContent || '[]');
+        } catch (error) {
+            return [];
+        }
+    };
+    const coordinateText = (position) => `${position.lat.toFixed(5)}, ${position.lng.toFixed(5)}`;
+    const geolocate = (container, callback) => {
+        if (!navigator.geolocation) {
+            setStatus(container, 'Location access is not supported by this browser.');
+            return;
+        }
+
+        setStatus(container, 'Finding your current location…');
+        navigator.geolocation.getCurrentPosition(
+            ({coords}) => callback({lat: coords.latitude, lng: coords.longitude}),
+            () => setStatus(container, 'Location permission was not granted. You can click the map instead.'),
+            {enableHighAccuracy: true, timeout: 10000, maximumAge: 60000},
+        );
+    };
+    const reverseGeocode = (geocoder, position, addressInput) => {
+        if (!addressInput) return;
+        geocoder.geocode({location: position}, (results, status) => {
+            if (status === 'OK' && results?.[0]) addressInput.value = results[0].formatted_address;
+        });
+    };
+    const geocodeAddress = (container, geocoder, addressInput, callback) => {
+        const address = addressInput?.value.trim();
+        if (!address) {
+            setStatus(container, 'Type a location or address first.');
+            return;
+        }
+
+        setStatus(container, 'Finding that location…');
+        geocoder.geocode({address, region: 'PH'}, (results, status) => {
+            if (status !== 'OK' || !results?.[0]) {
+                setStatus(container, 'That location could not be found. Try a more specific address.');
+                return;
+            }
+
+            const location = results[0].geometry.location;
+            addressInput.value = results[0].formatted_address;
+            callback({lat: location.lat(), lng: location.lng()});
+        });
+    };
+    const addUnitMarkers = (map, units) => {
+        const bounds = new google.maps.LatLngBounds();
+        const info = new google.maps.InfoWindow();
+
+        units.forEach((unit) => {
+            const position = {lat: Number(unit.latitude), lng: Number(unit.longitude)};
+            if (!Number.isFinite(position.lat) || !Number.isFinite(position.lng)) return;
+            const marker = new google.maps.Marker({map, position, title: unit.name});
+            bounds.extend(position);
+            marker.addListener('click', () => {
+                const content = document.createElement('div');
+                content.className = 'map-info-card';
+                const name = document.createElement('strong');
+                name.textContent = unit.name;
+                const location = document.createElement('span');
+                location.textContent = unit.location || 'Location pinned by host';
+                content.append(name, location);
+                if (unit.distance_km !== null && unit.distance_km !== undefined) {
+                    const distance = document.createElement('small');
+                    distance.textContent = `${Number(unit.distance_km).toFixed(1)} km from your search center`;
+                    content.append(distance);
+                }
+                if (unit.url) {
+                    const link = document.createElement('a');
+                    link.href = unit.url;
+                    link.textContent = 'Check available dates →';
+                    content.append(link);
+                }
+                info.setContent(content);
+                info.open({map, anchor: marker});
+            });
+        });
+
+        return bounds;
+    };
+
+    const initializeListingMap = (container) => {
+        const canvas = container.querySelector('[data-map-canvas]');
+        const latitudeInput = container.querySelector('[data-map-latitude]');
+        const longitudeInput = container.querySelector('[data-map-longitude]');
+        const addressInput = container.querySelector('[data-map-address]');
+        const coordinateLabel = container.querySelector('[data-map-coordinate-label]');
+        const savedLatitude = numberValue(latitudeInput);
+        const savedLongitude = numberValue(longitudeInput);
+        const hasSavedPoint = savedLatitude !== null && savedLongitude !== null;
+        const center = hasSavedPoint ? {lat: savedLatitude, lng: savedLongitude} : defaultCenter;
+        const map = new google.maps.Map(canvas, mapOptions(container, center, hasSavedPoint ? 16 : 6));
+        const geocoder = new google.maps.Geocoder();
+        const marker = new google.maps.Marker({map, position: center, draggable: true, visible: hasSavedPoint, title: 'Listing location'});
+
+        const setPoint = (position, updateAddress = false) => {
+            latitudeInput.value = position.lat.toFixed(7);
+            longitudeInput.value = position.lng.toFixed(7);
+            marker.setPosition(position);
+            marker.setVisible(true);
+            map.panTo(position);
+            map.setZoom(Math.max(map.getZoom(), 15));
+            if (coordinateLabel) coordinateLabel.textContent = coordinateText(position);
+            setStatus(container, 'Listing pin updated. Save the listing to keep it.');
+            if (updateAddress) reverseGeocode(geocoder, position, addressInput);
+        };
+
+        map.addListener('click', (event) => setPoint({lat: event.latLng.lat(), lng: event.latLng.lng()}, true));
+        marker.addListener('dragend', (event) => setPoint({lat: event.latLng.lat(), lng: event.latLng.lng()}, true));
+        container.querySelector('[data-map-use-location]')?.addEventListener('click', () => geolocate(container, (position) => setPoint(position, true)));
+        container.querySelector('[data-map-find-address]')?.addEventListener('click', () => geocodeAddress(container, geocoder, addressInput, (position) => setPoint(position)));
+        if (!hasSavedPoint) geolocate(container, (position) => setPoint(position, true));
+    };
+
+    const initializeSearchMap = (container) => {
+        const form = container.closest('form');
+        const canvas = container.querySelector('[data-map-canvas]');
+        const latitudeInput = form.querySelector('[data-map-latitude]');
+        const longitudeInput = form.querySelector('[data-map-longitude]');
+        const radiusInput = form.querySelector('[data-radius-input]');
+        const radiusOutput = form.querySelector('[data-radius-output]');
+        const addressInput = form.querySelector('[data-map-address]');
+        const coordinateLabel = container.querySelector('[data-map-coordinate-label]');
+        const savedLatitude = numberValue(latitudeInput);
+        const savedLongitude = numberValue(longitudeInput);
+        const hasSavedPoint = savedLatitude !== null && savedLongitude !== null;
+        const center = hasSavedPoint ? {lat: savedLatitude, lng: savedLongitude} : defaultCenter;
+        const map = new google.maps.Map(canvas, mapOptions(container, center, hasSavedPoint ? 12 : 6));
+        const geocoder = new google.maps.Geocoder();
+        const centerMarker = new google.maps.Marker({map, position: center, draggable: true, visible: hasSavedPoint, title: 'Search center'});
+        const circle = new google.maps.Circle({map: hasSavedPoint ? map : null, center, radius: Number(radiusInput.value) * 1000, fillColor: '#3e7b70', fillOpacity: .14, strokeColor: '#245f50', strokeOpacity: .8, strokeWeight: 2});
+        const units = readUnits(container);
+        const unitBounds = addUnitMarkers(map, units);
+
+        if (!hasSavedPoint && units.length > 0) map.fitBounds(unitBounds, 45);
+
+        const setPoint = (position, updateAddress = false) => {
+            latitudeInput.value = position.lat.toFixed(7);
+            longitudeInput.value = position.lng.toFixed(7);
+            centerMarker.setPosition(position);
+            centerMarker.setVisible(true);
+            circle.setMap(map);
+            circle.setCenter(position);
+            const radiusBounds = circle.getBounds();
+            if (radiusBounds) map.fitBounds(radiusBounds, 45);
+            else map.panTo(position);
+            if (coordinateLabel) coordinateLabel.textContent = coordinateText(position);
+            setStatus(container, `Searching within ${radiusInput.value} km of this point.`);
+            if (updateAddress) reverseGeocode(geocoder, position, addressInput);
+        };
+        const syncRadius = () => {
+            const radius = Number(radiusInput.value);
+            radiusOutput.textContent = `${radius} km`;
+            circle.setRadius(radius * 1000);
+            const radiusBounds = circle.getBounds();
+            if (centerMarker.getVisible() && radiusBounds) map.fitBounds(radiusBounds, 45);
+            if (centerMarker.getVisible()) setStatus(container, `Searching within ${radius} km of this point.`);
+        };
+
+        radiusInput.addEventListener('input', syncRadius);
+        map.addListener('click', (event) => setPoint({lat: event.latLng.lat(), lng: event.latLng.lng()}, true));
+        centerMarker.addListener('dragend', (event) => setPoint({lat: event.latLng.lat(), lng: event.latLng.lng()}, true));
+        container.querySelector('[data-map-use-location]')?.addEventListener('click', () => geolocate(container, (position) => setPoint(position, true)));
+        container.querySelector('[data-map-find-address]')?.addEventListener('click', () => geocodeAddress(container, geocoder, addressInput, (position) => setPoint(position)));
+        container.querySelector('[data-map-clear]')?.addEventListener('click', () => {
+            latitudeInput.value = '';
+            longitudeInput.value = '';
+            centerMarker.setVisible(false);
+            circle.setMap(null);
+            if (coordinateLabel) coordinateLabel.textContent = 'No center selected';
+            setStatus(container, 'Map radius cleared. The typed location will be used instead.');
+        });
+        syncRadius();
+        if (!hasSavedPoint) geolocate(container, (position) => setPoint(position, true));
+    };
+
+    const initializeOverviewMap = (container) => {
+        const canvas = container.querySelector('[data-map-canvas]');
+        const units = readUnits(container);
+        const map = new google.maps.Map(canvas, mapOptions(container, defaultCenter, 6));
+        const bounds = addUnitMarkers(map, units);
+        const defaultRadiusKm = Number(container.dataset.defaultRadiusKm || 500);
+        const nearbyCircle = new google.maps.Circle({map: null, center: defaultCenter, radius: defaultRadiusKm * 1000, fillColor: '#3e7b70', fillOpacity: .1, strokeColor: '#245f50', strokeOpacity: .65, strokeWeight: 2});
+        if (units.length > 0) map.fitBounds(bounds, 55);
+        else setStatus(container, 'No hosts have pinned a public listing location yet.');
+
+        let userMarker = null;
+        const centerOnCurrentLocation = () => geolocate(container, (position) => {
+            nearbyCircle.setCenter(position);
+            nearbyCircle.setMap(map);
+            const radiusBounds = nearbyCircle.getBounds();
+            if (radiusBounds) map.fitBounds(radiusBounds, 45);
+            else map.panTo(position);
+            if (userMarker) userMarker.setPosition(position);
+            else userMarker = new google.maps.Marker({map, position, title: 'Your location', icon: {path: google.maps.SymbolPath.CIRCLE, scale: 7, fillColor: '#173c34', fillOpacity: 1, strokeColor: '#ffffff', strokeWeight: 3}});
+            setStatus(container, `Map centered on your location with a ${defaultRadiusKm} km nearby area.`);
+        });
+
+        container.querySelector('[data-map-use-location]')?.addEventListener('click', centerOnCurrentLocation);
+        centerOnCurrentLocation();
+    };
+
+    const initializeMaps = () => {
+        if (!mapsAvailable()) return;
+        document.querySelectorAll('[data-listing-location-map], [data-search-location-map], [data-overview-nearby-map]').forEach((container) => {
+            if (container.dataset.mapInitialized === '1') return;
+            container.dataset.mapInitialized = '1';
+            if (container.matches('[data-listing-location-map]')) initializeListingMap(container);
+            else if (container.matches('[data-search-location-map]')) initializeSearchMap(container);
+            else initializeOverviewMap(container);
+            watchForMapsAuthFailure(container);
+        });
+    };
+
+    window.addEventListener('mybooking:maps-ready', initializeMaps);
+    window.addEventListener('mybooking:maps-auth-failure', showMapsAuthFailure);
+    document.addEventListener('DOMContentLoaded', () => {
+        if (window.myBookingMapsAuthFailed) showMapsAuthFailure();
+        document.querySelectorAll('[data-radius-input]').forEach((input) => {
+            const output = input.closest('form')?.querySelector('[data-radius-output]');
+            input.addEventListener('input', () => {
+                if (output) output.textContent = `${input.value} km`;
+            });
+        });
+        initializeMaps();
+    });
+})();
