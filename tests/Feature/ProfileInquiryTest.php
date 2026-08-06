@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -21,13 +22,24 @@ class ProfileInquiryTest extends TestCase
         Storage::fake('local');
         $user = User::factory()->incompleteProfile()->create();
 
+        $sendResponse = $this->actingAs($user)->postJson(route('profile.phone.send'), [
+            'phone' => '09171234567',
+        ])->assertOk();
+        $this->postJson(route('profile.phone.verify'), [
+            'phone' => '09171234567',
+            'code' => $sendResponse->json('debug_code'),
+        ])->assertOk();
+
         $this->actingAs($user)->put(route('profile.update'), [
             'name' => 'Verified Client',
             'phone' => '09171234567',
             'date_of_birth' => '1995-04-18',
             'nationality' => 'Filipino',
             'address' => '123 Booking Street',
+            'country' => 'Philippines',
+            'province' => 'Davao del Sur',
             'city' => 'Davao City',
+            'barangay' => 'Buhangin',
             'bio' => 'I am a careful and responsible client who values clear communication.',
             'emergency_contact_name' => 'Maria Client',
             'emergency_contact_phone' => '09179876543',
@@ -38,9 +50,77 @@ class ProfileInquiryTest extends TestCase
 
         $user->refresh();
         $this->assertTrue($user->hasCompleteProfile());
+        $this->assertNotNull($user->phone_verified_at);
+        $this->assertSame('+639171234567', $user->phone);
         Storage::disk('local')->assertExists($user->government_id_path);
         $this->assertStringNotContainsString('PH-1234-5678-9000', DB::table('users')->where('id', $user->id)->value('government_id_number'));
         $this->actingAs($user)->get(route('profiles.document', $user))->assertOk();
+    }
+
+    public function test_profile_requires_age_seventeen_and_a_verified_mobile_number(): void
+    {
+        $user = User::factory()->create();
+        $payload = [
+            'name' => $user->name,
+            'phone' => $user->phone,
+            'date_of_birth' => today()->subYears(17)->addDay()->format('Y-m-d'),
+            'nationality' => 'Filipino',
+            'address' => $user->address,
+            'country' => $user->country,
+            'province' => $user->province,
+            'city' => $user->city,
+            'barangay' => $user->barangay,
+            'bio' => $user->bio,
+            'emergency_contact_name' => $user->emergency_contact_name,
+            'emergency_contact_phone' => $user->emergency_contact_phone,
+            'government_id_type' => $user->government_id_type,
+            'government_id_number' => $user->government_id_number,
+        ];
+
+        $this->actingAs($user)->put(route('profile.update'), $payload)->assertSessionHasErrors('date_of_birth');
+
+        $user->forceFill(['phone_verified_at' => null])->save();
+        $payload['date_of_birth'] = today()->subYears(17)->format('Y-m-d');
+        $this->put(route('profile.update'), $payload)->assertSessionHasErrors('phone');
+    }
+
+    public function test_verification_form_has_searchable_profile_choices_and_embedded_id_preview(): void
+    {
+        $user = User::factory()->create(['government_id_path' => 'identity-documents/testing/current-id.jpg']);
+
+        $this->actingAs($user)->get(route('profile.edit'))
+            ->assertOk()
+            ->assertSee('data-searchable-select', false)
+            ->assertSee('data-country-select', false)
+            ->assertSee('data-province-select', false)
+            ->assertSee('data-city-select', false)
+            ->assertSee('data-barangay-select', false)
+            ->assertSee('data-id-preview-image', false)
+            ->assertSee('max="'.today()->subYears(17)->format('Y-m-d').'"', false);
+    }
+
+    public function test_profile_location_choices_unwrap_and_filter_geographic_api_results(): void
+    {
+        Http::fake([
+            'psgc.cloud/api/v2/provinces' => Http::response(['data' => [
+                ['code' => '1102300000', 'name' => 'Davao del Sur'],
+            ]]),
+            'psgc.cloud/api/v2/regions/1300000000/cities-municipalities' => Http::response(['data' => [
+                ['code' => '1380600000', 'name' => 'City of Manila', 'type' => 'City'],
+                ['code' => '1380608000', 'name' => 'Ermita', 'type' => 'SubMun'],
+            ]]),
+            'psgc.cloud/api/v2/cities-municipalities/1380600000/barangays' => Http::response(['data' => [
+                ['code' => '1380600100', 'name' => 'Barangay 1'],
+            ]]),
+        ]);
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->getJson(route('profile.locations.provinces'))
+            ->assertOk()->assertJsonFragment(['name' => 'Davao del Sur'])->assertJsonFragment(['name' => 'Metro Manila']);
+        $this->getJson(route('profile.locations.cities', ['province_code' => '1300000000']))
+            ->assertOk()->assertJsonFragment(['name' => 'City of Manila'])->assertJsonMissing(['name' => 'Ermita']);
+        $this->getJson(route('profile.locations.barangays', ['city_code' => '1380600000']))
+            ->assertOk()->assertJsonFragment(['name' => 'Barangay 1']);
     }
 
     public function test_incomplete_profiles_cannot_inquire_or_register_listings(): void

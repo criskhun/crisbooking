@@ -596,5 +596,250 @@
             setInterval(pollMessages, 1500);
             document.addEventListener('visibilitychange', () => { if (!document.hidden) pollMessages(); });
         }
+
+        const verificationForm = document.querySelector('[data-verification-form]');
+
+        if (verificationForm) {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+            const countrySelect = verificationForm.querySelector('[data-country-select]');
+            const provinceSelect = verificationForm.querySelector('[data-province-select]');
+            const citySelect = verificationForm.querySelector('[data-city-select]');
+            const barangaySelect = verificationForm.querySelector('[data-barangay-select]');
+
+            const rememberOptions = (select) => {
+                select._searchOptions = Array.from(select.options).map((option) => ({
+                    value: option.value,
+                    label: option.textContent,
+                    code: option.dataset.code || '',
+                    disabled: option.disabled,
+                }));
+            };
+            const renderOptions = (select, options, selectedValue = '') => {
+                select.replaceChildren();
+                options.forEach((item) => {
+                    const option = document.createElement('option');
+                    option.value = item.value;
+                    option.textContent = item.label;
+                    option.dataset.code = item.code || '';
+                    option.disabled = Boolean(item.disabled);
+                    option.selected = item.value === selectedValue;
+                    select.append(option);
+                });
+            };
+            const normalizeLocationName = (value) => value.toLocaleLowerCase()
+                .replace(/\b(city|municipality|province|of)\b/g, '')
+                .replace(/[^a-z0-9]/g, '');
+            const populateSelect = (select, items, placeholder, selectedValue = '') => {
+                const matchedItem = items.find((item) => item.name === selectedValue)
+                    || items.find((item) => normalizeLocationName(item.name) === normalizeLocationName(selectedValue));
+                if (matchedItem) selectedValue = matchedItem.name;
+                const options = [{value: '', label: placeholder, code: ''}, ...items.map((item) => ({
+                    value: item.name,
+                    label: item.name,
+                    code: String(item.code),
+                }))];
+                renderOptions(select, options, selectedValue);
+                rememberOptions(select);
+                const search = select.closest('[data-searchable-select]')?.querySelector('[data-select-search]');
+                if (search) search.value = '';
+            };
+
+            verificationForm.querySelectorAll('[data-searchable-select]').forEach((wrapper) => {
+                const search = wrapper.querySelector('[data-select-search]');
+                const select = wrapper.querySelector('[data-select-options]');
+                if (! search || ! select) return;
+                rememberOptions(select);
+                search.addEventListener('input', () => {
+                    const query = search.value.trim().toLocaleLowerCase();
+                    const selectedValue = select.value;
+                    const options = select._searchOptions.filter((option, index) => index === 0 || option.label.toLocaleLowerCase().includes(query));
+                    renderOptions(select, options, selectedValue);
+                    if (query && options.length > 1) select.size = Math.min(options.length, 6);
+                    else select.removeAttribute('size');
+                });
+                search.addEventListener('blur', () => setTimeout(() => select.removeAttribute('size'), 150));
+                select.addEventListener('change', () => {
+                    search.value = select.selectedOptions[0]?.textContent || '';
+                    select.removeAttribute('size');
+                });
+            });
+
+            const fetchLocations = async (url) => {
+                const response = await fetch(url, {headers: {'Accept': 'application/json'}});
+                if (! response.ok) throw new Error('Location choices could not be loaded.');
+                return response.json();
+            };
+            const restoreSelectMode = (select) => {
+                const manual = select.parentElement?.querySelector('[data-manual-location]');
+                if (manual) manual.remove();
+                select.disabled = false;
+                select.hidden = false;
+                select.closest('[data-searchable-select]')?.querySelector('[data-select-search]')?.removeAttribute('hidden');
+            };
+            const useManualMode = (select, label) => {
+                const wrapper = select.closest('[data-searchable-select]');
+                if (! wrapper || wrapper.querySelector('[data-manual-location]')) return;
+                const input = document.createElement('input');
+                input.type = 'search';
+                input.name = select.name;
+                input.value = select.dataset.selectedValue || select.value || '';
+                input.placeholder = `Type ${label}`;
+                input.required = true;
+                input.dataset.manualLocation = '';
+                select.disabled = true;
+                select.hidden = true;
+                wrapper.querySelector('[data-select-search]')?.setAttribute('hidden', '');
+                wrapper.append(input);
+            };
+            const useManualAddress = () => {
+                useManualMode(provinceSelect, 'state / province');
+                useManualMode(citySelect, 'city / municipality');
+                useManualMode(barangaySelect, 'district / barangay');
+            };
+            const loadBarangays = async (selectedValue = '') => {
+                const code = citySelect.selectedOptions[0]?.dataset.code;
+                if (! code) {
+                    populateSelect(barangaySelect, [], 'Select a city first');
+                    return;
+                }
+                populateSelect(barangaySelect, [], 'Loading barangays…');
+                const items = await fetchLocations(`${verificationForm.dataset.locationBarangaysUrl}?city_code=${encodeURIComponent(code)}`);
+                populateSelect(barangaySelect, items, 'Select barangay', selectedValue);
+            };
+            const loadCities = async (selectedValue = '', barangayValue = '') => {
+                const code = provinceSelect.selectedOptions[0]?.dataset.code;
+                if (! code) {
+                    populateSelect(citySelect, [], 'Select a province first');
+                    populateSelect(barangaySelect, [], 'Select a city first');
+                    return;
+                }
+                populateSelect(citySelect, [], 'Loading cities…');
+                const items = await fetchLocations(`${verificationForm.dataset.locationCitiesUrl}?province_code=${encodeURIComponent(code)}`);
+                populateSelect(citySelect, items, 'Select city / municipality', selectedValue);
+                if (citySelect.value) await loadBarangays(barangayValue);
+            };
+            const loadProvinces = async (selectedValue = '', cityValue = '', barangayValue = '') => {
+                [provinceSelect, citySelect, barangaySelect].forEach(restoreSelectMode);
+                populateSelect(provinceSelect, [], 'Loading provinces…');
+                const items = await fetchLocations(verificationForm.dataset.locationProvincesUrl);
+                populateSelect(provinceSelect, items, 'Select province', selectedValue);
+                if (provinceSelect.value) await loadCities(cityValue, barangayValue);
+            };
+
+            provinceSelect?.addEventListener('change', () => loadCities().catch(useManualAddress));
+            citySelect?.addEventListener('change', () => loadBarangays().catch(useManualAddress));
+            countrySelect?.addEventListener('change', () => {
+                if (countrySelect.value === 'Philippines') loadProvinces().catch(useManualAddress);
+                else useManualAddress();
+            });
+            if (countrySelect?.value === 'Philippines') {
+                loadProvinces(provinceSelect.dataset.selectedValue, citySelect.dataset.selectedValue, barangaySelect.dataset.selectedValue).catch(useManualAddress);
+            } else {
+                useManualAddress();
+            }
+
+            const birthDate = verificationForm.querySelector('#date_of_birth');
+            const ageResult = verificationForm.querySelector('[data-age-result]');
+            const updateAge = () => {
+                if (! birthDate?.value || ! ageResult) return;
+                const today = new Date();
+                const dob = new Date(`${birthDate.value}T00:00:00`);
+                let age = today.getFullYear() - dob.getFullYear();
+                if (today.getMonth() < dob.getMonth() || (today.getMonth() === dob.getMonth() && today.getDate() < dob.getDate())) age--;
+                ageResult.textContent = age >= 17 ? `Age: ${age} — eligible for verification.` : `Age: ${age} — you must be at least 17.`;
+                ageResult.classList.toggle('error-text', age < 17);
+            };
+            birthDate?.addEventListener('change', updateAge);
+            updateAge();
+
+            const phoneInput = verificationForm.querySelector('[data-phone-input]');
+            const phoneStatus = verificationForm.querySelector('[data-phone-status]');
+            const phoneCodeRow = verificationForm.querySelector('[data-phone-code-row]');
+            const phoneCode = verificationForm.querySelector('[data-phone-code]');
+            const sendCode = verificationForm.querySelector('[data-send-phone-code]');
+            const verifyCode = verificationForm.querySelector('[data-verify-phone-code]');
+            const normalizePhone = (value) => {
+                let phone = value.trim().replace(/[^0-9+]/g, '');
+                if (phone.startsWith('09')) phone = `+63${phone.slice(1)}`;
+                else if (phone.startsWith('639')) phone = `+${phone}`;
+                return phone;
+            };
+            const showPhoneStatus = (message, verified = false) => {
+                phoneStatus.textContent = message;
+                phoneStatus.classList.toggle('verified', verified);
+                phoneStatus.classList.toggle('error-text', !verified && message.toLocaleLowerCase().includes('could not'));
+            };
+            const postJson = async (url, body) => {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken},
+                    body: JSON.stringify(body),
+                });
+                const data = await response.json();
+                if (! response.ok) throw new Error(Object.values(data.errors || {})[0]?.[0] || data.message || 'Request failed.');
+                return data;
+            };
+            phoneInput?.addEventListener('input', () => {
+                const stillVerified = normalizePhone(phoneInput.value) === normalizePhone(phoneInput.dataset.verifiedPhone || '');
+                showPhoneStatus(stillVerified ? '✓ Mobile number verified' : 'Verify this number before saving your profile.', stillVerified);
+            });
+            sendCode?.addEventListener('click', async () => {
+                sendCode.disabled = true;
+                showPhoneStatus('Sending verification code…');
+                try {
+                    const data = await postJson(verificationForm.dataset.phoneSendUrl, {phone: phoneInput.value});
+                    phoneCodeRow.hidden = false;
+                    if (data.debug_code) phoneCode.value = data.debug_code;
+                    showPhoneStatus(data.debug_code ? `${data.message} Code: ${data.debug_code}` : data.message);
+                    phoneCode.focus();
+                } catch (error) {
+                    showPhoneStatus(`Code could not be sent: ${error.message}`);
+                } finally {
+                    sendCode.disabled = false;
+                }
+            });
+            verifyCode?.addEventListener('click', async () => {
+                verifyCode.disabled = true;
+                try {
+                    const data = await postJson(verificationForm.dataset.phoneVerifyUrl, {phone: phoneInput.value, code: phoneCode.value});
+                    phoneInput.value = data.phone;
+                    phoneInput.dataset.verifiedPhone = data.phone;
+                    phoneCodeRow.hidden = true;
+                    showPhoneStatus(`✓ ${data.message}`, true);
+                } catch (error) {
+                    showPhoneStatus(`Code could not be verified: ${error.message}`);
+                } finally {
+                    verifyCode.disabled = false;
+                }
+            });
+
+            const idInput = verificationForm.querySelector('[data-id-document-input]');
+            const idPreview = verificationForm.querySelector('[data-id-document-preview]');
+            let idPreviewUrl = null;
+            idInput?.addEventListener('change', () => {
+                const file = idInput.files?.[0];
+                if (! file || ! idPreview) return;
+                if (idPreviewUrl) URL.revokeObjectURL(idPreviewUrl);
+                idPreviewUrl = URL.createObjectURL(file);
+                idPreview.replaceChildren();
+                const preview = file.type === 'application/pdf' ? document.createElement('object') : document.createElement('img');
+                if (preview instanceof HTMLObjectElement) {
+                    preview.data = idPreviewUrl;
+                    preview.type = 'application/pdf';
+                } else {
+                    preview.src = idPreviewUrl;
+                    preview.alt = `Preview of ${file.name}`;
+                }
+                const meta = document.createElement('div');
+                meta.className = 'id-preview-meta';
+                const name = document.createElement('strong');
+                name.textContent = file.name;
+                const size = document.createElement('small');
+                size.textContent = `${(file.size / 1024 / 1024).toFixed(2)} MB — new document preview`;
+                meta.append(name, size);
+                idPreview.append(preview, meta);
+                idPreview.hidden = false;
+            });
+        }
     });
 })();
