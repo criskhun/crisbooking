@@ -37,11 +37,10 @@ class FacebookAuthController extends Controller
         }
 
         $email = Str::lower((string) $facebookUser->getEmail());
-        $isVerified = filter_var(data_get($facebookUser->user, 'verified', false), FILTER_VALIDATE_BOOL);
 
-        if ($email === '' || ! $isVerified) {
+        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return redirect()->route('login')->withErrors([
-                'facebook' => 'Facebook did not provide a verified email address. Please use Google or email registration instead.',
+                'facebook' => 'Facebook did not provide an email address. Please use Google or email registration instead.',
             ]);
         }
 

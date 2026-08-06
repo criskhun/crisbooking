@@ -38,7 +38,6 @@ class FacebookAuthenticationTest extends TestCase
             'name' => 'Facebook Owner',
             'email' => 'facebook@example.com',
             'avatar' => 'https://example.com/facebook-owner.jpg',
-            'verified' => true,
         ]));
 
         $this->get('/auth/facebook/callback')->assertRedirect('/dashboard');
@@ -92,12 +91,11 @@ class FacebookAuthenticationTest extends TestCase
         $this->assertNull(User::firstOrFail()->facebook_id);
     }
 
-    public function test_facebook_callback_requires_a_verified_email(): void
+    public function test_facebook_callback_requires_an_email(): void
     {
         Socialite::fake('facebook', SocialiteUser::fake([
             'id' => 'facebook-999',
-            'email' => 'unverified@example.com',
-            'verified' => false,
+            'email' => null,
         ]));
 
         $this->get('/auth/facebook/callback')
