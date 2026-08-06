@@ -24,6 +24,12 @@ The local site is available at `http://127.0.0.1:8000`.
 
 ## Deploying to Hostinger
 
+### 0. Choose a PHP website, not a Node.js/Web App deployment
+
+CrisBooking is a server-rendered Laravel/PHP application. In hPanel, create or use a **custom PHP website**, then deploy the repository from **Dashboard -> Advanced -> Git** into `public_html`.
+
+Do **not** use Hostinger's **Deploy Web App**, **Node.js**, **Vite**, or static frontend workflow. If Hostinger asks for an output directory such as `dist`, the repository has been connected through the wrong deployment type. Laravel Vite generates optional frontend assets in `public/build`, but neither `dist` nor `public/build` contains the PHP application, routes, authentication, or database logic. Changing `vite.config.js` to output to `dist` will not deploy CrisBooking.
+
 ### 1. Configure PHP and the domain
 
 In hPanel, set the website to PHP 8.3 or PHP 8.4. On Hostinger Web and Cloud hosting, the document root is normally fixed at `public_html`. Deploy this entire repository into `public_html`; the root `.htaccess` included here safely forwards requests to Laravel's `public/` directory.
@@ -32,11 +38,24 @@ On a VPS, configure Apache or Nginx so the document root points directly to `PRO
 
 ### 2. Create the production environment
 
-Create a MySQL database and user in hPanel. Through SSH or Hostinger's file manager, copy the production sample and fill in every placeholder:
+Create a MySQL database and user in **hPanel -> Databases -> Management**. Save the database name, username, password, and host shown by Hostinger. Through SSH or Hostinger's file manager, copy the production sample:
 
 ```bash
 cp .env.hostinger.example .env
 ```
+
+Edit `.env` and replace these placeholders with the exact database values from hPanel:
+
+```env
+DB_CONNECTION=mysql
+DB_HOST=localhost
+DB_PORT=3306
+DB_DATABASE=your_hostinger_database_name
+DB_USERNAME=your_hostinger_database_user
+DB_PASSWORD=your_hostinger_database_password
+```
+
+The database can be empty. The deployment script runs `php artisan migrate --force` to create all CrisBooking tables. Do not import the local SQLite file.
 
 Important production values:
 

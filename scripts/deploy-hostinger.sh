@@ -60,7 +60,8 @@ mkdir -p \
 chmod -R ug+rwX storage bootstrap/cache
 
 echo "Refreshing Laravel caches and database..."
-"$PHP_BIN" artisan optimize:clear
+"$PHP_BIN" artisan config:clear
+CACHE_STORE=array "$PHP_BIN" artisan optimize:clear
 "$PHP_BIN" artisan migrate --force
 
 if [[ ! -e public/storage ]]; then
