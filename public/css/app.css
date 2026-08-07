@@ -111,6 +111,28 @@ button, input, select, textarea { font: inherit; }
 .floating-stat div { display: grid; gap: .15rem; }.floating-stat small { color: #bad0c9; }.floating-stat strong { font-size: .78rem; }
 .flash-message { width: min(1220px, 100%); margin: 1rem auto 0; padding: .9rem 1rem; border: 1px solid #b9d8c9; border-radius: 12px; color: #245a47; background: #e4f3ea; font-weight: 600; font-size: .9rem; }
 
+.pwa-install-banner { position: fixed; z-index: 1000; right: 1rem; bottom: 1rem; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: .85rem; width: min(560px, calc(100vw - 2rem)); padding: .8rem; border: 1px solid var(--card-line); border-radius: 16px; color: var(--ink); background: var(--surface); box-shadow: 0 20px 55px rgba(14, 38, 31, .24); }
+.pwa-install-banner[hidden], .connectivity-status[hidden] { display: none; }
+.pwa-install-icon { display: grid; place-items: center; width: 3.1rem; height: 3.1rem; overflow: hidden; border-radius: 12px; background: #173c34; }
+.pwa-install-icon img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.pwa-install-copy { min-width: 0; }
+.pwa-install-copy strong { display: block; font: 800 .82rem Manrope, sans-serif; }
+.pwa-install-copy p { margin: .18rem 0 0; color: var(--muted); font-size: .68rem; line-height: 1.4; }
+.pwa-install-dismiss { align-self: start; width: 1.8rem; height: 1.8rem; padding: 0; border: 0; border-radius: 50%; color: var(--muted); background: transparent; font-size: 1.3rem; line-height: 1; cursor: pointer; }
+.pwa-install-dismiss:hover { color: var(--ink); background: var(--surface-tint); }
+.connectivity-status { position: fixed; z-index: 1001; left: 50%; bottom: 1rem; padding: .65rem .9rem; border-radius: 99px; color: white; background: #173c34; box-shadow: 0 10px 30px rgba(14, 38, 31, .25); font-size: .72rem; font-weight: 800; transform: translateX(-50%); }
+.connectivity-status.is-offline { background: #8a3c32; }
+
+@media (display-mode: standalone), (display-mode: window-controls-overlay) {
+    .pwa-install-banner { display: none; }
+}
+
+@media (max-width: 620px) {
+    .pwa-install-banner { grid-template-columns: auto minmax(0, 1fr) auto; }
+    .pwa-install-banner .button { grid-column: 1 / -1; width: 100%; }
+    .pwa-install-dismiss { grid-column: 3; grid-row: 1; }
+}
+
 .auth-body { background: var(--paper); }
 .auth-shell { min-height: 100vh; display: grid; grid-template-columns: minmax(330px, .8fr) minmax(520px, 1.2fr); }
 .auth-brand-panel { position: relative; display: flex; flex-direction: column; justify-content: space-between; min-height: 100vh; padding: clamp(2rem, 4vw, 4rem); color: white; overflow: hidden; background: var(--forest); }

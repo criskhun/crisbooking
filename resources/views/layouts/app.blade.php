@@ -4,8 +4,14 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#173c34">
+    <meta name="application-name" content="Davao Rent Zone">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Davao Rent Zone">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', config('app.name'))</title>
+    <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
     <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
     <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="32x32">
     <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
@@ -21,6 +27,7 @@
     <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}">
     <script src="{{ asset('js/app.js') }}?v={{ filemtime(public_path('js/app.js')) }}" defer></script>
     <script src="{{ asset('js/maps.js') }}?v={{ filemtime(public_path('js/maps.js')) }}" defer></script>
+    <script src="{{ asset('js/pwa.js') }}?v={{ filemtime(public_path('js/pwa.js')) }}" data-service-worker="{{ asset('sw.js') }}" defer></script>
     @if (config('services.google.maps_api_key'))
         <script>
             window.initDavaoRentZoneGoogleMaps = () => window.dispatchEvent(new Event('mybooking:maps-ready'));
@@ -34,5 +41,19 @@
 </head>
 <body class="@yield('body-class', 'site-body')">
     @yield('content')
+
+    <aside class="pwa-install-banner" data-pwa-install-banner hidden aria-labelledby="pwa-install-title">
+        <div class="pwa-install-icon" aria-hidden="true">
+            <img src="{{ asset('icons/icon-192.png') }}" alt="">
+        </div>
+        <div class="pwa-install-copy">
+            <strong id="pwa-install-title">Install Davao Rent Zone</strong>
+            <p data-pwa-install-message>Use it like an app from your home screen or desktop.</p>
+        </div>
+        <button class="button button-primary button-small" type="button" data-pwa-install-action>Install app</button>
+        <button class="pwa-install-dismiss" type="button" data-pwa-install-dismiss aria-label="Dismiss install suggestion">×</button>
+    </aside>
+
+    <div class="connectivity-status" data-connectivity-status hidden role="status" aria-live="polite"></div>
 </body>
 </html>
