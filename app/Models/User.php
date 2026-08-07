@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'email_verified_at', 'password', 'google_id', 'google_avatar', 'facebook_id', 'facebook_avatar', 'is_admin', 'is_active', 'role', 'phone', 'phone_verified_at', 'date_of_birth', 'nationality', 'address', 'country', 'province', 'city', 'barangay', 'bio', 'emergency_contact_name', 'emergency_contact_phone', 'government_id_type', 'government_id_number', 'government_id_path', 'profile_completed_at'])]
+#[Fillable(['name', 'email', 'email_verified_at', 'password', 'google_id', 'google_avatar', 'facebook_id', 'facebook_avatar', 'is_admin', 'is_active', 'role', 'phone', 'date_of_birth', 'nationality', 'address', 'country', 'province', 'city', 'barangay', 'bio', 'emergency_contact_name', 'emergency_contact_phone', 'government_id_type', 'government_id_number', 'government_id_path', 'profile_completed_at'])]
 #[Hidden(['password', 'remember_token', 'government_id_number', 'government_id_path'])]
 class User extends Authenticatable implements MustVerifyEmailContract
 {
@@ -32,7 +32,6 @@ class User extends Authenticatable implements MustVerifyEmailContract
             'is_admin' => 'boolean',
             'is_active' => 'boolean',
             'date_of_birth' => 'date',
-            'phone_verified_at' => 'datetime',
             'government_id_number' => 'encrypted',
             'profile_completed_at' => 'datetime',
         ];
@@ -55,7 +54,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
     {
         return $this->profile_completed_at !== null
             && collect([
-                $this->phone, $this->phone_verified_at, $this->date_of_birth, $this->nationality, $this->address,
+                $this->phone, $this->date_of_birth, $this->nationality, $this->address,
                 $this->country, $this->province, $this->city, $this->barangay, $this->bio, $this->emergency_contact_name,
                 $this->emergency_contact_phone, $this->government_id_type,
                 $this->government_id_number, $this->government_id_path,

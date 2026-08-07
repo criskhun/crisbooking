@@ -600,7 +600,6 @@
         const verificationForm = document.querySelector('[data-verification-form]');
 
         if (false && verificationForm) {
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
             const countrySelect = verificationForm.querySelector('[data-country-select]');
             const provinceSelect = verificationForm.querySelector('[data-province-select]');
             const citySelect = verificationForm.querySelector('[data-city-select]');
@@ -752,67 +751,6 @@
             birthDate?.addEventListener('change', updateAge);
             updateAge();
 
-            const phoneInput = verificationForm.querySelector('[data-phone-input]');
-            const phoneStatus = verificationForm.querySelector('[data-phone-status]');
-            const phoneCodeRow = verificationForm.querySelector('[data-phone-code-row]');
-            const phoneCode = verificationForm.querySelector('[data-phone-code]');
-            const sendCode = verificationForm.querySelector('[data-send-phone-code]');
-            const verifyCode = verificationForm.querySelector('[data-verify-phone-code]');
-            const normalizePhone = (value) => {
-                let phone = value.trim().replace(/[^0-9+]/g, '');
-                if (phone.startsWith('09')) phone = `+63${phone.slice(1)}`;
-                else if (phone.startsWith('639')) phone = `+${phone}`;
-                return phone;
-            };
-            const showPhoneStatus = (message, verified = false) => {
-                phoneStatus.textContent = message;
-                phoneStatus.classList.toggle('verified', verified);
-                phoneStatus.classList.toggle('error-text', !verified && message.toLocaleLowerCase().includes('could not'));
-            };
-            const postJson = async (url, body) => {
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken},
-                    body: JSON.stringify(body),
-                });
-                const data = await response.json();
-                if (! response.ok) throw new Error(Object.values(data.errors || {})[0]?.[0] || data.message || 'Request failed.');
-                return data;
-            };
-            phoneInput?.addEventListener('input', () => {
-                const stillVerified = normalizePhone(phoneInput.value) === normalizePhone(phoneInput.dataset.verifiedPhone || '');
-                showPhoneStatus(stillVerified ? '✓ Mobile number verified' : 'Verify this number before saving your profile.', stillVerified);
-            });
-            sendCode?.addEventListener('click', async () => {
-                sendCode.disabled = true;
-                showPhoneStatus('Sending verification code…');
-                try {
-                    const data = await postJson(verificationForm.dataset.phoneSendUrl, {phone: phoneInput.value});
-                    phoneCodeRow.hidden = false;
-                    if (data.debug_code) phoneCode.value = data.debug_code;
-                    showPhoneStatus(data.debug_code ? `${data.message} Code: ${data.debug_code}` : data.message);
-                    phoneCode.focus();
-                } catch (error) {
-                    showPhoneStatus(`Code could not be sent: ${error.message}`);
-                } finally {
-                    sendCode.disabled = false;
-                }
-            });
-            verifyCode?.addEventListener('click', async () => {
-                verifyCode.disabled = true;
-                try {
-                    const data = await postJson(verificationForm.dataset.phoneVerifyUrl, {phone: phoneInput.value, code: phoneCode.value});
-                    phoneInput.value = data.phone;
-                    phoneInput.dataset.verifiedPhone = data.phone;
-                    phoneCodeRow.hidden = true;
-                    showPhoneStatus(`✓ ${data.message}`, true);
-                } catch (error) {
-                    showPhoneStatus(`Code could not be verified: ${error.message}`);
-                } finally {
-                    verifyCode.disabled = false;
-                }
-            });
-
             const idInput = verificationForm.querySelector('[data-id-document-input]');
             const idPreview = verificationForm.querySelector('[data-id-document-preview]');
             let idPreviewUrl = null;
@@ -843,7 +781,6 @@
         }
 
         if (verificationForm) {
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
             const countryInput = verificationForm.querySelector('[data-country-input]');
             const provinceInput = verificationForm.querySelector('[data-province-input]');
             const cityInput = verificationForm.querySelector('[data-city-input]');
@@ -977,82 +914,6 @@
             };
             birthDate?.addEventListener('change', updateAge);
             updateAge();
-
-            const phoneInput = verificationForm.querySelector('[data-phone-input]');
-            const phoneStatus = verificationForm.querySelector('[data-phone-status]');
-            const phoneCodeRow = verificationForm.querySelector('[data-phone-code-row]');
-            const phoneCode = verificationForm.querySelector('[data-phone-code]');
-            const sendCode = verificationForm.querySelector('[data-send-phone-code]');
-            const verifyCode = verificationForm.querySelector('[data-verify-phone-code]');
-            const normalizePhone = (value = '') => {
-                let phone = value.trim().replace(/[^0-9+]/g, '');
-                if (phone.startsWith('09')) phone = `+63${phone.slice(1)}`;
-                else if (phone.startsWith('639')) phone = `+${phone}`;
-                return phone;
-            };
-            const showPhoneStatus = (message, state = '') => {
-                if (! phoneStatus) return;
-                phoneStatus.textContent = message;
-                phoneStatus.classList.toggle('verified', state === 'verified');
-                phoneStatus.classList.toggle('error-text', state === 'error');
-            };
-            const postJson = async (url, body) => {
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken},
-                    body: JSON.stringify(body),
-                });
-                const data = await response.json().catch(() => ({}));
-                if (! response.ok) throw new Error(Object.values(data.errors || {})[0]?.[0] || data.message || 'The request could not be completed.');
-                return data;
-            };
-            phoneInput?.addEventListener('input', () => {
-                const verified = normalizePhone(phoneInput.value) === normalizePhone(phoneInput.dataset.verifiedPhone);
-                showPhoneStatus(verified ? '✓ Mobile number verified' : 'Verify this number before saving your profile.', verified ? 'verified' : '');
-            });
-            sendCode?.addEventListener('click', async () => {
-                if (! phoneInput.value.trim()) {
-                    showPhoneStatus('Enter your mobile number first.', 'error');
-                    phoneInput.focus();
-                    return;
-                }
-                sendCode.disabled = true;
-                sendCode.textContent = 'Sending…';
-                showPhoneStatus('Sending verification code…');
-                try {
-                    const data = await postJson(verificationForm.dataset.phoneSendUrl, {phone: phoneInput.value});
-                    phoneCodeRow.hidden = false;
-                    if (data.debug_code) phoneCode.value = data.debug_code;
-                    showPhoneStatus(data.debug_code ? `${data.message} Code: ${data.debug_code}` : data.message);
-                    phoneCode.focus();
-                } catch (error) {
-                    showPhoneStatus(error.message, 'error');
-                } finally {
-                    sendCode.disabled = false;
-                    sendCode.textContent = 'Send OTP';
-                }
-            });
-            verifyCode?.addEventListener('click', async () => {
-                if (! /^\d{6}$/.test(phoneCode.value)) {
-                    showPhoneStatus('Enter the complete 6-digit code.', 'error');
-                    phoneCode.focus();
-                    return;
-                }
-                verifyCode.disabled = true;
-                verifyCode.textContent = 'Verifying…';
-                try {
-                    const data = await postJson(verificationForm.dataset.phoneVerifyUrl, {phone: phoneInput.value, code: phoneCode.value});
-                    phoneInput.value = data.phone;
-                    phoneInput.dataset.verifiedPhone = data.phone;
-                    phoneCodeRow.hidden = true;
-                    showPhoneStatus(`✓ ${data.message}`, 'verified');
-                } catch (error) {
-                    showPhoneStatus(error.message, 'error');
-                } finally {
-                    verifyCode.disabled = false;
-                    verifyCode.textContent = 'Verify number';
-                }
-            });
 
             const idInput = verificationForm.querySelector('[data-id-document-input]');
             const idPreview = verificationForm.querySelector('[data-id-document-preview]');

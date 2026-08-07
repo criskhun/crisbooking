@@ -1,6 +1,6 @@
-# CrisBooking
+# Davao Rent Zone
 
-CrisBooking is a Laravel application for car rentals, condo rentals, driving services, and pet transportation. It includes user registration, email verification, Google and Facebook login, listings, availability calendars, bookings, inquiries, and account roles.
+Davao Rent Zone is a Laravel application for car rentals, condo rentals, driving services, and pet transportation. It includes user registration, email verification, Google and Facebook login, listings, availability calendars, bookings, inquiries, and account roles.
 
 ## Requirements
 
@@ -26,9 +26,9 @@ The local site is available at `http://127.0.0.1:8000`.
 
 ### 0. Choose a PHP website, not a Node.js/Web App deployment
 
-CrisBooking is a server-rendered Laravel/PHP application. In hPanel, create or use a **custom PHP website**, then deploy the repository from **Dashboard -> Advanced -> Git** into `public_html`.
+Davao Rent Zone is a server-rendered Laravel/PHP application. In hPanel, create or use a **custom PHP website**, then deploy the repository from **Dashboard -> Advanced -> Git** into `public_html`.
 
-Do **not** use Hostinger's **Deploy Web App**, **Node.js**, **Vite**, or static frontend workflow. If Hostinger asks for an output directory such as `dist`, the repository has been connected through the wrong deployment type. Laravel Vite generates optional frontend assets in `public/build`, but neither `dist` nor `public/build` contains the PHP application, routes, authentication, or database logic. Changing `vite.config.js` to output to `dist` will not deploy CrisBooking.
+Do **not** use Hostinger's **Deploy Web App**, **Node.js**, **Vite**, or static frontend workflow. If Hostinger asks for an output directory such as `dist`, the repository has been connected through the wrong deployment type. Laravel Vite generates optional frontend assets in `public/build`, but neither `dist` nor `public/build` contains the PHP application, routes, authentication, or database logic. Changing `vite.config.js` to output to `dist` will not deploy Davao Rent Zone.
 
 ### 1. Configure PHP and the domain
 
@@ -55,7 +55,7 @@ DB_USERNAME=your_hostinger_database_user
 DB_PASSWORD=your_hostinger_database_password
 ```
 
-The database can be empty. The deployment script runs `php artisan migrate --force` to create all CrisBooking tables. Do not import the local SQLite file.
+The database can be empty. The deployment script runs `php artisan migrate --force` to create all Davao Rent Zone tables. Do not import the local SQLite file.
 
 Important production values:
 

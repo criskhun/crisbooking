@@ -9,7 +9,6 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InquiryController;
-use App\Http\Controllers\PhoneVerificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProfileLocationController;
 use App\Http\Controllers\UnitController;
@@ -71,8 +70,6 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     Route::patch('/bookings/{booking}/cancel', [BookingController::class, 'cancel'])->name('bookings.cancel');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::post('/profile/phone/send-code', [PhoneVerificationController::class, 'send'])->middleware('throttle:3,10')->name('profile.phone.send');
-    Route::post('/profile/phone/verify-code', [PhoneVerificationController::class, 'verify'])->middleware('throttle:10,10')->name('profile.phone.verify');
     Route::get('/profile/locations/provinces', [ProfileLocationController::class, 'provinces'])->name('profile.locations.provinces');
     Route::get('/profile/locations/cities', [ProfileLocationController::class, 'cities'])->name('profile.locations.cities');
     Route::get('/profile/locations/barangays', [ProfileLocationController::class, 'barangays'])->name('profile.locations.barangays');

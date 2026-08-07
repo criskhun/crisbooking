@@ -28,7 +28,7 @@ if [[ ! -f .env ]]; then
 fi
 
 if ! "$PHP_BIN" -r 'exit(version_compare(PHP_VERSION, "8.3.0", ">=") ? 0 : 1);'; then
-    echo "CrisBooking requires PHP 8.3 or newer. Current CLI: $($PHP_BIN -r 'echo PHP_VERSION;')" >&2
+    echo "Davao Rent Zone requires PHP 8.3 or newer. Current CLI: $($PHP_BIN -r 'echo PHP_VERSION;')" >&2
     exit 1
 fi
 

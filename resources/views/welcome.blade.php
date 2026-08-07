@@ -1,15 +1,15 @@
 @extends('layouts.app')
 
-@section('title', 'MyBooking — Your bookings, all in one place')
+@section('title', 'Davao Rent Zone — Rentals and services in one place')
 
 @section('content')
     <main class="landing-shell">
         <nav class="landing-nav" aria-label="Main navigation">
-            <a class="brand" href="{{ route('home') }}" aria-label="MyBooking home">
+            <a class="brand" href="{{ route('home') }}" aria-label="Davao Rent Zone home">
                 <span class="brand-mark" aria-hidden="true">
-                    <svg viewBox="0 0 32 32" role="img"><path d="M8 5v4M24 5v4M6 11h20M8 7h16a3 3 0 0 1 3 3v15a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V10a3 3 0 0 1 3-3Z"/><path d="m11 19 3 3 7-8"/></svg>
+                    <img src="{{ asset('images/davao-rent-zone-logo-mark.svg') }}" alt="">
                 </span>
-                <span>MyBooking</span>
+                <span class="brand-name">Davao Rent Zone</span>
             </a>
 
             <div class="nav-actions">
@@ -36,7 +36,7 @@
                     @auth
                         <a class="button button-primary" href="{{ route('dashboard') }}">Go to dashboard <span aria-hidden="true">→</span></a>
                     @else
-                        <a class="button button-primary" href="{{ route('register') }}">Start using MyBooking <span aria-hidden="true">→</span></a>
+                        <a class="button button-primary" href="{{ route('register') }}">Start with Davao Rent Zone <span aria-hidden="true">→</span></a>
                         <a class="text-link" href="{{ route('login') }}">I already have an account</a>
                     @endauth
                 </div>

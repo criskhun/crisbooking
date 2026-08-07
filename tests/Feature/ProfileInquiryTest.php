@@ -22,14 +22,6 @@ class ProfileInquiryTest extends TestCase
         Storage::fake('local');
         $user = User::factory()->incompleteProfile()->create();
 
-        $sendResponse = $this->actingAs($user)->postJson(route('profile.phone.send'), [
-            'phone' => '09171234567',
-        ])->assertOk();
-        $this->postJson(route('profile.phone.verify'), [
-            'phone' => '09171234567',
-            'code' => $sendResponse->json('debug_code'),
-        ])->assertOk();
-
         $this->actingAs($user)->put(route('profile.update'), [
             'name' => 'Verified Client',
             'phone' => '09171234567',
@@ -50,14 +42,13 @@ class ProfileInquiryTest extends TestCase
 
         $user->refresh();
         $this->assertTrue($user->hasCompleteProfile());
-        $this->assertNotNull($user->phone_verified_at);
         $this->assertSame('+639171234567', $user->phone);
         Storage::disk('local')->assertExists($user->government_id_path);
         $this->assertStringNotContainsString('PH-1234-5678-9000', DB::table('users')->where('id', $user->id)->value('government_id_number'));
         $this->actingAs($user)->get(route('profiles.document', $user))->assertOk();
     }
 
-    public function test_profile_requires_age_seventeen_and_a_verified_mobile_number(): void
+    public function test_profile_requires_age_seventeen_but_not_mobile_otp_verification(): void
     {
         $user = User::factory()->create();
         $payload = [
@@ -79,9 +70,10 @@ class ProfileInquiryTest extends TestCase
 
         $this->actingAs($user)->put(route('profile.update'), $payload)->assertSessionHasErrors('date_of_birth');
 
-        $user->forceFill(['phone_verified_at' => null])->save();
         $payload['date_of_birth'] = today()->subYears(17)->format('Y-m-d');
-        $this->put(route('profile.update'), $payload)->assertSessionHasErrors('phone');
+        $this->put(route('profile.update'), $payload)
+            ->assertRedirect(route('profile.edit'))
+            ->assertSessionHasNoErrors();
     }
 
     public function test_verification_form_has_searchable_profile_choices_and_embedded_id_preview(): void
@@ -96,6 +88,8 @@ class ProfileInquiryTest extends TestCase
             ->assertSee('data-city-input', false)
             ->assertSee('data-barangay-input', false)
             ->assertSee('data-id-preview-image', false)
+            ->assertDontSee('Send OTP')
+            ->assertDontSee('data-send-phone-code', false)
             ->assertSee('max="'.today()->subYears(17)->format('Y-m-d').'"', false);
     }
 

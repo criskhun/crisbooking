@@ -34,7 +34,6 @@ class UserFactory extends Factory
             'is_active' => true,
             'role' => 'client',
             'phone' => '09171234567',
-            'phone_verified_at' => now(),
             'date_of_birth' => '1990-01-01',
             'nationality' => 'Filipino',
             'address' => '123 Test Street',
@@ -71,7 +70,6 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'phone' => null,
-            'phone_verified_at' => null,
             'date_of_birth' => null,
             'nationality' => null,
             'address' => null,

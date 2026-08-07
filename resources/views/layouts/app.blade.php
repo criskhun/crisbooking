@@ -6,6 +6,9 @@
     <meta name="theme-color" content="#173c34">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', config('app.name'))</title>
+    <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
+    <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="32x32">
+    <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
     <script>
         try {
             document.documentElement.dataset.colorMode = localStorage.getItem('mybooking-color-mode') || 'light';
@@ -20,13 +23,13 @@
     <script src="{{ asset('js/maps.js') }}?v={{ filemtime(public_path('js/maps.js')) }}" defer></script>
     @if (config('services.google.maps_api_key'))
         <script>
-            window.initMyBookingGoogleMaps = () => window.dispatchEvent(new Event('mybooking:maps-ready'));
+            window.initDavaoRentZoneGoogleMaps = () => window.dispatchEvent(new Event('mybooking:maps-ready'));
             window.gm_authFailure = () => {
                 window.myBookingMapsAuthFailed = true;
                 window.dispatchEvent(new Event('mybooking:maps-auth-failure'));
             };
         </script>
-        <script async src="https://maps.googleapis.com/maps/api/js?key={{ urlencode(config('services.google.maps_api_key')) }}&loading=async&libraries=geometry&callback=initMyBookingGoogleMaps"></script>
+        <script async src="https://maps.googleapis.com/maps/api/js?key={{ urlencode(config('services.google.maps_api_key')) }}&loading=async&libraries=geometry&callback=initDavaoRentZoneGoogleMaps"></script>
     @endif
 </head>
 <body class="@yield('body-class', 'site-body')">

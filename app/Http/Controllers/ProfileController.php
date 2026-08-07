@@ -11,7 +11,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -53,27 +52,16 @@ class ProfileController extends Controller
             'phone.regex' => 'Enter a valid mobile number, including its country code.',
         ]);
 
-        $currentPhoneIsVerified = $user->phone_verified_at
-            && PhoneNumber::normalize((string) $user->phone) === $validated['phone'];
-        $sessionPhoneIsVerified = $request->session()->get('phone_verified_for') === $validated['phone'];
-
-        if (! $currentPhoneIsVerified && ! $sessionPhoneIsVerified) {
-            throw ValidationException::withMessages(['phone' => 'Verify this mobile number with the OTP code before saving.']);
-        }
-
         $oldPath = $user->government_id_path;
         $newPath = $request->file('government_id')?->store('identity-documents/'.$user->id, 'local');
 
         $user->update([
             ...collect($validated)->except('government_id')->all(),
-            'phone_verified_at' => $currentPhoneIsVerified ? $user->phone_verified_at : now(),
             'government_id_path' => $newPath ?: $oldPath,
             'profile_completed_at' => now(),
         ]);
 
         if ($newPath && $oldPath) Storage::disk('local')->delete($oldPath);
-        $request->session()->forget('phone_verified_for');
-
         return redirect()->route('profile.edit')->with('status', 'Your verification profile is complete and ready to share with booking partners.');
     }
 

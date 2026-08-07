@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'MyBooking'),
+    'name' => env('APP_NAME', 'Davao Rent Zone'),
 
     /*
     |--------------------------------------------------------------------------

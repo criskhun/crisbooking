@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Manage '.$account->name.' — MyBooking')
+@section('title', 'Manage '.$account->name.' — Davao Rent Zone')
 @section('body-class', 'dashboard-body')
 
 @section('content')
@@ -64,7 +64,7 @@
                         <label class="management-option">
                             <input type="hidden" name="is_active" value="0">
                             <input type="checkbox" name="is_active" value="1" @checked(old('is_active', $account->is_active))>
-                            <span><strong>Active account</strong><small>Can sign in and use the MyBooking dashboard.</small></span>
+                            <span><strong>Active account</strong><small>Can sign in and use the Davao Rent Zone dashboard.</small></span>
                         </label>
                     </div>
 

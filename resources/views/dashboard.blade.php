@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Dashboard — MyBooking')
+@section('title', 'Dashboard — Davao Rent Zone')
 @section('body-class', 'dashboard-body')
 
 @section('content')

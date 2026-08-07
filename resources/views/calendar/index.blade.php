@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', auth()->user()->isClient() ? 'Book now — MyBooking' : 'Booking calendar — MyBooking')
+@section('title', auth()->user()->isClient() ? 'Book now — Davao Rent Zone' : 'Booking calendar — Davao Rent Zone')
 @section('body-class', 'dashboard-body')
 
 @section('content')

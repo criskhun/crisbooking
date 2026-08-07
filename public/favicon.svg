@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#f6f3ea"/>
+  <path fill="#173c34" d="M8 25c-2-4-2-9-2-15l18 13c2 2 4 4 5 8l-8-4-13-2Z"/>
+  <path fill="#d8aa3f" d="m41 24 2-8 4 5-1 5-5-2Zm11 1 5-7-1 9-4-2Z"/>
+  <path fill="#d9ed8b" d="m38 23 1-6 5 4 1 5-7-3Zm9 2V19l4-10 3 10-2 6h-5Zm8 2 5-5-1 6-4-1Z"/>
+  <text x="5" y="51" fill="#173c34" font-family="Arial Black,Arial,sans-serif" font-size="29" font-weight="900" letter-spacing="-4">DR</text>
+  <text x="39" y="51" fill="#d8aa3f" font-family="Arial Black,Arial,sans-serif" font-size="29" font-weight="900">Z</text>
+</svg>

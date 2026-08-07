@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Inquiry for '.$inquiry->unit->name.' — MyBooking')
+@section('title', 'Inquiry for '.$inquiry->unit->name.' — Davao Rent Zone')
 @section('body-class', 'dashboard-body')
 
 @section('content')

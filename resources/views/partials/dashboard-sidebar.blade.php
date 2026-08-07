@@ -1,7 +1,7 @@
 <aside class="sidebar">
     <a class="brand brand-light" href="{{ route('dashboard') }}">
-        <span class="brand-mark"><svg viewBox="0 0 32 32"><path d="M8 5v4M24 5v4M6 11h20M8 7h16a3 3 0 0 1 3 3v15a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V10a3 3 0 0 1 3-3Z"/><path d="m11 19 3 3 7-8"/></svg></span>
-        <span>MyBooking</span>
+        <span class="brand-mark" aria-hidden="true"><img src="{{ asset('images/davao-rent-zone-logo-mark.svg') }}" alt=""></span>
+        <span class="brand-name">Davao Rent Zone</span>
     </a>
     <nav class="sidebar-nav">
         <a @class(['active' => request()->routeIs('dashboard')]) href="{{ route('dashboard') }}"><span>⌂</span> Overview</a>

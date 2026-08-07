@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Registered accounts — MyBooking')
+@section('title', 'Registered accounts — Davao Rent Zone')
 @section('body-class', 'dashboard-body')
 
 @section('content')
@@ -38,7 +38,7 @@
                         <span class="eyebrow">Hosts</span>
                         <h2>{{ $hostCount }}</h2>
                     </div>
-                    <p>{{ $activeCount }} active · {{ $adminCount }} {{ Str::plural('administrator', $adminCount) }}. Manage roles and account status for everyone registered with MyBooking.</p>
+                    <p>{{ $activeCount }} active · {{ $adminCount }} {{ Str::plural('administrator', $adminCount) }}. Manage roles and account status for everyone registered with Davao Rent Zone.</p>
                 </div>
 
                 <div class="accounts-table-wrap">

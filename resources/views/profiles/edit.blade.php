@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Verification profile — MyBooking')
+@section('title', 'Verification profile — Davao Rent Zone')
 @section('body-class', 'dashboard-body')
 
 @section('content')
@@ -21,7 +21,7 @@
                     <div><small>{{ $profileUser->hasCompleteProfile() ? 'Profile complete' : 'Action required' }}</small><h2>{{ $profileUser->hasCompleteProfile() ? 'You can inquire, chat, and transact.' : 'Complete this profile before you continue.' }}</h2><p>Your contact details and ID are shared only with your booking partner and administrators for validation.</p></div>
                 </div>
 
-                <form method="POST" action="{{ route('profile.update') }}" enctype="multipart/form-data" class="verification-form" data-verification-form data-location-provinces-url="{{ route('profile.locations.provinces') }}" data-location-cities-url="{{ route('profile.locations.cities') }}" data-location-barangays-url="{{ route('profile.locations.barangays') }}" data-phone-send-url="{{ route('profile.phone.send') }}" data-phone-verify-url="{{ route('profile.phone.verify') }}">
+                <form method="POST" action="{{ route('profile.update') }}" enctype="multipart/form-data" class="verification-form" data-verification-form data-location-provinces-url="{{ route('profile.locations.provinces') }}" data-location-cities-url="{{ route('profile.locations.cities') }}" data-location-barangays-url="{{ route('profile.locations.barangays') }}">
                     @csrf @method('PUT')
                     <section>
                         <div class="verification-section-heading"><span>01</span><div><h2>Personal information</h2><p>Use the same details shown on your identification.</p></div></div>
@@ -36,7 +36,7 @@
                     <section>
                         <div class="verification-section-heading"><span>02</span><div><h2>Contact information</h2><p>Both clients and hosts need a reliable way to coordinate.</p></div></div>
                         <div class="verification-grid">
-                            <div class="field-group verification-wide"><label for="phone">Mobile number</label><div class="phone-verification-row"><input id="phone" name="phone" type="tel" autocomplete="tel" placeholder="0917 123 4567 or +63 917 123 4567" value="{{ old('phone', $profileUser->phone) }}" data-phone-input data-verified-phone="{{ $profileUser->phone_verified_at ? $profileUser->phone : '' }}" required><button class="button button-secondary" type="button" data-send-phone-code>{{ $profileUser->phone_verified_at ? 'Send new code' : 'Send OTP' }}</button></div><div class="phone-code-row" data-phone-code-row hidden><input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-digit code" aria-label="Mobile verification code" data-phone-code><button class="button button-primary" type="button" data-verify-phone-code>Verify number</button></div><small class="field-help phone-status {{ $profileUser->phone_verified_at ? 'verified' : '' }}" data-phone-status>{{ $profileUser->phone_verified_at ? '✓ Mobile number verified' : 'Verify this number before saving your profile.' }}</small>@error('phone')<p class="error-text">{{ $message }}</p>@enderror</div>
+                            <div class="field-group"><label for="phone">Mobile number</label><input id="phone" name="phone" type="tel" autocomplete="tel" placeholder="0917 123 4567 or +63 917 123 4567" value="{{ old('phone', $profileUser->phone) }}" required><small class="field-help">Include the country code for non-Philippine numbers.</small>@error('phone')<p class="error-text">{{ $message }}</p>@enderror</div>
                             <div class="field-group"><label>Email address</label><input value="{{ $profileUser->email }}" disabled><small class="field-help">Verified through your account.</small></div>
                             <div class="field-group"><label for="country">Country</label><div class="searchable-combobox"><input id="country" name="country" type="search" list="country-options" autocomplete="off" placeholder="Search country…" value="{{ old('country', $profileUser->country ?: 'Philippines') }}" required data-country-input><span aria-hidden="true">⌄</span><datalist id="country-options">@foreach ($countries as $code => $country)<option value="{{ $country }}" data-code="{{ $code }}"></option>@endforeach</datalist></div>@error('country')<p class="error-text">{{ $message }}</p>@enderror</div>
                             <div class="field-group"><label for="province">Province</label><div class="searchable-combobox"><input id="province" name="province" type="search" list="province-options" autocomplete="off" placeholder="Select country first" value="{{ old('province', $profileUser->province) }}" required data-province-input><span aria-hidden="true">⌄</span><datalist id="province-options"></datalist></div>@error('province')<p class="error-text">{{ $message }}</p>@enderror</div>
