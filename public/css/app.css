@@ -139,7 +139,7 @@ button, input, select, textarea { font: inherit; }
 .auth-divider::before, .auth-divider::after { content: ""; flex: 1; height: 1px; background: #e1e6e3; }
 .auth-divider span { white-space: nowrap; }
 .oauth-error { margin-bottom: 1rem; padding: .8rem .9rem; border: 1px solid #efc5c1; border-radius: 10px; color: #8f3028; background: #fff1f0; font-size: .8rem; line-height: 1.5; }
-.field-group { display: grid; gap: .5rem; }
+.field-group { display: grid; align-content: start; min-width: 0; gap: .5rem; }
 .field-group label { color: #35443f; font-size: .83rem; font-weight: 700; }
 .field-group input, .field-group select, .field-group textarea { width: 100%; min-height: 3.35rem; padding: .8rem 1rem; border: 1px solid #d4ddd9; border-radius: 11px; outline: none; color: var(--ink); background: #fbfcfa; transition: border .18s, box-shadow .18s; }
 .field-group textarea { min-height: 7rem; resize: vertical; line-height: 1.5; }
