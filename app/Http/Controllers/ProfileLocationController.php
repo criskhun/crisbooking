@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class ProfileLocationController extends Controller
 {
@@ -57,15 +60,24 @@ class ProfileLocationController extends Controller
 
     private function getAbsolute(string $url): array
     {
-        return Cache::remember('psgc:'.sha1($url), now()->addDays(30), function () use ($url) {
-            $response = Http::acceptJson()
-                ->timeout(12)
-                ->retry(2, 200)
-                ->get($url)
-                ->throw();
+        try {
+            return Cache::remember('psgc:'.sha1($url), now()->addDays(30), function () use ($url) {
+                $response = Http::acceptJson()
+                    ->timeout(12)
+                    ->retry(2, 200)
+                    ->get($url)
+                    ->throw();
 
-            return $response->json('data') ?? $response->json();
-        });
+                return $response->json('data') ?? $response->json();
+            });
+        } catch (ConnectionException|RequestException $exception) {
+            Log::warning('Profile location suggestions are temporarily unavailable.', [
+                'url' => $url,
+                'status' => $exception instanceof RequestException ? $exception->response->status() : null,
+            ]);
+
+            return [];
+        }
     }
 
     private function sorted(array $items): array
@@ -74,7 +86,9 @@ class ProfileLocationController extends Controller
             ->filter(fn ($item) => isset($item['code'], $item['name']))
             ->map(function ($item) {
                 $name = (string) $item['name'];
-                if (str_contains($name, 'Ã')) $name = mb_convert_encoding($name, 'Windows-1252', 'UTF-8');
+                if (str_contains($name, 'Ã')) {
+                    $name = mb_convert_encoding($name, 'Windows-1252', 'UTF-8');
+                }
 
                 return ['code' => (string) $item['code'], 'name' => $name];
             })

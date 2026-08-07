@@ -115,6 +115,19 @@ class ProfileInquiryTest extends TestCase
             ->assertOk()->assertJsonFragment(['name' => 'Ermita']);
     }
 
+    public function test_profile_location_choices_do_not_return_server_errors_when_the_provider_is_unavailable(): void
+    {
+        Http::fake([
+            'psgc.cloud/*' => Http::response(['message' => 'Server Error'], 500),
+        ]);
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->getJson(route('profile.locations.barangays', ['city_code' => '1124020000']))
+            ->assertOk()
+            ->assertExactJson([]);
+    }
+
     public function test_incomplete_profiles_cannot_inquire_or_register_listings(): void
     {
         $host = User::factory()->host()->create();
