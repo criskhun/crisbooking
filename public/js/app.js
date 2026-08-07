@@ -62,6 +62,36 @@
 
         syncControls();
 
+        const mobileSidebar = document.querySelector('[data-mobile-sidebar]');
+        const mobileSidebarToggle = document.querySelector('[data-mobile-sidebar-toggle]');
+        const mobileSidebarLabel = document.querySelector('[data-mobile-sidebar-label]');
+        const mobileSidebarClose = document.querySelector('[data-mobile-sidebar-close]');
+        const mobileSidebarQuery = window.matchMedia('(max-width: 740px)');
+
+        const setMobileSidebarOpen = (open, returnFocus = false) => {
+            if (!mobileSidebar || !mobileSidebarToggle) return;
+
+            const shouldOpen = mobileSidebarQuery.matches && open;
+            mobileSidebar.classList.toggle('is-open', shouldOpen);
+            mobileSidebarToggle.setAttribute('aria-expanded', String(shouldOpen));
+            if (mobileSidebarLabel) mobileSidebarLabel.textContent = shouldOpen ? 'Close navigation menu' : 'Open navigation menu';
+            if (mobileSidebarClose) mobileSidebarClose.hidden = !shouldOpen;
+            document.body.classList.toggle('mobile-sidebar-open', shouldOpen);
+
+            if (!shouldOpen && returnFocus) mobileSidebarToggle.focus();
+        };
+
+        mobileSidebarToggle?.addEventListener('click', () => {
+            setMobileSidebarOpen(!mobileSidebar.classList.contains('is-open'));
+        });
+        mobileSidebarClose?.addEventListener('click', () => setMobileSidebarOpen(false, true));
+        mobileSidebarQuery.addEventListener('change', () => setMobileSidebarOpen(false));
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && mobileSidebar?.classList.contains('is-open')) {
+                setMobileSidebarOpen(false, true);
+            }
+        });
+
         document.querySelector('#dark-mode-toggle')?.addEventListener('change', (event) => {
             const mode = event.currentTarget.checked ? 'dark' : 'light';
             root.dataset.colorMode = mode;

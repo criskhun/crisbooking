@@ -12,7 +12,7 @@
                 @include('partials.user-badge')
             </header>
 
-            <section class="verification-shell">
+            <section class="profile-verification-shell">
                 @if (session('status'))<div class="flash-message account-alert" role="status">{{ session('status') }}</div>@endif
                 @error('profile')<div class="oauth-error account-alert" role="alert">{{ $message }}</div>@enderror
 

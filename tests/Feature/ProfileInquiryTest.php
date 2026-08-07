@@ -82,6 +82,8 @@ class ProfileInquiryTest extends TestCase
 
         $this->actingAs($user)->get(route('profile.edit'))
             ->assertOk()
+            ->assertSee('class="profile-verification-shell"', false)
+            ->assertSee('data-mobile-sidebar-toggle', false)
             ->assertSee('class="searchable-combobox"', false)
             ->assertSee('data-country-input', false)
             ->assertSee('data-province-input', false)

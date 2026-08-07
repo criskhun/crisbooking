@@ -1,9 +1,14 @@
-<aside class="sidebar">
+<button class="sidebar-scrim" type="button" data-mobile-sidebar-close hidden aria-label="Close navigation menu"></button>
+<aside class="sidebar" data-mobile-sidebar>
+    <button class="sidebar-toggle" type="button" data-mobile-sidebar-toggle aria-controls="dashboard-navigation" aria-expanded="false">
+        <span class="sr-only" data-mobile-sidebar-label>Open navigation menu</span>
+        <span class="sidebar-toggle-arrow" aria-hidden="true">›</span>
+    </button>
     <a class="brand brand-light" href="{{ route('dashboard') }}">
         <span class="brand-mark" aria-hidden="true"><img src="{{ asset('images/davao-rent-zone-logo-mark.svg') }}" alt=""></span>
         <span class="brand-name">Davao Rent Zone</span>
     </a>
-    <nav class="sidebar-nav">
+    <nav class="sidebar-nav" id="dashboard-navigation">
         <a @class(['active' => request()->routeIs('dashboard')]) href="{{ route('dashboard') }}"><span>⌂</span> Overview</a>
         <a @class(['active' => request()->routeIs('calendar.*')]) href="{{ route('calendar.index') }}"><span>□</span> {{ auth()->user()->isClient() ? 'Book now' : 'Calendar' }}</a>
         <a @class(['active' => request()->routeIs('inquiries.*')]) href="{{ route('inquiries.index') }}"><span>✦</span> Inquiries</a>
