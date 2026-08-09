@@ -29,6 +29,8 @@
     <link rel="stylesheet" href="{{ asset('css/mobile-menu-v6.css') }}">
     <link rel="stylesheet" href="{{ asset('css/mobile-form-v7.css') }}">
     <link rel="stylesheet" href="{{ asset('css/profile-controls-v8.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/address-combobox-v9.css') }}">
+    <script src="{{ asset('js/address-combobox-v9.js') }}" defer></script>
     <script src="{{ asset('js/app.js') }}?v={{ filemtime(public_path('js/app.js')) }}" defer></script>
     <script src="{{ asset('js/maps.js') }}?v={{ filemtime(public_path('js/maps.js')) }}" defer></script>
     <script src="{{ asset('js/mobile-shell-v5.js') }}" defer></script>

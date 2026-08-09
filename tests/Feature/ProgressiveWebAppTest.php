@@ -18,6 +18,8 @@ class ProgressiveWebAppTest extends TestCase
             ->assertSee('mobile-menu-v6.css', false)
             ->assertSee('mobile-form-v7.css', false)
             ->assertSee('profile-controls-v8.css', false)
+            ->assertSee('address-combobox-v9.css', false)
+            ->assertSee('address-combobox-v9.js', false)
             ->assertSee('mobile-shell-v5.js', false)
             ->assertSee('data-pwa-install-banner', false);
     }
@@ -31,7 +33,7 @@ class ProgressiveWebAppTest extends TestCase
         $this->assertSame('./', $manifest['start_url']);
         $this->assertNotEmpty($manifest['icons']);
 
-        foreach (['sw.js', 'offline.html', 'js/pwa.js', 'css/mobile-shell-v5.css', 'css/mobile-menu-v6.css', 'css/mobile-form-v7.css', 'css/profile-controls-v8.css', 'js/mobile-shell-v5.js', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-192.png', 'icons/icon-maskable-512.png'] as $asset) {
+        foreach (['sw.js', 'offline.html', 'js/pwa.js', 'css/mobile-shell-v5.css', 'css/mobile-menu-v6.css', 'css/mobile-form-v7.css', 'css/profile-controls-v8.css', 'css/address-combobox-v9.css', 'js/address-combobox-v9.js', 'js/mobile-shell-v5.js', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-192.png', 'icons/icon-maskable-512.png'] as $asset) {
             $this->assertFileExists(public_path($asset));
         }
 

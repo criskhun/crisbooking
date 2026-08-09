@@ -817,6 +817,7 @@
         }
 
         if (verificationForm) {
+            if (! window.DavaoAddressComboboxV9) {
             verificationForm.dataset.locationControlsBound = 'true';
             const countryInput = verificationForm.querySelector('[data-country-input]');
             const provinceInput = verificationForm.querySelector('[data-province-input]');
@@ -942,6 +943,7 @@
                 cityInput?.addEventListener(eventName, handleCityChange);
             });
             syncCountry();
+            }
 
             const birthDate = verificationForm.querySelector('#date_of_birth');
             const ageResult = verificationForm.querySelector('[data-age-result]');
