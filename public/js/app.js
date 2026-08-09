@@ -85,7 +85,12 @@
             setMobileSidebarOpen(!mobileSidebar.classList.contains('is-open'));
         });
         mobileSidebarClose?.addEventListener('click', () => setMobileSidebarOpen(false, true));
-        mobileSidebarQuery.addEventListener('change', () => setMobileSidebarOpen(false));
+        const handleMobileSidebarBreakpoint = () => setMobileSidebarOpen(false);
+        if (typeof mobileSidebarQuery.addEventListener === 'function') {
+            mobileSidebarQuery.addEventListener('change', handleMobileSidebarBreakpoint);
+        } else if (typeof mobileSidebarQuery.addListener === 'function') {
+            mobileSidebarQuery.addListener(handleMobileSidebarBreakpoint);
+        }
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape' && mobileSidebar?.classList.contains('is-open')) {
                 setMobileSidebarOpen(false, true);
@@ -900,13 +905,13 @@
                     setLocationStatus('For addresses outside the Philippines, type the location fields manually.');
                 }
             };
-            countryInput?.addEventListener('input', () => {
+            const handleCountryChange = () => {
                 const code = optionFor(countryInput)?.dataset.code || '';
                 if (! code || code === countryCode) return;
                 countryCode = code;
                 syncCountry();
-            });
-            provinceInput?.addEventListener('input', () => {
+            };
+            const handleProvinceChange = () => {
                 const code = optionFor(provinceInput)?.dataset.code || '';
                 if (! code) {
                     provinceCode = '';
@@ -917,8 +922,8 @@
                 if (code === provinceCode) return;
                 provinceCode = code;
                 loadCities().catch(manualLocationFallback);
-            });
-            cityInput?.addEventListener('input', () => {
+            };
+            const handleCityChange = () => {
                 const code = optionFor(cityInput)?.dataset.code || '';
                 if (! code) {
                     cityCode = '';
@@ -928,6 +933,11 @@
                 if (code === cityCode) return;
                 cityCode = code;
                 loadBarangays().catch(manualLocationFallback);
+            };
+            ['input', 'change'].forEach((eventName) => {
+                countryInput?.addEventListener(eventName, handleCountryChange);
+                provinceInput?.addEventListener(eventName, handleProvinceChange);
+                cityInput?.addEventListener(eventName, handleCityChange);
             });
             syncCountry();
 

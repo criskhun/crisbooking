@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'davao-rent-zone-v2';
+const CACHE_VERSION = 'davao-rent-zone-v3';
 const OFFLINE_URL = new URL('./offline.html', self.registration.scope).href;
 const PRECACHE_URLS = [
     './offline.html',
@@ -44,6 +44,14 @@ const isSafeStaticAsset = (url) => {
         || ['manifest.webmanifest', 'apple-touch-icon.png', 'favicon.ico', 'favicon.svg'].includes(relativePath);
 };
 
+const updateStaticCache = async (request, response) => {
+    if (response.ok && response.type === 'basic') {
+        const cache = await caches.open(CACHE_VERSION);
+        await cache.put(request, response.clone());
+    }
+    return response;
+};
+
 self.addEventListener('fetch', (event) => {
     const request = event.request;
     if (request.method !== 'GET') return;
@@ -56,15 +64,18 @@ self.addEventListener('fetch', (event) => {
 
     if (url.origin !== self.location.origin || !isSafeStaticAsset(url)) return;
 
-    event.respondWith((async () => {
-        const cachedResponse = await caches.match(request, { ignoreSearch: true });
-        if (cachedResponse) return cachedResponse;
+    const prefersFreshAsset = ['script', 'style', 'worker'].includes(request.destination)
+        || url.pathname.endsWith('/manifest.webmanifest');
 
-        const networkResponse = await fetch(request);
-        if (networkResponse.ok && networkResponse.type === 'basic') {
-            const cache = await caches.open(CACHE_VERSION);
-            await cache.put(request, networkResponse.clone());
-        }
-        return networkResponse;
-    })());
+    if (prefersFreshAsset) {
+        event.respondWith(fetch(request)
+            .then((response) => updateStaticCache(request, response))
+            .catch(async () => (await caches.match(request, { ignoreSearch: true })) || Response.error()));
+        return;
+    }
+
+    event.respondWith(caches.match(request, { ignoreSearch: true }).then(async (cachedResponse) => {
+        if (cachedResponse) return cachedResponse;
+        return updateStaticCache(request, await fetch(request));
+    }));
 });
