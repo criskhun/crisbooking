@@ -84,6 +84,7 @@
         mobileSidebarToggle?.addEventListener('click', () => {
             setMobileSidebarOpen(!mobileSidebar.classList.contains('is-open'));
         });
+        if (mobileSidebarToggle) mobileSidebarToggle.dataset.mobileSidebarBound = 'true';
         mobileSidebarClose?.addEventListener('click', () => setMobileSidebarOpen(false, true));
         const handleMobileSidebarBreakpoint = () => setMobileSidebarOpen(false);
         if (typeof mobileSidebarQuery.addEventListener === 'function') {
@@ -816,6 +817,7 @@
         }
 
         if (verificationForm) {
+            verificationForm.dataset.locationControlsBound = 'true';
             const countryInput = verificationForm.querySelector('[data-country-input]');
             const provinceInput = verificationForm.querySelector('[data-province-input]');
             const cityInput = verificationForm.querySelector('[data-city-input]');

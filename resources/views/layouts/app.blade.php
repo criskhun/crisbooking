@@ -25,8 +25,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/mobile-shell-v5.css') }}">
     <script src="{{ asset('js/app.js') }}?v={{ filemtime(public_path('js/app.js')) }}" defer></script>
     <script src="{{ asset('js/maps.js') }}?v={{ filemtime(public_path('js/maps.js')) }}" defer></script>
+    <script src="{{ asset('js/mobile-shell-v5.js') }}" defer></script>
     <script src="{{ asset('js/pwa.js') }}?v={{ filemtime(public_path('js/pwa.js')) }}" data-service-worker="{{ asset('sw.js') }}" defer></script>
     @if (config('services.google.maps_api_key'))
         <script>

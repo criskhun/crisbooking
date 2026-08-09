@@ -14,6 +14,8 @@ class ProgressiveWebAppTest extends TestCase
             ->assertSee('manifest.webmanifest', false)
             ->assertSee('apple-mobile-web-app-capable', false)
             ->assertSee('data-service-worker', false)
+            ->assertSee('mobile-shell-v5.css', false)
+            ->assertSee('mobile-shell-v5.js', false)
             ->assertSee('data-pwa-install-banner', false);
     }
 
@@ -26,7 +28,7 @@ class ProgressiveWebAppTest extends TestCase
         $this->assertSame('./', $manifest['start_url']);
         $this->assertNotEmpty($manifest['icons']);
 
-        foreach (['sw.js', 'offline.html', 'js/pwa.js', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-192.png', 'icons/icon-maskable-512.png'] as $asset) {
+        foreach (['sw.js', 'offline.html', 'js/pwa.js', 'css/mobile-shell-v5.css', 'js/mobile-shell-v5.js', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-192.png', 'icons/icon-maskable-512.png'] as $asset) {
             $this->assertFileExists(public_path($asset));
         }
 

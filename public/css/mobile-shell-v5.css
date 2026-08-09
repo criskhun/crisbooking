@@ -1,0 +1,280 @@
+/* Cache-independent responsive recovery layer for installed PWAs. */
+@media (min-width: 741px) {
+    .sidebar-toggle,
+    .sidebar-scrim {
+        display: none !important;
+    }
+}
+
+@media (max-width: 740px) {
+    html,
+    body.dashboard-body {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+    }
+
+    .dashboard-shell {
+        display: block !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        overflow: visible !important;
+    }
+
+    .sidebar {
+        position: fixed !important;
+        z-index: 101 !important;
+        inset: 0 auto 0 0 !important;
+        display: flex !important;
+        width: min(82vw, 280px) !important;
+        min-width: 0 !important;
+        max-width: 280px !important;
+        height: 100dvh !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        justify-content: flex-start !important;
+        gap: 0 !important;
+        padding: 1.35rem 4.1rem 1.35rem 1rem !important;
+        overflow: hidden !important;
+        border-right: 1px solid rgba(255, 255, 255, .24) !important;
+        color: #fff !important;
+        background: rgba(23, 60, 52, .92) !important;
+        box-shadow: 12px 0 36px rgba(7, 24, 19, .14) !important;
+        backdrop-filter: blur(18px) saturate(125%) !important;
+        -webkit-backdrop-filter: blur(18px) saturate(125%) !important;
+        transform: translateX(calc(-100% + 3.5rem)) !important;
+        transition: transform .25s ease, box-shadow .25s ease !important;
+    }
+
+    .sidebar.is-open {
+        box-shadow: 20px 0 55px rgba(7, 24, 19, .3) !important;
+        transform: translateX(0) !important;
+    }
+
+    .sidebar > .brand {
+        display: inline-flex !important;
+        width: auto !important;
+        flex: 0 0 auto !important;
+    }
+
+    .sidebar > .brand .brand-name {
+        display: inline !important;
+    }
+
+    .sidebar-nav {
+        display: grid !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        min-height: 0 !important;
+        flex: 1 1 auto !important;
+        grid-template-columns: minmax(0, 1fr) !important;
+        align-content: start !important;
+        gap: .35rem !important;
+        margin: 2rem 0 0 !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+    }
+
+    .sidebar-nav a,
+    .sidebar-nav a.disabled,
+    .sidebar-logout button {
+        display: flex !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        align-items: center !important;
+        gap: .7rem !important;
+        padding: .7rem .75rem !important;
+        white-space: normal !important;
+    }
+
+    .sidebar-nav a span {
+        display: inline !important;
+        flex: 0 0 auto !important;
+    }
+
+    .sidebar-nav .sidebar-label {
+        display: block !important;
+        width: auto !important;
+    }
+
+    .sidebar-logout {
+        display: block !important;
+        width: 100% !important;
+        flex: 0 0 auto !important;
+        margin: auto 0 0 !important;
+    }
+
+    .sidebar-toggle {
+        position: absolute !important;
+        top: 50% !important;
+        right: .45rem !important;
+        z-index: 2 !important;
+        display: grid !important;
+        width: 2.55rem !important;
+        height: 4.7rem !important;
+        place-items: center !important;
+        padding: 0 !important;
+        border: 1px solid rgba(255, 255, 255, .28) !important;
+        border-radius: 999px !important;
+        color: #fff !important;
+        background: rgba(255, 255, 255, .14) !important;
+        box-shadow: 0 8px 22px rgba(5, 20, 16, .2) !important;
+        transform: translateY(-50%) !important;
+    }
+
+    .sidebar-toggle-arrow {
+        display: block !important;
+        font-size: 1.9rem !important;
+        line-height: 1 !important;
+    }
+
+    .sidebar.is-open .sidebar-toggle-arrow {
+        transform: rotate(180deg) !important;
+    }
+
+    .sidebar-scrim {
+        position: fixed !important;
+        z-index: 100 !important;
+        inset: 0 !important;
+        display: block !important;
+        width: 100% !important;
+        height: 100% !important;
+        padding: 0 !important;
+        border: 0 !important;
+        background: rgba(8, 19, 16, .28) !important;
+    }
+
+    .sidebar-scrim[hidden] {
+        display: none !important;
+    }
+
+    .dashboard-main {
+        display: block !important;
+        width: calc(100% - 3.5rem) !important;
+        min-width: 0 !important;
+        max-width: calc(100% - 3.5rem) !important;
+        margin: 0 0 0 3.5rem !important;
+        padding: 1.25rem .75rem 3rem !important;
+        overflow-x: hidden !important;
+    }
+
+    .dashboard-header {
+        display: grid !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        grid-template-columns: minmax(0, 1fr) auto !important;
+        align-items: start !important;
+        gap: .7rem !important;
+    }
+
+    .dashboard-header > div,
+    .profile-verification-shell,
+    .verification-form,
+    .verification-form > section,
+    .verification-status-card,
+    .verification-actions,
+    .verification-grid,
+    .verification-grid > *,
+    .field-group,
+    .searchable-combobox,
+    .id-document-preview,
+    .public-profile-card,
+    .profile-validation-grid,
+    .profile-validation-grid > section {
+        min-width: 0 !important;
+        max-width: 100% !important;
+    }
+
+    .profile-verification-shell,
+    .verification-form,
+    .verification-form > section,
+    .verification-grid,
+    .profile-validation-grid {
+        width: 100% !important;
+    }
+
+    .profile-verification-shell {
+        margin-top: 1.25rem !important;
+    }
+
+    .verification-grid,
+    .profile-validation-grid {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+
+    .verification-wide {
+        grid-column: auto !important;
+    }
+
+    .verification-form > section {
+        padding: .85rem !important;
+        overflow: visible !important;
+    }
+
+    .verification-grid input,
+    .verification-grid select,
+    .verification-grid textarea,
+    .searchable-combobox input {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+    }
+
+    .verification-grid input[type="file"] {
+        overflow: hidden !important;
+        font-size: .68rem !important;
+    }
+
+    .verification-section-heading > div,
+    .verification-status-card > div {
+        min-width: 0 !important;
+    }
+
+    .verification-section-heading h2,
+    .verification-section-heading p,
+    .verification-status-card h2,
+    .verification-status-card p,
+    .dashboard-header h1 {
+        overflow-wrap: anywhere !important;
+    }
+
+    .verification-actions {
+        align-items: stretch !important;
+        flex-direction: column !important;
+        padding: .85rem !important;
+    }
+
+    .verification-actions .button {
+        width: 100% !important;
+    }
+
+    .id-document-preview {
+        width: min(270px, 100%) !important;
+        overflow: hidden !important;
+    }
+
+    .id-document-preview img {
+        width: 100% !important;
+        height: 140px !important;
+    }
+
+    .id-document-preview object {
+        width: 100% !important;
+        height: 170px !important;
+    }
+}
+
+@media (max-width: 420px) {
+    .dashboard-main {
+        padding-right: .6rem !important;
+        padding-left: .6rem !important;
+    }
+
+    .verification-status-card {
+        display: grid !important;
+        grid-template-columns: auto minmax(0, 1fr) !important;
+    }
+}
