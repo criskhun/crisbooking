@@ -120,6 +120,11 @@ class BookingController extends Controller
                 ]);
             }
 
+            $additionalCharges = $this->carAdditionalCharges($unit);
+            $rentalTotal = $packageBreakdown
+                ? $this->packageTotal($packageBreakdown)
+                : $this->calculateTotal($unit, $start, $end);
+
             return $unit->bookings()->create([
                 'inquiry_id' => $inquiry->id,
                 'client_id' => $request->user()->id,
@@ -130,7 +135,8 @@ class BookingController extends Controller
                 'rate_period' => $ratePeriod,
                 'rate_quantity' => $rateQuantity,
                 'package_breakdown' => $packageBreakdown,
-                'total_amount' => $packageBreakdown ? $this->packageTotal($packageBreakdown) : $this->calculateTotal($unit, $start, $end),
+                'additional_charges' => $additionalCharges ?: null,
+                'total_amount' => round($rentalTotal + $this->additionalChargeTotal($additionalCharges), 2),
                 'party_size' => $partySize,
                 'notes' => $validated['notes'] ?? null,
             ]);
@@ -267,6 +273,7 @@ class BookingController extends Controller
             $total = $packageBreakdown
                 ? $this->packageTotal($packageBreakdown)
                 : $this->calculateTotal($unit, $start, $end);
+            $total = round($total + $this->additionalChargeTotal($lockedBooking->additional_charges ?? []), 2);
 
             $lockedBooking->update([
                 'start_at' => $start,
@@ -425,6 +432,28 @@ class BookingController extends Controller
         };
 
         return round((float) $unit->price * max(1, $quantity), 2);
+    }
+
+    private function carAdditionalCharges(Unit $unit): array
+    {
+        if ($unit->category !== 'car') {
+            return [];
+        }
+
+        return collect($unit->car_details['charges'] ?? [])
+            ->map(fn ($charge, $key) => [
+                'key' => $key,
+                'label' => (string) ($charge['label'] ?? str($key)->replace('_', ' ')->title()),
+                'amount' => round((float) ($charge['amount'] ?? 0), 2),
+                'refundable' => (bool) ($charge['refundable'] ?? false),
+            ])
+            ->values()
+            ->all();
+    }
+
+    private function additionalChargeTotal(array $charges): float
+    {
+        return round((float) collect($charges)->sum('amount'), 2);
     }
 
     private function hasScheduleConflict(Unit $unit, Carbon $start, Carbon $end, ?int $exceptBookingId = null): bool

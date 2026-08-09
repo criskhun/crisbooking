@@ -98,18 +98,20 @@
 
     @if ($selectedUnit)
         @php
-            $additionalFees = collect(['parking' => 'Parking', 'pool' => 'Swimming pool'])->map(function ($label, $key) use ($selectedUnit) {
-                $details = $selectedUnit->property_details[$key] ?? null;
-                if (! $details) return null;
-                return ($details['payment_type'] ?? 'included') === 'separate' ? $label.': ₱'.number_format($details['rate'] ?? 0, 2).' / '.($details['rate_unit'] ?? 'booking') : $label.': Included';
-            })->filter()->implode("\n");
+            $additionalFees = $selectedUnit->category === 'car'
+                ? collect($selectedUnit->car_details['charges'] ?? [])->map(fn ($charge) => $charge['label'].': ₱'.number_format($charge['amount'] ?? 0, 2).(!empty($charge['refundable']) ? ' (refundable)' : ''))->implode("\n")
+                : collect(['parking' => 'Parking', 'pool' => 'Swimming pool'])->map(function ($label, $key) use ($selectedUnit) {
+                    $details = $selectedUnit->property_details[$key] ?? null;
+                    if (! $details) return null;
+                    return ($details['payment_type'] ?? 'included') === 'separate' ? $label.': ₱'.number_format($details['rate'] ?? 0, 2).' / '.($details['rate_unit'] ?? 'booking') : $label.': Included';
+                })->filter()->implode("\n");
         @endphp
         <section class="booking-selection-card" id="booking-selection">
             <div class="selection-summary">
                 <span class="eyebrow">Your selection</span><h3>{{ $selectedUnit->name }}</h3><p>{{ $selectedUnit->description ?: 'Review the booking details and send your request to the host.' }}</p>
                 <div class="selection-facts"><span>⌖ {{ $selectedUnit->location ?: 'Location arranged with host' }}</span><span>♙ {{ $partySize }} {{ Str::plural('person', $partySize) }}</span><span>◷ {{ $searchStart->format('M j, g:i A') }}</span></div>
                 <details class="client-unit-rules"><summary>{{ $selectedUnit->category === 'car' ? 'Car rules' : ($selectedUnit->category === 'condo' ? 'House rules' : 'Service rules') }} <span>Expand</span></summary><p>{{ $selectedUnit->rules ?: 'No additional rules were provided for this listing.' }}</p><small>By submitting a request, you agree to follow the host’s rules.</small></details>
-                @if ($additionalFees)<details class="client-unit-rules"><summary>Amenity access & fees <span>Expand</span></summary><p>{{ $additionalFees }}</p></details>@endif
+                @if ($additionalFees)<details class="client-unit-rules"><summary>{{ $selectedUnit->category === 'car' ? 'Required car charges' : 'Amenity access & fees' }} <span>Expand</span></summary><p>{{ $additionalFees }}</p></details>@endif
             </div>
             @if (! auth()->user()->hasCompleteProfile())
                 <div class="selection-gate-card"><span>01</span><h3>Complete your verification profile</h3><p>Your contact information and government ID are required before you can contact this host.</p><a class="button button-primary button-full" href="{{ route('profile.edit') }}">Complete profile</a></div>
@@ -163,11 +165,13 @@
         <div class="catalog-list">
             @foreach ($units as $unit)
                 @php
-                    $fees = collect(['parking' => 'Parking', 'pool' => 'Swimming pool'])->map(function ($label, $key) use ($unit) {
-                        $details = $unit->property_details[$key] ?? null;
-                        if (! $details) return null;
-                        return ($details['payment_type'] ?? 'included') === 'separate' ? $label.': ₱'.number_format($details['rate'] ?? 0, 2).' / '.($details['rate_unit'] ?? 'booking') : $label.': Included';
-                    })->filter();
+                    $fees = $unit->category === 'car'
+                        ? collect($unit->car_details['charges'] ?? [])->map(fn ($charge) => $charge['label'].': ₱'.number_format($charge['amount'] ?? 0, 2).(!empty($charge['refundable']) ? ' refundable' : ''))
+                        : collect(['parking' => 'Parking', 'pool' => 'Swimming pool'])->map(function ($label, $key) use ($unit) {
+                            $details = $unit->property_details[$key] ?? null;
+                            if (! $details) return null;
+                            return ($details['payment_type'] ?? 'included') === 'separate' ? $label.': ₱'.number_format($details['rate'] ?? 0, 2).' / '.($details['rate_unit'] ?? 'booking') : $label.': Included';
+                        })->filter();
                 @endphp
                 <article>
                     <strong>{{ $unit->name }}</strong>

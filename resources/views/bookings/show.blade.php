@@ -62,7 +62,7 @@
                                 <span><small>Type</small><strong>{{ ucfirst($unit->kind) }}</strong></span>
                             </div>
                             @if ($unit->category === 'car' && $unit->car_details)
-                                <div class="booking-feature-list"><strong>{{ $unit->car_details['year'] ?? '' }} {{ $unit->car_details['make'] ?? '' }} {{ $unit->car_details['model'] ?? '' }}</strong><span>{{ ucfirst($unit->car_details['transmission'] ?? '') }} · {{ ucfirst($unit->car_details['fuel_type'] ?? '') }}</span>@foreach ($unit->car_details['accessories'] ?? [] as $accessory)<em>{{ str($accessory)->replace('_', ' ')->title() }}</em>@endforeach</div>
+                                <div class="booking-feature-list"><strong>{{ $unit->car_details['year'] ?? '' }} {{ $unit->car_details['make'] ?? '' }} {{ $unit->car_details['model'] ?? '' }}</strong><span>{{ $unit->car_details['color'] ?? 'Color not specified' }} · {{ ucfirst($unit->car_details['transmission'] ?? '') }} · {{ ucfirst($unit->car_details['fuel_type'] ?? '') }}</span>@foreach ($unit->car_details['accessories'] ?? [] as $accessory)<em>{{ str($accessory)->replace('_', ' ')->title() }}</em>@endforeach @foreach($unit->car_details['custom_accessories'] ?? [] as $accessory)<em>{{ $accessory }}</em>@endforeach</div>
                             @elseif ($unit->category === 'condo' && $unit->property_details)
                                 <div class="booking-feature-list"><strong>{{ ucfirst($unit->property_details['type'] ?? 'Property') }}</strong><span>{{ $unit->property_details['bedrooms'] ?? 0 }} rooms · {{ $unit->property_details['bathrooms'] ?? 0 }} comfort rooms · {{ $unit->property_details['beds'] ?? 0 }} beds</span>@foreach ($unit->property_details['amenities'] ?? [] as $amenity)<em>{{ str($amenity)->replace('_', ' ')->title() }}</em>@endforeach</div>
                             @endif
@@ -80,6 +80,9 @@
                             <div><dt>Guests / pax</dt><dd>{{ $booking->party_size }} {{ Str::plural('person', $booking->party_size) }}</dd></div>
                             @if ($currentPackages->isNotEmpty())
                                 <div><dt>Packages</dt><dd class="package-breakdown-list">@foreach($currentPackages as $period => $package)<span>{{ $package['quantity'] }} × {{ $rateLabels[$period] ?? str($period)->replace('_', ' ')->title() }} <small>₱{{ number_format($package['unit_price'], 2) }} each</small></span>@endforeach</dd></div>
+                            @endif
+                            @if (! empty($booking->additional_charges))
+                                <div><dt>Required charges</dt><dd class="package-breakdown-list">@foreach($booking->additional_charges as $charge)<span>{{ $charge['label'] }} <small>₱{{ number_format($charge['amount'], 2) }}{{ !empty($charge['refundable']) ? ' · refundable' : '' }}</small></span>@endforeach</dd></div>
                             @endif
                             <div><dt>Status</dt><dd><span class="booking-status status-{{ $booking->status }}">{{ ucfirst($booking->status) }}</span></dd></div>
                         </dl>

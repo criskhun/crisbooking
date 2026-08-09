@@ -903,3 +903,35 @@ html[data-color-mode="dark"] .profile-required-banner, html[data-color-mode="dar
 .confirmed-wifi-access span small { color: var(--muted); font-size: .55rem; text-transform: uppercase; }
 .confirmed-wifi-access img { width: 130px; height: 130px; margin-top: .25rem; border: 1px solid var(--card-line); border-radius: 8px; object-fit: contain; background: white; }
 .locked-access-note { min-height: 0 !important; padding: .55rem .65rem; margin-top: .5rem !important; border-radius: 7px; color: var(--muted) !important; background: var(--surface-tint); font-size: .61rem !important; }
+/* Listing drafts and car-specific pricing */
+.unit-drafts-panel { margin: 0 0 1.25rem; padding: 1.25rem; border: 1px solid var(--line, #dce5e1); border-radius: 18px; background: var(--surface, #fff); }
+.unit-drafts-panel h2 { margin: .2rem 0; }
+.unit-drafts-panel > div:first-child p { margin: .25rem 0 1rem; color: var(--muted, #61706b); }
+.unit-draft-list { display: grid; gap: .65rem; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+.unit-draft-card { display: flex; align-items: center; gap: .75rem; padding: .75rem; border: 1px solid var(--line, #dce5e1); border-radius: 13px; }
+.unit-draft-card.active { border-color: var(--primary, #245f50); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary, #245f50) 16%, transparent); }
+.unit-draft-card > a { min-width: 0; flex: 1; display: grid; gap: .15rem; color: inherit; text-decoration: none; }
+.unit-draft-card > a strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.unit-draft-card small, .draft-save-status { color: var(--muted, #61706b); }
+.unit-draft-card button { border: 0; background: transparent; color: #a33c36; font-weight: 700; cursor: pointer; }
+.draft-save-status { display: block; margin-top: .55rem; }
+.detail-subheading { display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; margin-top: .35rem; }
+.detail-subheading small { color: var(--muted, #61706b); }
+.custom-accessory-panel, .car-charge-panel { margin-top: 1rem; padding: 1rem; border: 1px solid var(--line, #dce5e1); border-radius: 16px; background: color-mix(in srgb, var(--surface, #fff) 93%, var(--primary, #245f50)); }
+.custom-accessory-panel .private-detail-heading, .car-charge-panel .private-detail-heading { display: flex; align-items: center; gap: .75rem; }
+.custom-accessory-panel .private-detail-heading > div, .car-charge-panel .private-detail-heading > div { flex: 1; display: grid; }
+.custom-accessory-list { display: grid; gap: .55rem; margin-top: .8rem; }
+.custom-accessory-row { display: flex; gap: .5rem; }
+.custom-accessory-row input { flex: 1; }
+.custom-accessory-row button { width: 2.5rem; border: 1px solid var(--line, #dce5e1); border-radius: 10px; background: transparent; color: #a33c36; font-size: 1.25rem; cursor: pointer; }
+.car-charge-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; margin-top: .9rem; }
+.car-charge-card { padding: .85rem; border: 1px solid var(--line, #dce5e1); border-radius: 13px; background: var(--surface, #fff); }
+.car-charge-card > label { display: flex; gap: .55rem; align-items: flex-start; cursor: pointer; }
+.car-charge-card > label span { display: grid; }
+.car-charge-card > label small { color: var(--muted, #61706b); }
+.car-charge-card .currency-input { margin-top: .75rem; }
+.detail-chip-list.custom span { border-style: dashed; }
+@media (max-width: 760px) {
+    .car-charge-grid { grid-template-columns: 1fr; }
+    .detail-subheading { align-items: flex-start; flex-direction: column; gap: .2rem; }
+}

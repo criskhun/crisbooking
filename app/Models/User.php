@@ -42,13 +42,25 @@ class User extends Authenticatable implements MustVerifyEmailContract
         return $this->hasMany(Unit::class, 'host_id');
     }
 
+    public function unitDrafts(): HasMany
+    {
+        return $this->hasMany(UnitDraft::class, 'host_id');
+    }
+
     public function bookings(): HasMany
     {
         return $this->hasMany(Booking::class, 'client_id');
     }
 
-    public function clientInquiries(): HasMany { return $this->hasMany(Inquiry::class, 'client_id'); }
-    public function hostInquiries(): HasMany { return $this->hasMany(Inquiry::class, 'host_id'); }
+    public function clientInquiries(): HasMany
+    {
+        return $this->hasMany(Inquiry::class, 'client_id');
+    }
+
+    public function hostInquiries(): HasMany
+    {
+        return $this->hasMany(Inquiry::class, 'host_id');
+    }
 
     public function hasCompleteProfile(): bool
     {

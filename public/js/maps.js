@@ -62,7 +62,10 @@
     const reverseGeocode = (geocoder, position, addressInput) => {
         if (!addressInput) return;
         geocoder.geocode({location: position}, (results, status) => {
-            if (status === 'OK' && results?.[0]) addressInput.value = results[0].formatted_address;
+            if (status === 'OK' && results?.[0]) {
+                addressInput.value = results[0].formatted_address;
+                addressInput.dispatchEvent(new Event('input', {bubbles: true}));
+            }
         });
     };
     const geocodeAddress = (container, geocoder, addressInput, callback) => {
@@ -81,7 +84,40 @@
 
             const location = results[0].geometry.location;
             addressInput.value = results[0].formatted_address;
+            addressInput.dispatchEvent(new Event('input', {bubbles: true}));
             callback({lat: location.lat(), lng: location.lng()});
+        });
+    };
+    const enableAddressSearch = (container, map, geocoder, addressInput, callback) => {
+        if (!addressInput) return;
+
+        addressInput.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter') return;
+            event.preventDefault();
+            geocodeAddress(container, geocoder, addressInput, callback);
+        });
+
+        if (!google.maps.places?.Autocomplete) {
+            return;
+        }
+
+        const autocomplete = new google.maps.places.Autocomplete(addressInput, {
+            componentRestrictions: {country: 'ph'},
+            fields: ['formatted_address', 'geometry', 'name'],
+        });
+        autocomplete.bindTo('bounds', map);
+        autocomplete.addListener('place_changed', () => {
+            const place = autocomplete.getPlace();
+            const location = place.geometry?.location;
+            if (!location) {
+                geocodeAddress(container, geocoder, addressInput, callback);
+                return;
+            }
+
+            addressInput.value = place.formatted_address || place.name || addressInput.value;
+            addressInput.dispatchEvent(new Event('input', {bubbles: true}));
+            callback({lat: location.lat(), lng: location.lng()});
+            setStatus(container, 'Place selected. Drag the pin if you need a more exact location.');
         });
     };
     const addUnitMarkers = (map, units) => {
@@ -137,6 +173,8 @@
         const setPoint = (position, updateAddress = false) => {
             latitudeInput.value = position.lat.toFixed(7);
             longitudeInput.value = position.lng.toFixed(7);
+            latitudeInput.dispatchEvent(new Event('input', {bubbles: true}));
+            longitudeInput.dispatchEvent(new Event('input', {bubbles: true}));
             marker.setPosition(position);
             marker.setVisible(true);
             map.panTo(position);
@@ -148,6 +186,7 @@
 
         map.addListener('click', (event) => setPoint({lat: event.latLng.lat(), lng: event.latLng.lng()}, true));
         marker.addListener('dragend', (event) => setPoint({lat: event.latLng.lat(), lng: event.latLng.lng()}, true));
+        enableAddressSearch(container, map, geocoder, addressInput, (position) => setPoint(position));
         container.querySelector('[data-map-use-location]')?.addEventListener('click', () => geolocate(container, (position) => setPoint(position, true)));
         container.querySelector('[data-map-find-address]')?.addEventListener('click', () => geocodeAddress(container, geocoder, addressInput, (position) => setPoint(position)));
         if (!hasSavedPoint) geolocate(container, (position) => setPoint(position, true));
@@ -178,6 +217,8 @@
         const setPoint = (position, updateAddress = false) => {
             latitudeInput.value = position.lat.toFixed(7);
             longitudeInput.value = position.lng.toFixed(7);
+            latitudeInput.dispatchEvent(new Event('input', {bubbles: true}));
+            longitudeInput.dispatchEvent(new Event('input', {bubbles: true}));
             centerMarker.setPosition(position);
             centerMarker.setVisible(true);
             circle.setMap(map);
@@ -201,6 +242,7 @@
         radiusInput.addEventListener('input', syncRadius);
         map.addListener('click', (event) => setPoint({lat: event.latLng.lat(), lng: event.latLng.lng()}, true));
         centerMarker.addListener('dragend', (event) => setPoint({lat: event.latLng.lat(), lng: event.latLng.lng()}, true));
+        enableAddressSearch(container, map, geocoder, addressInput, (position) => setPoint(position));
         container.querySelector('[data-map-use-location]')?.addEventListener('click', () => geolocate(container, (position) => setPoint(position, true)));
         container.querySelector('[data-map-find-address]')?.addEventListener('click', () => geocodeAddress(container, geocoder, addressInput, (position) => setPoint(position)));
         container.querySelector('[data-map-clear]')?.addEventListener('click', () => {

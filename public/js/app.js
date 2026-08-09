@@ -240,7 +240,7 @@
                 field.required = !isPackageRental;
             });
             packageRateSection.querySelectorAll('[data-rate-option]').forEach((option) => syncRateOption(option, isPackageRental));
-            syncDetailSection(carDetailsSection, categorySelect.value === 'car', ['car[make]', 'car[model]', 'car[year]', 'car[transmission]', 'car[fuel_type]']);
+            syncDetailSection(carDetailsSection, categorySelect.value === 'car', ['car[make]', 'car[model]', 'car[year]', 'car[transmission]', 'car[fuel_type]', 'car[color]']);
             syncDetailSection(propertyDetailsSection, categorySelect.value === 'condo', ['property[type]', 'property[bedrooms]', 'property[bathrooms]']);
             const showGpsDetails = categorySelect.value === 'car' && gpsAccessory?.checked;
             syncDetailSection(gpsDetailsSection, showGpsDetails, ['gps[device_name]', 'gps[username]', 'gps[password]']);
@@ -260,6 +260,17 @@
                     });
                 });
             });
+            document.querySelectorAll('[data-car-charge]').forEach((charge) => {
+                const toggle = charge.querySelector('[data-car-charge-toggle]');
+                const amountGroup = charge.querySelector('[data-car-charge-amount]');
+                const amount = amountGroup?.querySelector('input');
+                const enabled = categorySelect.value === 'car' && toggle?.checked;
+                if (amountGroup) amountGroup.hidden = !enabled;
+                if (amount) {
+                    amount.disabled = !enabled;
+                    amount.required = enabled;
+                }
+            });
 
             const rulesCopy = {
                 car: ['Car rules', 'Include fuel, mileage, pickup, driver, smoking, and damage rules.'],
@@ -278,7 +289,7 @@
             toggle.addEventListener('change', () => syncRateOption(toggle.closest('[data-rate-option]'), ['car', 'condo'].includes(categorySelect?.value)));
         });
         gpsAccessory?.addEventListener('change', syncListingRates);
-        document.querySelectorAll('[data-property-amenity], [data-amenity-payment]').forEach((field) => field.addEventListener('change', syncListingRates));
+        document.querySelectorAll('[data-property-amenity], [data-amenity-payment], [data-car-charge-toggle]').forEach((field) => field.addEventListener('change', syncListingRates));
         document.querySelectorAll('[data-password-reveal]').forEach((button) => {
             button.addEventListener('click', () => {
                 const input = button.parentElement?.querySelector('input');
@@ -289,6 +300,96 @@
             });
         });
         syncListingRates();
+
+        document.querySelectorAll('[data-custom-accessories]').forEach((panel) => {
+            const list = panel.querySelector('[data-accessory-list]');
+            const addRow = (value = '') => {
+                const row = document.createElement('div');
+                row.className = 'custom-accessory-row';
+                const input = document.createElement('input');
+                input.name = 'custom_accessories[]';
+                input.maxLength = 80;
+                input.placeholder = 'e.g. Portable tire inflator';
+                input.value = value;
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.dataset.removeAccessory = '';
+                remove.setAttribute('aria-label', 'Remove accessory');
+                remove.textContent = '×';
+                row.append(input, remove);
+                list?.append(row);
+                input.focus();
+            };
+            panel.querySelector('[data-add-accessory]')?.addEventListener('click', () => addRow());
+            panel.addEventListener('click', (event) => {
+                const remove = event.target.closest('[data-remove-accessory]');
+                if (!remove) return;
+                remove.closest('.custom-accessory-row')?.remove();
+                if (list && !list.children.length) addRow();
+                panel.dispatchEvent(new Event('change', {bubbles: true}));
+            });
+        });
+
+        const draftForm = document.querySelector('[data-unit-draft-form]');
+        if (draftForm) {
+            const status = document.querySelector('[data-draft-save-status]');
+            const draftIdInput = draftForm.querySelector('[data-draft-id-input]');
+            let saveTimer = null;
+            let saving = false;
+            let saveAgain = false;
+            let submitting = false;
+
+            const saveDraft = async () => {
+                if (submitting || saving) {
+                    saveAgain = saving;
+                    return;
+                }
+
+                saving = true;
+                if (status) status.textContent = 'Saving draft…';
+                const payload = new FormData();
+                new FormData(draftForm).forEach((value, key) => {
+                    if (!(value instanceof File)) payload.append(key, value);
+                });
+
+                try {
+                    const response = await fetch(draftForm.dataset.draftSaveUrl, {
+                        method: 'POST',
+                        body: payload,
+                        headers: {'Accept': 'application/json'},
+                    });
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.message || 'Draft could not be saved.');
+                    draftForm.dataset.draftId = String(result.id);
+                    if (draftIdInput) draftIdInput.value = String(result.id);
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('draft', result.id);
+                    window.history.replaceState({}, '', url);
+                    if (status) status.textContent = `Draft saved at ${new Date().toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'})}. Photos are not included.`;
+                } catch (error) {
+                    if (status) status.textContent = error.message || 'Draft could not be saved. Check your connection.';
+                } finally {
+                    saving = false;
+                    if (saveAgain) {
+                        saveAgain = false;
+                        window.setTimeout(saveDraft, 100);
+                    }
+                }
+            };
+            const scheduleDraftSave = () => {
+                if (submitting) return;
+                window.clearTimeout(saveTimer);
+                if (status) status.textContent = 'Unsaved changes…';
+                saveTimer = window.setTimeout(saveDraft, 900);
+            };
+
+            draftForm.addEventListener('input', scheduleDraftSave);
+            draftForm.addEventListener('change', scheduleDraftSave);
+            draftForm.addEventListener('submit', () => {
+                submitting = true;
+                window.clearTimeout(saveTimer);
+            });
+        }
 
         const toLocalInputValue = (date) => {
             const pad = (value) => String(value).padStart(2, '0');

@@ -25,6 +25,7 @@ class Booking extends Model
         'rate_period',
         'rate_quantity',
         'package_breakdown',
+        'additional_charges',
         'total_amount',
         'party_size',
         'change_party_size',
@@ -46,6 +47,7 @@ class Booking extends Model
             'total_amount' => 'decimal:2',
             'rate_quantity' => 'integer',
             'package_breakdown' => 'array',
+            'additional_charges' => 'array',
             'party_size' => 'integer',
             'change_party_size' => 'integer',
             'change_package_breakdown' => 'array',
@@ -112,11 +114,25 @@ class Booking extends Model
 
     public function packageUnitPrice(): float
     {
-        return round((float) $this->total_amount / max(1, (int) $this->rate_quantity), 2);
+        $charges = (float) collect($this->additional_charges ?? [])->sum('amount');
+
+        return round(max(0, (float) $this->total_amount - $charges) / max(1, (int) $this->rate_quantity), 2);
     }
 
     public function packageTotalFor(Carbon $start, Carbon $end): float
     {
         return round($this->packageUnitPrice() * $this->packageQuantityFor($start, $end), 2);
+    }
+
+    public function refundableDepositAmount(): float
+    {
+        return round((float) collect($this->additional_charges ?? [])
+            ->filter(fn ($charge) => (bool) ($charge['refundable'] ?? false))
+            ->sum('amount'), 2);
+    }
+
+    public function revenueAmount(): float
+    {
+        return round(max(0, (float) $this->total_amount - $this->refundableDepositAmount()), 2);
     }
 }

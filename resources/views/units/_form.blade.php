@@ -5,6 +5,10 @@
     $offeredRates = old('offered_rates', $defaultOfferedRates);
     $carDetails = old('car', $unit->car_details ?? []);
     $carAccessories = old('car_accessories', $unit->car_details['accessories'] ?? []);
+    $customAccessories = old('custom_accessories', $unit->car_details['custom_accessories'] ?? []);
+    $storedCarCharges = $unit->car_details['charges'] ?? [];
+    $defaultCarCharges = collect(['car_wash', 'delivery', 'deposit'])->mapWithKeys(fn ($key) => [$key => ['enabled' => isset($storedCarCharges[$key]), 'amount' => $storedCarCharges[$key]['amount'] ?? '']])->all();
+    $carCharges = old('car_charges', $defaultCarCharges);
     $gpsDetails = old('gps', $unit->gps_details ?? []);
     $propertyDetails = old('property', $unit->property_details ?? []);
     $propertyAmenities = old('property_amenities', $unit->property_details['amenities'] ?? []);
@@ -117,11 +121,35 @@
             <div class="field-group"><label for="car_year">Year</label><input id="car_year" name="car[year]" type="number" value="{{ $carDetails['year'] ?? '' }}" min="1900" max="{{ now()->year + 2 }}" placeholder="{{ now()->year }}">@error('car.year')<p class="error-text">{{ $message }}</p>@enderror</div>
             <div class="field-group"><label for="transmission">Transmission</label><select id="transmission" name="car[transmission]"><option value="automatic" @selected(($carDetails['transmission'] ?? '') === 'automatic')>Automatic</option><option value="manual" @selected(($carDetails['transmission'] ?? '') === 'manual')>Manual</option></select>@error('car.transmission')<p class="error-text">{{ $message }}</p>@enderror</div>
             <div class="field-group"><label for="fuel_type">Fuel type</label><select id="fuel_type" name="car[fuel_type]">@foreach(['gasoline' => 'Gasoline', 'diesel' => 'Diesel', 'hybrid' => 'Hybrid', 'electric' => 'Electric'] as $value => $label)<option value="{{ $value }}" @selected(($carDetails['fuel_type'] ?? '') === $value)>{{ $label }}</option>@endforeach</select>@error('car.fuel_type')<p class="error-text">{{ $message }}</p>@enderror</div>
+            <div class="field-group"><label for="car_color">Color</label><input id="car_color" name="car[color]" list="car-color-options" value="{{ $carDetails['color'] ?? '' }}" maxlength="50" placeholder="Select or type a color"><datalist id="car-color-options">@foreach(['Black', 'White', 'Silver', 'Gray', 'Red', 'Blue', 'Brown', 'Beige', 'Green', 'Yellow', 'Orange', 'Gold'] as $color)<option value="{{ $color }}">@endforeach</datalist>@error('car.color')<p class="error-text">{{ $message }}</p>@enderror</div>
         </div>
+        <div class="detail-subheading"><strong>Included accessories</strong><small>Select the common accessories that come with this car.</small></div>
         <div class="option-check-grid">
             @foreach (['air_conditioning' => 'Air conditioning', 'bluetooth' => 'Bluetooth', 'usb_charger' => 'USB charger', 'dashcam' => 'Dashcam', 'gps' => 'GPS', 'child_seat' => 'Child seat', 'roof_rack' => 'Roof rack', 'reverse_camera' => 'Reverse camera', 'toll_tag' => 'Toll tag', 'phone_holder' => 'Phone holder'] as $value => $label)
                 <label><input type="checkbox" name="car_accessories[]" value="{{ $value }}" @checked(in_array($value, $carAccessories)) @if($value === 'gps') data-gps-accessory @endif><span>{{ $label }}</span></label>
             @endforeach
+        </div>
+        <div class="custom-accessory-panel" data-custom-accessories>
+            <div class="private-detail-heading"><span>＋</span><div><strong>Other included accessories</strong><small>Add equipment that is not in the standard checklist.</small></div><button class="map-action-button" type="button" data-add-accessory>Add accessory</button></div>
+            <div class="custom-accessory-list" data-accessory-list>
+                @foreach(count($customAccessories) ? $customAccessories : [''] as $accessory)
+                    <div class="custom-accessory-row"><input name="custom_accessories[]" value="{{ $accessory }}" maxlength="80" placeholder="e.g. Portable tire inflator"><button type="button" data-remove-accessory aria-label="Remove accessory">×</button></div>
+                @endforeach
+            </div>
+            @error('custom_accessories.*')<p class="error-text">{{ $message }}</p>@enderror
+        </div>
+        <div class="car-charge-panel" data-car-charges>
+            <div class="private-detail-heading"><span>₱</span><div><strong>Required car charges</strong><small>The host decides which charges apply. Enabled charges are added automatically to every booking.</small></div></div>
+            <div class="car-charge-grid">
+                @foreach(['car_wash' => ['Car wash', 'Cleaning charge added per booking.'], 'delivery' => ['Delivery', 'Vehicle delivery or pickup charge per booking.'], 'deposit' => ['Refundable deposit', 'Security deposit collected with the booking.']] as $chargeKey => [$chargeLabel, $chargeHelp])
+                    @php($charge = $carCharges[$chargeKey] ?? ['enabled' => false, 'amount' => ''])
+                    <div class="car-charge-card" data-car-charge>
+                        <label><input type="hidden" name="car_charges[{{ $chargeKey }}][enabled]" value="0"><input type="checkbox" name="car_charges[{{ $chargeKey }}][enabled]" value="1" @checked(filter_var($charge['enabled'] ?? false, FILTER_VALIDATE_BOOL)) data-car-charge-toggle><span><strong>{{ $chargeLabel }}</strong><small>{{ $chargeHelp }}</small></span></label>
+                        <div class="currency-input" data-car-charge-amount><span>₱</span><input name="car_charges[{{ $chargeKey }}][amount]" type="number" value="{{ $charge['amount'] ?? '' }}" min="0" max="9999999999.99" step="0.01" placeholder="0.00"></div>
+                        @error('car_charges.'.$chargeKey.'.amount')<p class="error-text">{{ $message }}</p>@enderror
+                    </div>
+                @endforeach
+            </div>
         </div>
         <div class="private-detail-panel" data-gps-details-section>
             <div class="private-detail-heading"><span>🔒</span><div><strong>Private GPS access</strong><small>Encrypted and visible only in the host’s listing manager.</small></div></div>

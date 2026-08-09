@@ -43,7 +43,7 @@
                 window.dispatchEvent(new Event('mybooking:maps-auth-failure'));
             };
         </script>
-        <script async src="https://maps.googleapis.com/maps/api/js?key={{ urlencode(config('services.google.maps_api_key')) }}&loading=async&libraries=geometry&callback=initDavaoRentZoneGoogleMaps"></script>
+        <script async src="https://maps.googleapis.com/maps/api/js?key={{ urlencode(config('services.google.maps_api_key')) }}&loading=async&libraries=geometry,places&callback=initDavaoRentZoneGoogleMaps"></script>
     @endif
 </head>
 <body class="@yield('body-class', 'site-body')">

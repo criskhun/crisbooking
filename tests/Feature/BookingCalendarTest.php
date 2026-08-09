@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Booking;
 use App\Models\Inquiry;
 use App\Models\Unit;
+use App\Models\UnitDraft;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -16,6 +17,36 @@ use Tests\TestCase;
 class BookingCalendarTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_host_can_autosave_reopen_and_delete_an_encrypted_listing_draft(): void
+    {
+        $host = User::factory()->host()->create();
+        $otherHost = User::factory()->host()->create();
+
+        $response = $this->actingAs($host)->postJson(route('unit-drafts.store'), [
+            'name' => 'Draft Family Van',
+            'kind' => 'unit',
+            'category' => 'car',
+            'car' => ['make' => 'Toyota', 'color' => 'Pearl White'],
+            'gps' => ['password' => 'private-draft-secret'],
+            'custom_accessories' => ['Portable tire inflator'],
+        ])->assertOk();
+
+        $draft = UnitDraft::findOrFail($response->json('id'));
+        $this->assertSame('Draft Family Van', $draft->title);
+        $this->assertSame('Pearl White', $draft->payload['car']['color']);
+        $this->assertStringNotContainsString('private-draft-secret', DB::table('unit_drafts')->where('id', $draft->id)->value('payload'));
+
+        $this->actingAs($host)->get(route('units.create', ['draft' => $draft]))
+            ->assertOk()
+            ->assertSee('Draft Family Van')
+            ->assertSee('Portable tire inflator')
+            ->assertSee('Delete');
+
+        $this->actingAs($otherHost)->delete(route('unit-drafts.destroy', $draft))->assertForbidden();
+        $this->actingAs($host)->delete(route('unit-drafts.destroy', $draft))->assertRedirect(route('units.create'));
+        $this->assertDatabaseMissing('unit_drafts', ['id' => $draft->id]);
+    }
 
     public function test_host_can_register_a_unit_and_client_cannot(): void
     {
@@ -93,16 +124,74 @@ class BookingCalendarTest extends TestCase
                 'year' => 2026,
                 'transmission' => 'automatic',
                 'fuel_type' => 'gasoline',
+                'color' => 'Silver',
             ],
             'car_accessories' => ['air_conditioning', 'bluetooth', 'reverse_camera'],
+            'custom_accessories' => ['Portable tire inflator', 'Emergency toolkit'],
+            'car_charges' => [
+                'car_wash' => ['enabled' => 1, 'amount' => 350],
+                'delivery' => ['enabled' => 0, 'amount' => null],
+                'deposit' => ['enabled' => 1, 'amount' => 2500],
+            ],
             'is_active' => 1,
         ])->assertRedirect('/units');
 
         $unit = Unit::firstOrFail();
         $this->assertSame('Toyota', $unit->car_details['make']);
+        $this->assertSame('Silver', $unit->car_details['color']);
         $this->assertSame(['air_conditioning', 'bluetooth', 'reverse_camera'], $unit->car_details['accessories']);
+        $this->assertSame(['Portable tire inflator', 'Emergency toolkit'], $unit->car_details['custom_accessories']);
+        $this->assertEquals(350.0, $unit->car_details['charges']['car_wash']['amount']);
+        $this->assertArrayNotHasKey('delivery', $unit->car_details['charges']);
+        $this->assertTrue($unit->car_details['charges']['deposit']['refundable']);
         $this->assertDatabaseCount('unit_rates', 2);
         $this->assertDatabaseCount('unit_images', 2);
+    }
+
+    public function test_required_car_charges_are_snapshotted_and_added_to_the_booking_total(): void
+    {
+        $host = User::factory()->host()->create();
+        $client = User::factory()->create();
+        $unit = $this->createUnit($host, [
+            'name' => 'Charged Rental Car',
+            'kind' => 'unit',
+            'category' => 'car',
+            'price' => 2500,
+            'pricing_unit' => 'day',
+            'car_details' => [
+                'make' => 'Toyota',
+                'model' => 'Vios',
+                'color' => 'Blue',
+                'charges' => [
+                    'car_wash' => ['label' => 'Car wash', 'amount' => 300, 'refundable' => false],
+                    'delivery' => ['label' => 'Delivery', 'amount' => 500, 'refundable' => false],
+                    'deposit' => ['label' => 'Refundable deposit', 'amount' => 2000, 'refundable' => true],
+                ],
+            ],
+        ]);
+        $unit->rates()->create(['period' => 'day', 'price' => 2500]);
+        $start = now()->addDays(3)->startOfHour();
+        $inquiry = $this->createInquiry($unit, $client, $start, $start->copy()->addDay());
+
+        $this->actingAs($client)->post(route('bookings.store'), [
+            'unit_id' => $unit->id,
+            'inquiry_id' => $inquiry->id,
+            'duration_pricing' => 1,
+            'start_at' => $start->toDateTimeString(),
+            'end_at' => $start->copy()->addDay()->toDateTimeString(),
+        ])->assertRedirect();
+
+        $booking = Booking::firstOrFail();
+        $this->assertSame('5300.00', $booking->total_amount);
+        $this->assertCount(3, $booking->additional_charges);
+        $this->assertTrue($booking->additional_charges[2]['refundable']);
+        $this->assertSame(2000.0, $booking->refundableDepositAmount());
+        $this->assertSame(3300.0, $booking->revenueAmount());
+        $this->actingAs($client)->get(route('bookings.show', $booking))
+            ->assertOk()
+            ->assertSee('Required charges')
+            ->assertSee('Refundable deposit')
+            ->assertSee('₱5,300.00');
     }
 
     public function test_host_can_add_and_remove_gallery_images_without_removing_them_all(): void
@@ -366,6 +455,7 @@ class BookingCalendarTest extends TestCase
                 'year' => 2026,
                 'transmission' => 'automatic',
                 'fuel_type' => 'diesel',
+                'color' => 'Black',
             ],
             'car_accessories' => ['gps'],
             'rules' => 'No smoking. Return with a full tank.',
@@ -799,7 +889,7 @@ class BookingCalendarTest extends TestCase
         $host = User::factory()->host()->create();
         $client = User::factory()->create(['name' => 'Long Stay Client']);
         $unit = $this->createUnit($host, ['name' => 'Multi-day Condo']);
-        $weekStart = now()->addWeeks(2)->startOfWeek(\Carbon\Carbon::SUNDAY);
+        $weekStart = now()->addWeeks(2)->startOfWeek(Carbon::SUNDAY);
         $start = $weekStart->copy()->addDay()->setTime(15, 0);
         $end = $weekStart->copy()->addDays(4)->setTime(10, 0);
         $booking = Booking::create([

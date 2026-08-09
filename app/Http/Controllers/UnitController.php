@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Unit;
 use App\Models\InquiryMessage;
+use App\Models\Unit;
+use App\Models\UnitDraft;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -35,7 +38,19 @@ class UnitController extends Controller
             return redirect()->route('profile.edit')->withErrors(['profile' => 'Complete your identity and contact profile before registering a listing.']);
         }
 
-        return view('units.create');
+        $draft = null;
+
+        if ($request->filled('draft')) {
+            $draft = $request->user()->unitDrafts()->findOrFail($request->integer('draft'));
+
+            if (! $request->session()->hasOldInput()) {
+                $request->session()->flashInput($draft->payload ?? []);
+            }
+        }
+
+        $drafts = $request->user()->unitDrafts()->latest('updated_at')->get();
+
+        return view('units.create', compact('draft', 'drafts'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -45,6 +60,9 @@ class UnitController extends Controller
         }
 
         $validated = $this->validated($request);
+        $draft = $request->filled('draft_id')
+            ? $request->user()->unitDrafts()->findOrFail($request->integer('draft_id'))
+            : null;
         $newImagePaths = $this->storePhotos($request);
         $wifiQrPath = $this->storeWifiQr($request, $validated);
 
@@ -60,12 +78,54 @@ class UnitController extends Controller
             });
         } catch (\Throwable $exception) {
             Storage::disk('public')->delete($newImagePaths);
-            if ($wifiQrPath) Storage::disk('local')->delete($wifiQrPath);
+            if ($wifiQrPath) {
+                Storage::disk('local')->delete($wifiQrPath);
+            }
 
             throw $exception;
         }
 
+        $draft?->delete();
+
         return redirect()->route('units.index')->with('status', "{$unit->name} is now registered and available for booking.");
+    }
+
+    public function saveDraft(Request $request): JsonResponse
+    {
+        if (! $request->user()->hasCompleteProfile()) {
+            return response()->json(['message' => 'Complete your profile before saving listing drafts.'], 422);
+        }
+
+        $draft = $request->filled('draft_id')
+            ? $request->user()->unitDrafts()->findOrFail($request->integer('draft_id'))
+            : new UnitDraft(['host_id' => $request->user()->id]);
+
+        $payload = $this->sanitizeDraftPayload($request->except([
+            '_token', '_method', 'draft_id', 'photos', 'primary_image', 'remove_images', 'wifi_qr', 'remove_wifi_qr',
+        ]));
+        $name = trim((string) ($payload['name'] ?? ''));
+        $category = Str::of((string) ($payload['category'] ?? 'listing'))->replace('_', ' ')->title();
+
+        $draft->fill([
+            'title' => $name !== '' ? Str::limit($name, 120, '') : "Untitled {$category} draft",
+            'payload' => $payload,
+        ])->save();
+
+        return response()->json([
+            'id' => $draft->id,
+            'title' => $draft->title,
+            'updated_at' => $draft->updated_at?->toIso8601String(),
+        ]);
+    }
+
+    public function destroyDraft(Request $request, UnitDraft $draft): RedirectResponse
+    {
+        abort_unless($request->user()->is_admin || $draft->host_id === $request->user()->id, 403);
+
+        $title = $draft->title ?: 'Listing draft';
+        $draft->delete();
+
+        return redirect()->route('units.create')->with('status', "{$title} was deleted.");
     }
 
     public function edit(Request $request, Unit $unit): View
@@ -102,13 +162,17 @@ class UnitController extends Controller
             });
         } catch (\Throwable $exception) {
             Storage::disk('public')->delete($newImagePaths);
-            if ($newWifiQrPath) Storage::disk('local')->delete($newWifiQrPath);
+            if ($newWifiQrPath) {
+                Storage::disk('local')->delete($newWifiQrPath);
+            }
 
             throw $exception;
         }
 
         Storage::disk('public')->delete($removedImagePaths->all());
-        if ($oldWifiQrPath && $oldWifiQrPath !== $finalWifiQrPath) Storage::disk('local')->delete($oldWifiQrPath);
+        if ($oldWifiQrPath && $oldWifiQrPath !== $finalWifiQrPath) {
+            Storage::disk('local')->delete($oldWifiQrPath);
+        }
 
         return redirect()->route('units.index')->with('status', "{$unit->name} was updated.");
     }
@@ -127,7 +191,9 @@ class UnitController extends Controller
         $inquiryAttachmentPaths = InquiryMessage::query()->whereNotNull('attachment_path')->whereHas('inquiry', fn ($query) => $query->where('unit_id', $unit->id))->pluck('attachment_path');
         $unit->delete();
         Storage::disk('public')->delete($photoPaths->all());
-        if ($wifiQrPath) Storage::disk('local')->delete($wifiQrPath);
+        if ($wifiQrPath) {
+            Storage::disk('local')->delete($wifiQrPath);
+        }
         Storage::disk('local')->delete($inquiryAttachmentPaths->all());
 
         return redirect()->route('units.index')->with('status', "{$name} was removed.");
@@ -158,6 +224,8 @@ class UnitController extends Controller
         $isProperty = $request->input('category') === 'condo';
         $offeredRates = $request->input('offered_rates', []);
         $hasGps = $isCar && in_array('gps', $request->input('car_accessories', []), true);
+        $enabledCarCharges = collect(['car_wash', 'delivery', 'deposit'])
+            ->filter(fn ($charge) => $isCar && $request->boolean("car_charges.{$charge}.enabled"));
         $propertyAmenities = $request->input('property_amenities', []);
         $hasWifi = $isProperty && in_array('wifi', $propertyAmenities, true);
         $hasParking = $isProperty && in_array('parking', $propertyAmenities, true);
@@ -194,8 +262,18 @@ class UnitController extends Controller
             'car.year' => [Rule::requiredIf($isCar), 'nullable', 'integer', 'min:1900', 'max:'.(now()->year + 2)],
             'car.transmission' => [Rule::requiredIf($isCar), 'nullable', Rule::in(['automatic', 'manual'])],
             'car.fuel_type' => [Rule::requiredIf($isCar), 'nullable', Rule::in(['gasoline', 'diesel', 'hybrid', 'electric'])],
+            'car.color' => [Rule::requiredIf($isCar), 'nullable', 'string', 'max:50'],
             'car_accessories' => ['nullable', 'array'],
             'car_accessories.*' => [Rule::in(['air_conditioning', 'bluetooth', 'usb_charger', 'dashcam', 'gps', 'child_seat', 'roof_rack', 'reverse_camera', 'toll_tag', 'phone_holder'])],
+            'custom_accessories' => ['nullable', 'array', 'max:20'],
+            'custom_accessories.*' => ['nullable', 'string', 'max:80'],
+            'car_charges' => ['nullable', 'array'],
+            'car_charges.car_wash.enabled' => ['nullable', 'boolean'],
+            'car_charges.car_wash.amount' => [Rule::requiredIf($enabledCarCharges->contains('car_wash')), 'nullable', 'numeric', 'min:0', 'max:9999999999.99'],
+            'car_charges.delivery.enabled' => ['nullable', 'boolean'],
+            'car_charges.delivery.amount' => [Rule::requiredIf($enabledCarCharges->contains('delivery')), 'nullable', 'numeric', 'min:0', 'max:9999999999.99'],
+            'car_charges.deposit.enabled' => ['nullable', 'boolean'],
+            'car_charges.deposit.amount' => [Rule::requiredIf($enabledCarCharges->contains('deposit')), 'nullable', 'numeric', 'min:0', 'max:9999999999.99'],
             'gps.device_name' => [Rule::requiredIf($hasGps), 'nullable', 'string', 'max:120'],
             'gps.login_url' => ['nullable', 'url:http,https', 'max:500'],
             'gps.username' => [Rule::requiredIf($hasGps), 'nullable', 'string', 'max:190'],
@@ -254,13 +332,31 @@ class UnitController extends Controller
         $rates = collect($validated['rates'] ?? [])->only($offeredRates)->all();
         $carDetails = $validated['car'] ?? [];
         $carDetails['accessories'] = $validated['car_accessories'] ?? [];
+        $carDetails['custom_accessories'] = collect($validated['custom_accessories'] ?? [])
+            ->map(fn ($accessory) => trim((string) $accessory))
+            ->filter()
+            ->unique(fn ($accessory) => Str::lower($accessory))
+            ->values()
+            ->all();
+        $chargeLabels = ['car_wash' => 'Car wash', 'delivery' => 'Delivery', 'deposit' => 'Refundable deposit'];
+        $carDetails['charges'] = collect($validated['car_charges'] ?? [])
+            ->filter(fn ($charge) => filter_var($charge['enabled'] ?? false, FILTER_VALIDATE_BOOL))
+            ->map(fn ($charge, $key) => [
+                'key' => $key,
+                'label' => $chargeLabels[$key] ?? Str::of($key)->replace('_', ' ')->title(),
+                'amount' => round((float) ($charge['amount'] ?? 0), 2),
+                'refundable' => $key === 'deposit',
+            ])
+            ->keyBy('key')
+            ->map(fn ($charge) => collect($charge)->except('key')->all())
+            ->all();
         $gpsDetails = $validated['gps'] ?? [];
         $wifiDetails = $validated['wifi'] ?? [];
         $propertyDetails = $validated['property'] ?? [];
         $propertyDetails['amenities'] = $validated['property_amenities'] ?? [];
         $propertyDetails['parking'] = in_array('parking', $propertyDetails['amenities'], true) ? ($validated['parking'] ?? []) : null;
         $propertyDetails['pool'] = in_array('pool', $propertyDetails['amenities'], true) ? ($validated['pool'] ?? []) : null;
-        unset($validated['photos'], $validated['primary_image'], $validated['remove_images'], $validated['offered_rates'], $validated['rates'], $validated['car'], $validated['car_accessories'], $validated['gps'], $validated['wifi'], $validated['wifi_qr'], $validated['remove_wifi_qr'], $validated['parking'], $validated['pool'], $validated['property'], $validated['property_amenities']);
+        unset($validated['photos'], $validated['primary_image'], $validated['remove_images'], $validated['offered_rates'], $validated['rates'], $validated['car'], $validated['car_accessories'], $validated['custom_accessories'], $validated['car_charges'], $validated['gps'], $validated['wifi'], $validated['wifi_qr'], $validated['remove_wifi_qr'], $validated['parking'], $validated['pool'], $validated['property'], $validated['property_amenities']);
 
         $validated['car_details'] = $validated['category'] === 'car' ? $carDetails : null;
         $validated['gps_details'] = $validated['category'] === 'car' && in_array('gps', $carDetails['accessories'], true) ? $gpsDetails : null;
@@ -357,5 +453,27 @@ class UnitController extends Controller
     private function authorizeOwner(Request $request, Unit $unit): void
     {
         abort_unless($request->user()->is_admin || $unit->host_id === $request->user()->id, 403);
+    }
+
+    private function sanitizeDraftPayload(array $payload, int $depth = 0): array
+    {
+        if ($depth > 5) {
+            return [];
+        }
+
+        return collect($payload)
+            ->take(150)
+            ->map(function ($value) use ($depth) {
+                if (is_array($value)) {
+                    return $this->sanitizeDraftPayload($value, $depth + 1);
+                }
+
+                if (is_string($value)) {
+                    return Str::limit($value, 5000, '');
+                }
+
+                return is_scalar($value) || $value === null ? $value : null;
+            })
+            ->all();
     }
 }

@@ -27,7 +27,8 @@ class DashboardController extends Controller
         $upcomingCount = (clone $bookings)->blocking()->where('start_at', '>', now())->count();
         $monthSales = (clone $bookings)->where('status', 'confirmed')
             ->whereBetween('start_at', [now()->startOfMonth(), now()->endOfMonth()])
-            ->sum('total_amount');
+            ->get(['total_amount', 'additional_charges'])
+            ->sum(fn (Booking $booking) => $booking->revenueAmount());
         $pendingBalance = (clone $bookings)->where('status', 'pending')->sum('total_amount');
         $todayBookings = (clone $bookings)->with(['unit.host', 'client'])
             ->blocking()
