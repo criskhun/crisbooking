@@ -1,0 +1,103 @@
+/* Single-line iOS date field and private document viewer. */
+.profile-date-shell {
+    position: relative !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: 2.75rem !important;
+    min-height: 2.75rem !important;
+    max-height: 2.75rem !important;
+    overflow: hidden !important;
+    border-radius: 11px !important;
+}
+
+.profile-date-shell::after {
+    content: "⌄";
+    position: absolute;
+    z-index: 1;
+    top: 50%;
+    right: .8rem;
+    color: var(--muted);
+    pointer-events: none;
+    transform: translateY(-50%);
+}
+
+.verification-grid .profile-date-shell .profile-date-input {
+    position: absolute !important;
+    inset: 0 !important;
+    display: block !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+    inline-size: 100% !important;
+    min-inline-size: 0 !important;
+    max-inline-size: 100% !important;
+    padding: .55rem 2.3rem .55rem .75rem !important;
+    overflow: hidden !important;
+    font-size: 1rem !important;
+    line-height: 1.1 !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+}
+
+.verification-grid .profile-date-input::-webkit-date-and-time-value {
+    width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    text-align: left !important;
+}
+
+.verification-grid .profile-date-input::-webkit-calendar-picker-indicator {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    opacity: 0 !important;
+    cursor: pointer !important;
+}
+
+.document-viewer-body {
+    min-height: 100vh !important;
+    overflow: hidden !important;
+    color: #f6fbf8 !important;
+    background: #09100e !important;
+}
+
+.document-viewer-shell {
+    min-height: 100dvh !important;
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
+}
+
+.document-viewer-header {
+    position: sticky !important;
+    z-index: 2 !important;
+    top: 0 !important;
+}
+
+@media (max-width: 520px) {
+    .document-viewer-header {
+        padding-right: max(.7rem, env(safe-area-inset-right)) !important;
+        padding-left: max(.7rem, env(safe-area-inset-left)) !important;
+    }
+
+    .document-viewer-header > div span {
+        display: none !important;
+    }
+
+    .document-viewer-back {
+        min-height: 2.45rem !important;
+        padding: .55rem .7rem !important;
+    }
+
+    .document-viewer-stage {
+        padding: .5rem !important;
+    }
+}

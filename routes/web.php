@@ -74,6 +74,7 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     Route::get('/profile/locations/cities', [ProfileLocationController::class, 'cities'])->name('profile.locations.cities');
     Route::get('/profile/locations/barangays', [ProfileLocationController::class, 'barangays'])->name('profile.locations.barangays');
     Route::get('/profiles/{profile}', [ProfileController::class, 'show'])->name('profiles.show');
+    Route::get('/profiles/{profile}/government-id/view', [ProfileController::class, 'documentPreview'])->name('profiles.document.preview');
     Route::get('/profiles/{profile}/government-id', [ProfileController::class, 'document'])->name('profiles.document');
     Route::get('/inquiries', [InquiryController::class, 'index'])->name('inquiries.index');
     Route::post('/inquiries', [InquiryController::class, 'store'])->name('inquiries.store');

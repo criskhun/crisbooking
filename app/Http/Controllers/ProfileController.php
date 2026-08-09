@@ -83,6 +83,19 @@ class ProfileController extends Controller
         ]);
     }
 
+    public function documentPreview(Request $request, User $profile): View
+    {
+        abort_unless($this->canView($request->user(), $profile), 403);
+        abort_unless($profile->government_id_path && Storage::disk('local')->exists($profile->government_id_path), 404);
+
+        return view('profiles.document', [
+            'profileUser' => $profile,
+            'documentUrl' => route('profiles.document', $profile),
+            'isPdf' => str_ends_with(strtolower($profile->government_id_path), '.pdf'),
+            'backUrl' => $request->user()->is($profile) ? route('profile.edit') : route('profiles.show', $profile),
+        ]);
+    }
+
     private function canView(User $viewer, User $profile): bool
     {
         if ($viewer->is_admin || $viewer->is($profile)) return true;

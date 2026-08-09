@@ -46,6 +46,11 @@ class ProfileInquiryTest extends TestCase
         Storage::disk('local')->assertExists($user->government_id_path);
         $this->assertStringNotContainsString('PH-1234-5678-9000', DB::table('users')->where('id', $user->id)->value('government_id_number'));
         $this->actingAs($user)->get(route('profiles.document', $user))->assertOk();
+        $this->actingAs($user)->get(route('profiles.document.preview', $user))
+            ->assertOk()
+            ->assertSee('Back to profile')
+            ->assertSee(route('profile.edit'), false)
+            ->assertSee(route('profiles.document', $user), false);
     }
 
     public function test_profile_requires_age_seventeen_but_not_mobile_otp_verification(): void
@@ -195,6 +200,7 @@ class ProfileInquiryTest extends TestCase
         $this->actingAs($host)->get(route('profiles.show', $client))->assertOk()->assertSee($client->phone);
         $this->actingAs($client)->get(route('profiles.show', $host))->assertOk()->assertSee($host->phone);
         $this->actingAs($stranger)->get(route('profiles.show', $client))->assertForbidden();
+        $this->actingAs($stranger)->get(route('profiles.document.preview', $client))->assertForbidden();
         $this->actingAs($stranger)->get(route('inquiries.show', $inquiry))->assertForbidden();
     }
 
