@@ -1,0 +1,38 @@
+/* iOS date controls otherwise retain an oversized intrinsic width. */
+@media (max-width: 740px) {
+    .verification-grid .field-group:has(.profile-date-input) {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        overflow: hidden !important;
+    }
+
+    .verification-grid .profile-date-input {
+        display: block !important;
+        box-sizing: border-box !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        inline-size: 100% !important;
+        min-inline-size: 0 !important;
+        max-inline-size: 100% !important;
+        height: 3.35rem !important;
+        min-height: 3.35rem !important;
+        padding: .8rem 1rem !important;
+        overflow: hidden !important;
+        font-size: 1rem !important;
+    }
+
+    .verification-grid .profile-date-input::-webkit-date-and-time-value {
+        width: 100% !important;
+        min-width: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        text-align: left !important;
+    }
+
+    .verification-grid .profile-date-input::-webkit-calendar-picker-indicator {
+        flex: 0 0 auto !important;
+        margin: 0 !important;
+    }
+}

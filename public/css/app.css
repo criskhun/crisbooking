@@ -819,6 +819,8 @@ html[data-color-mode="dark"] .button-selected { color: var(--lime); }
 .verification-section-heading > span { display: grid; place-items: center; width: 2rem; height: 2rem; flex: 0 0 auto; border-radius: 8px; color: var(--forest); background: var(--mint); font-size: .62rem; font-weight: 900; }.verification-section-heading > div { min-width: 0; }.verification-section-heading h2 { margin: 0; font: 800 1rem Manrope; overflow-wrap: anywhere; }.verification-section-heading p { margin: .2rem 0 0; color: var(--muted); font-size: .65rem; overflow-wrap: anywhere; }
 .verification-grid { display: grid; min-width: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }.verification-wide { min-width: 0; grid-column: 1 / -1; }
 .verification-grid .field-group, .verification-grid input, .verification-grid select, .verification-grid textarea { min-width: 0; max-width: 100%; }
+.profile-date-input { display: block; width: 100%; min-width: 0; max-width: 100%; inline-size: 100%; min-inline-size: 0; max-inline-size: 100%; overflow: hidden; }
+.profile-date-input::-webkit-date-and-time-value { width: 100%; min-width: 0; margin: 0; text-align: left; }
 .verification-grid input[type="file"] { width: 100%; max-width: 100%; padding: .65rem; overflow: hidden; background: var(--surface-soft); font-size: .72rem; }
 .verification-grid input[type="file"]::file-selector-button { max-width: 100%; margin-right: .45rem; }
 .searchable-combobox { position: relative; min-width: 0; max-width: 100%; }
