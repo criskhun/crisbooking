@@ -15,6 +15,8 @@
     $wifiDetails = old('wifi', $unit->wifi_details ?? []);
     $parkingDetails = old('parking', $unit->property_details['parking'] ?? ['payment_type' => 'included']);
     $poolDetails = old('pool', $unit->property_details['pool'] ?? ['payment_type' => 'included']);
+    $latitudeValue = old('latitude', $unit->latitude ?? null);
+    $longitudeValue = old('longitude', $unit->longitude ?? null);
 @endphp
 
 <div class="listing-form-grid">
@@ -70,10 +72,10 @@
     </div>
 
     <div class="field-group listing-location-field" data-listing-location-map data-map-id="{{ config('services.google.maps_map_id') }}">
-        <div class="map-field-heading"><div><label for="location">Listing location <span class="optional-label">Optional</span></label><small>Search an address, use your position, or click the map to pin the unit.</small></div><span data-map-coordinate-label>{{ old('latitude', $unit->latitude ?? null) ? number_format((float) old('latitude', $unit->latitude), 5).', '.number_format((float) old('longitude', $unit->longitude), 5) : 'No map pin yet' }}</span></div>
+        <div class="map-field-heading"><div><label for="location">Listing location <span class="optional-label">Optional</span></label><small>Search an address, use your position, or click the map to pin the unit.</small></div><span data-map-coordinate-label>{{ $latitudeValue !== null && $longitudeValue !== null ? number_format((float) $latitudeValue, 5).', '.number_format((float) $longitudeValue, 5) : 'No map pin yet' }}</span></div>
         <div class="map-address-row"><input id="location" name="location" type="text" value="{{ old('location', $unit->location ?? '') }}" maxlength="180" placeholder="City, pickup point, or exact address" data-map-address><button class="map-action-button" type="button" data-map-find-address>Find on map</button><button class="map-action-button" type="button" data-map-use-location>Use my location</button></div>
-        <input name="latitude" type="hidden" value="{{ old('latitude', $unit->latitude ?? '') }}" data-map-latitude>
-        <input name="longitude" type="hidden" value="{{ old('longitude', $unit->longitude ?? '') }}" data-map-longitude>
+        <input name="latitude" type="hidden" value="{{ $latitudeValue }}" data-map-latitude>
+        <input name="longitude" type="hidden" value="{{ $longitudeValue }}" data-map-longitude>
         <div class="google-map-canvas listing-map-canvas" data-map-canvas aria-label="Google map location picker"></div>
         @unless(config('services.google.maps_api_key'))<div class="map-setup-note"><strong>Map preview needs configuration</strong><span>Add <code>GOOGLE_MAPS_API_KEY</code> to the environment. The address can still be saved without a pin.</span></div>@endunless
         <small class="map-status" data-map-status aria-live="polite"></small>

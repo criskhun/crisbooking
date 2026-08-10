@@ -43,6 +43,9 @@ class BookingCalendarTest extends TestCase
             'name' => 'Draft Family Van',
             'kind' => 'unit',
             'category' => 'car',
+            'location' => 'Davao City',
+            'latitude' => '7.0731000',
+            'longitude' => '125.6128000',
             'car' => ['make' => 'Toyota', 'color' => 'Pearl White'],
             'gps' => ['password' => 'private-draft-secret'],
             'custom_accessories' => ['Portable tire inflator'],
@@ -58,6 +61,7 @@ class BookingCalendarTest extends TestCase
             ->assertSee('value="Draft Family Van"', false)
             ->assertSee('value="Pearl White"', false)
             ->assertSee('value="Portable tire inflator"', false)
+            ->assertSee('7.07310, 125.61280')
             ->assertSee('Delete');
 
         $this->actingAs($otherHost)->delete(route('unit-drafts.destroy', $draft))->assertForbidden();
