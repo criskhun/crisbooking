@@ -344,10 +344,10 @@
             let allowLeave = false;
             let pendingDestination = null;
 
-            const draftPayload = () => {
+            const draftPayload = (includeFiles = false) => {
                 const payload = new FormData();
                 new FormData(draftForm).forEach((value, key) => {
-                    if (!(value instanceof File)) payload.append(key, value);
+                    if (!(value instanceof File) || includeFiles) payload.append(key, value);
                 });
                 return payload;
             };
@@ -355,6 +355,8 @@
             const hasMeaningfulDraftData = () => {
                 const payload = draftPayload();
                 const filled = (name) => payload.getAll(name).some((value) => String(value).trim() !== '');
+
+                if ((draftForm.querySelector('[data-photo-input]')?.files?.length || 0) > 0 || draftForm.querySelector('[data-draft-photo-card]')) return true;
 
                 if (['name', 'location', 'description', 'rules', 'capacity', 'price', 'latitude', 'longitude'].some(filled)) return true;
                 if ((payload.get('kind') || 'unit') !== 'unit' || (payload.get('category') || 'car') !== 'car') return true;
@@ -395,7 +397,7 @@
                 try {
                     const response = await fetch(draftForm.dataset.draftSaveUrl, {
                         method: 'POST',
-                        body: draftPayload(),
+                        body: draftPayload(true),
                         headers: {'Accept': 'application/json'},
                     });
                     const result = await response.json();
@@ -403,7 +405,11 @@
                     setDraftId(result.id);
                     if (status) status.textContent = result.empty
                         ? 'No draft saved yet. Start entering listing details to create one.'
-                        : `Draft saved at ${new Date().toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'})}. Photos are not included.`;
+                        : `Draft saved at ${new Date().toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'})}. ${result.photo_count || 0} image${result.photo_count === 1 ? '' : 's'} saved.`;
+                    if (result.photos_changed && !pendingDestination) {
+                        allowLeave = true;
+                        window.location.reload();
+                    }
                     return true;
                 } catch (error) {
                     if (status) status.textContent = error.message || 'Draft could not be saved. Check your connection.';

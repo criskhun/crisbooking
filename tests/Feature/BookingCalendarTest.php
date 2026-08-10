@@ -125,6 +125,66 @@ class BookingCalendarTest extends TestCase
         $this->assertDatabaseMissing('unit_drafts', ['id' => $draftId]);
     }
 
+    public function test_draft_images_and_primary_selection_are_restored_and_used_by_the_listing(): void
+    {
+        Storage::fake('public');
+        $host = User::factory()->host()->create();
+        $firstPhoto = UploadedFile::fake()->image('draft-front.jpg', 900, 600);
+        $secondPhoto = UploadedFile::fake()->image('draft-side.jpg', 900, 600);
+
+        $response = $this->actingAs($host)->post(route('unit-drafts.store'), [
+            'name' => 'Draft Airport Car',
+            'kind' => 'service',
+            'category' => 'driving',
+            'photos' => [$firstPhoto, $secondPhoto],
+            'primary_image' => 'new:1',
+        ], ['Accept' => 'application/json'])->assertOk();
+
+        $draft = UnitDraft::findOrFail($response->json('id'));
+        $firstPath = 'listing-drafts/'.$host->id.'/'.$firstPhoto->hashName();
+        $secondPath = 'listing-drafts/'.$host->id.'/'.$secondPhoto->hashName();
+        $this->assertSame([$firstPath, $secondPath], $draft->payload['_draft_photo_paths']);
+        $this->assertSame($secondPath, $draft->payload['_draft_primary_photo_path']);
+        Storage::disk('public')->assertExists([$firstPath, $secondPath]);
+
+        $this->actingAs($host)->get(route('units.create', ['draft' => $draft]))
+            ->assertOk()
+            ->assertSee(Storage::disk('public')->url($firstPath))
+            ->assertSee(Storage::disk('public')->url($secondPath))
+            ->assertSee('value="draft:1" checked', false);
+
+        $this->actingAs($host)->post(route('units.store'), [
+            'draft_id' => $draft->id,
+            'name' => 'Draft Airport Car',
+            'kind' => 'service',
+            'category' => 'driving',
+            'rules' => 'No smoking.',
+            'primary_image' => 'draft:1',
+            'price' => 1200,
+            'pricing_unit' => 'session',
+            'is_active' => 1,
+        ])->assertRedirect(route('units.index'));
+
+        $unit = Unit::with('images')->firstOrFail();
+        $this->assertCount(2, $unit->images);
+        $this->assertSame($secondPath, $unit->photo_path);
+        $this->assertSame($secondPath, $unit->images->first()->path);
+        $this->assertDatabaseMissing('unit_drafts', ['id' => $draft->id]);
+        Storage::disk('public')->assertExists([$firstPath, $secondPath]);
+
+        $discardPhoto = UploadedFile::fake()->image('discard.jpg');
+        $discardResponse = $this->actingAs($host)->post(route('unit-drafts.store'), [
+            'name' => 'Discard image draft',
+            'photos' => [$discardPhoto],
+            'primary_image' => 'new:0',
+        ], ['Accept' => 'application/json'])->assertOk();
+        $discardDraft = UnitDraft::findOrFail($discardResponse->json('id'));
+        $discardPath = $discardDraft->payload['_draft_photo_paths'][0];
+
+        $this->actingAs($host)->delete(route('unit-drafts.destroy', $discardDraft))->assertRedirect(route('units.create'));
+        Storage::disk('public')->assertMissing($discardPath);
+    }
+
     public function test_host_can_register_a_unit_and_client_cannot(): void
     {
         Storage::fake('public');

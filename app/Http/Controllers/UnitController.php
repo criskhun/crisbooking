@@ -42,6 +42,8 @@ class UnitController extends Controller
         }
 
         $draft = null;
+        $draftPhotoPaths = [];
+        $draftPrimaryPhotoPath = null;
 
         if ($request->filled('draft')) {
             $draft = $request->user()->unitDrafts()->findOrFail($request->integer('draft'));
@@ -53,6 +55,11 @@ class UnitController extends Controller
                 ]);
             }
 
+            $draftPhotoPaths = $this->draftPhotoPaths($draftPayload);
+            $draftPrimaryPhotoPath = in_array($draftPayload['_draft_primary_photo_path'] ?? null, $draftPhotoPaths, true)
+                ? $draftPayload['_draft_primary_photo_path']
+                : ($draftPhotoPaths[0] ?? null);
+
             if (! $request->session()->hasOldInput()) {
                 // Draft values belong to this response only. Flashing them leaves
                 // the values for the next request and can render this form blank.
@@ -62,7 +69,7 @@ class UnitController extends Controller
 
         $drafts = $request->user()->unitDrafts()->latest('updated_at')->get();
 
-        return view('units.create', compact('draft', 'drafts'));
+        return view('units.create', compact('draft', 'drafts', 'draftPhotoPaths', 'draftPrimaryPhotoPath'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -71,20 +78,36 @@ class UnitController extends Controller
             return redirect()->route('profile.edit')->withErrors(['profile' => 'Complete your identity and contact profile before registering a listing.']);
         }
 
-        $validated = $this->validated($request);
         $draft = $request->filled('draft_id')
             ? $request->user()->unitDrafts()->findOrFail($request->integer('draft_id'))
             : null;
+        $draftPayload = $draft ? $this->readDraftPayload($draft) : [];
+
+        if ($draft && $draftPayload === null) {
+            return back()->withErrors(['photos' => 'The selected draft cannot be decrypted. Delete it and create a new draft.']);
+        }
+
+        $allDraftPhotoPaths = $this->draftPhotoPaths($draftPayload ?? []);
+        $removedDraftIndexes = collect($request->input('remove_draft_photos', []))->map(fn ($index) => (int) $index)->unique();
+        $keptDraftPhotoPaths = collect($allDraftPhotoPaths)->reject(fn ($path, $index) => $removedDraftIndexes->contains($index))->values()->all();
+        $validated = $this->validated($request, null, $allDraftPhotoPaths);
         $newImagePaths = $this->storePhotos($request);
+        $listingImagePaths = [...$keptDraftPhotoPaths, ...$newImagePaths];
+        $primarySelection = $this->listingPrimarySelection(
+            $validated['primary_image'] ?? null,
+            $allDraftPhotoPaths,
+            $keptDraftPhotoPaths,
+            $draftPayload['_draft_primary_photo_path'] ?? null,
+        );
         $wifiQrPath = $this->storeWifiQr($request, $validated);
 
         try {
-            $unit = DB::transaction(function () use ($request, $validated, $newImagePaths, $wifiQrPath) {
+            $unit = DB::transaction(function () use ($request, $validated, $listingImagePaths, $primarySelection, $wifiQrPath) {
                 [$attributes, $rates] = $this->listingData($validated);
-                $unit = $request->user()->units()->create([...$attributes, 'photo_path' => $newImagePaths[0] ?? null, 'wifi_qr_path' => $wifiQrPath]);
+                $unit = $request->user()->units()->create([...$attributes, 'photo_path' => $listingImagePaths[0] ?? null, 'wifi_qr_path' => $wifiQrPath]);
                 $this->syncRates($unit, $rates);
-                $newImages = $this->createImages($unit, $newImagePaths);
-                $this->promotePrimaryImage($unit, $validated['primary_image'] ?? null, $newImages);
+                $newImages = $this->createImages($unit, $listingImagePaths);
+                $this->promotePrimaryImage($unit, $primarySelection, $newImages);
 
                 return $unit;
             });
@@ -97,6 +120,7 @@ class UnitController extends Controller
             throw $exception;
         }
 
+        Storage::disk('public')->delete(collect($allDraftPhotoPaths)->filter(fn ($path, $index) => $removedDraftIndexes->contains($index))->all());
         $draft?->delete();
 
         return redirect()->route('units.index')->with('status', "{$unit->name} is now registered and available for booking.");
@@ -112,11 +136,49 @@ class UnitController extends Controller
             ? $request->user()->unitDrafts()->findOrFail($request->integer('draft_id'))
             : new UnitDraft(['host_id' => $request->user()->id]);
 
+        $request->validate([
+            'photos' => ['nullable', 'array', 'max:20'],
+            'photos.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'remove_draft_photos' => ['nullable', 'array'],
+            'remove_draft_photos.*' => ['integer', 'min:0'],
+            'primary_image' => ['nullable', 'string', 'max:40', 'regex:/^(draft|new):\d+$/'],
+        ]);
+
+        $currentPayload = $draft->exists ? $this->readDraftPayload($draft) : [];
+        if ($currentPayload === null) {
+            return response()->json(['message' => 'This draft cannot be decrypted with the current application key.'], 422);
+        }
+
+        $currentPhotoPaths = $this->draftPhotoPaths($currentPayload);
+        $removedIndexes = collect($request->input('remove_draft_photos', []))->map(fn ($index) => (int) $index)->unique();
+        $removedPhotoPaths = collect($currentPhotoPaths)->filter(fn ($path, $index) => $removedIndexes->contains($index))->values()->all();
+        $keptPhotoPaths = collect($currentPhotoPaths)->reject(fn ($path, $index) => $removedIndexes->contains($index))->values()->all();
+        $uploadedPhotoPaths = collect($request->file('photos', []))
+            ->map(fn ($photo) => $photo->store('listing-drafts/'.$request->user()->id, 'public'))
+            ->all();
+        $draftPhotoPaths = [...$keptPhotoPaths, ...$uploadedPhotoPaths];
+
+        if (count($draftPhotoPaths) > 20) {
+            Storage::disk('public')->delete($uploadedPhotoPaths);
+            throw ValidationException::withMessages(['photos' => 'A listing draft can contain up to 20 images.']);
+        }
+
         $payload = $this->sanitizeDraftPayload($request->except([
-            '_token', '_method', 'draft_id', 'photos', 'primary_image', 'remove_images', 'wifi_qr', 'remove_wifi_qr',
+            '_token', '_method', 'draft_id', 'photos', 'primary_image', 'remove_images', 'remove_draft_photos', 'wifi_qr', 'remove_wifi_qr',
         ]));
 
-        if (! $this->hasMeaningfulDraftData($payload)) {
+        $primaryPhotoPath = $this->draftPrimaryPhotoPath(
+            $request->input('primary_image'),
+            $currentPhotoPaths,
+            $uploadedPhotoPaths,
+            $draftPhotoPaths,
+            $currentPayload['_draft_primary_photo_path'] ?? null,
+        );
+        $payload['_draft_photo_paths'] = $draftPhotoPaths;
+        $payload['_draft_primary_photo_path'] = $primaryPhotoPath;
+
+        if (! $this->hasMeaningfulDraftData($payload) && $draftPhotoPaths === []) {
+            Storage::disk('public')->delete([...$removedPhotoPaths, ...$uploadedPhotoPaths]);
             if ($draft->exists) {
                 $draft->delete();
             }
@@ -131,15 +193,24 @@ class UnitController extends Controller
         $name = trim((string) ($payload['name'] ?? ''));
         $category = Str::of((string) ($payload['category'] ?? 'listing'))->replace('_', ' ')->title();
 
-        $draft->fill([
-            'title' => $name !== '' ? Str::limit($name, 120, '') : "Untitled {$category} draft",
-            'payload' => $payload,
-        ])->save();
+        try {
+            $draft->fill([
+                'title' => $name !== '' ? Str::limit($name, 120, '') : "Untitled {$category} draft",
+                'payload' => $payload,
+            ])->save();
+        } catch (\Throwable $exception) {
+            Storage::disk('public')->delete($uploadedPhotoPaths);
+            throw $exception;
+        }
+
+        Storage::disk('public')->delete($removedPhotoPaths);
 
         return response()->json([
             'id' => $draft->id,
             'title' => $draft->title,
             'updated_at' => $draft->updated_at?->toIso8601String(),
+            'photos_changed' => $uploadedPhotoPaths !== [] || $removedPhotoPaths !== [],
+            'photo_count' => count($draftPhotoPaths),
         ]);
     }
 
@@ -148,6 +219,8 @@ class UnitController extends Controller
         abort_unless($request->user()->is_admin || $draft->host_id === $request->user()->id, 403);
 
         $title = $draft->title ?: 'Listing draft';
+        $payload = $this->readDraftPayload($draft);
+        Storage::disk('public')->delete($this->draftPhotoPaths($payload ?? []));
         $draft->delete();
 
         if ($request->expectsJson()) {
@@ -246,7 +319,7 @@ class UnitController extends Controller
         ]);
     }
 
-    private function validated(Request $request, ?Unit $unit = null): array
+    private function validated(Request $request, ?Unit $unit = null, array $draftPhotoPaths = []): array
     {
         $isRental = in_array($request->input('category'), ['car', 'condo'], true);
         $isCar = $request->input('category') === 'car';
@@ -261,6 +334,8 @@ class UnitController extends Controller
         $hasPool = $isProperty && in_array('pool', $propertyAmenities, true);
         $paidParking = $hasParking && $request->input('parking.payment_type') === 'separate';
         $paidPool = $hasPool && $request->input('pool.payment_type') === 'separate';
+        $removedDraftIndexes = collect($request->input('remove_draft_photos', []))->map(fn ($index) => (int) $index)->unique();
+        $availableDraftPhotoCount = collect($draftPhotoPaths)->reject(fn ($path, $index) => $removedDraftIndexes->contains($index))->count();
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:120'],
@@ -271,11 +346,13 @@ class UnitController extends Controller
             'longitude' => ['nullable', 'required_with:latitude', 'numeric', 'between:-180,180'],
             'description' => ['nullable', 'string', 'max:2000'],
             'rules' => ['required', 'string', 'max:5000'],
-            'photos' => [Rule::requiredIf(! $unit), 'nullable', 'array', 'min:1'],
+            'photos' => [Rule::requiredIf(! $unit && $availableDraftPhotoCount < 1), 'nullable', 'array', 'min:1'],
             'photos.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-            'primary_image' => ['nullable', 'string', 'max:40', 'regex:/^(existing|new):\d+$/'],
+            'primary_image' => ['nullable', 'string', 'max:40', 'regex:/^(existing|draft|new):\d+$/'],
             'remove_images' => ['nullable', 'array'],
             'remove_images.*' => ['integer', Rule::exists('unit_images', 'id')->where(fn ($query) => $query->where('unit_id', $unit?->id ?? 0))],
+            'remove_draft_photos' => ['nullable', 'array'],
+            'remove_draft_photos.*' => ['integer', Rule::in(array_keys($draftPhotoPaths))],
             'capacity' => ['nullable', 'integer', 'min:1', 'max:10000'],
             'price' => [Rule::requiredIf(! $isRental), 'nullable', 'numeric', 'min:0', 'max:9999999999.99'],
             'pricing_unit' => [Rule::requiredIf(! $isRental), 'nullable', Rule::in(['hour', 'day', 'session'])],
@@ -343,9 +420,12 @@ class UnitController extends Controller
             [$source, $identifier] = explode(':', $validated['primary_image'], 2);
             $identifier = (int) $identifier;
             $removedIds = collect($validated['remove_images'] ?? [])->map(fn ($id) => (int) $id);
-            $validSelection = $source === 'new'
-                ? $identifier >= 0 && $identifier < count($request->file('photos', []))
-                : $unit && $unit->images->contains('id', $identifier) && ! $removedIds->contains($identifier);
+            $validSelection = match ($source) {
+                'new' => $identifier >= 0 && $identifier < count($request->file('photos', [])),
+                'draft' => array_key_exists($identifier, $draftPhotoPaths) && ! $removedDraftIndexes->contains($identifier),
+                'existing' => $unit && $unit->images->contains('id', $identifier) && ! $removedIds->contains($identifier),
+                default => false,
+            };
 
             if (! $validSelection) {
                 throw ValidationException::withMessages(['primary_image' => 'Choose a primary image that will remain in this gallery.']);
@@ -385,7 +465,7 @@ class UnitController extends Controller
         $propertyDetails['amenities'] = $validated['property_amenities'] ?? [];
         $propertyDetails['parking'] = in_array('parking', $propertyDetails['amenities'], true) ? ($validated['parking'] ?? []) : null;
         $propertyDetails['pool'] = in_array('pool', $propertyDetails['amenities'], true) ? ($validated['pool'] ?? []) : null;
-        unset($validated['photos'], $validated['primary_image'], $validated['remove_images'], $validated['offered_rates'], $validated['rates'], $validated['car'], $validated['car_accessories'], $validated['custom_accessories'], $validated['car_charges'], $validated['gps'], $validated['wifi'], $validated['wifi_qr'], $validated['remove_wifi_qr'], $validated['parking'], $validated['pool'], $validated['property'], $validated['property_amenities']);
+        unset($validated['photos'], $validated['primary_image'], $validated['remove_images'], $validated['remove_draft_photos'], $validated['offered_rates'], $validated['rates'], $validated['car'], $validated['car_accessories'], $validated['custom_accessories'], $validated['car_charges'], $validated['gps'], $validated['wifi'], $validated['wifi_qr'], $validated['remove_wifi_qr'], $validated['parking'], $validated['pool'], $validated['property'], $validated['property_amenities']);
 
         $validated['car_details'] = $validated['category'] === 'car' ? $carDetails : null;
         $validated['gps_details'] = $validated['category'] === 'car' && in_array('gps', $carDetails['accessories'], true) ? $gpsDetails : null;
@@ -421,6 +501,53 @@ class UnitController extends Controller
         return collect($request->file('photos', []))
             ->map(fn ($photo) => $photo->store('listings', 'public'))
             ->all();
+    }
+
+    private function draftPhotoPaths(array $payload): array
+    {
+        return collect($payload['_draft_photo_paths'] ?? [])
+            ->filter(fn ($path) => is_string($path) && Str::startsWith($path, 'listing-drafts/'))
+            ->unique()
+            ->take(20)
+            ->values()
+            ->all();
+    }
+
+    private function draftPrimaryPhotoPath(?string $selection, array $currentPaths, array $uploadedPaths, array $finalPaths, ?string $currentPrimary): ?string
+    {
+        $selectedPath = null;
+
+        if ($selection && preg_match('/^(draft|new):(\d+)$/', $selection, $matches)) {
+            $selectedPath = $matches[1] === 'draft'
+                ? ($currentPaths[(int) $matches[2]] ?? null)
+                : ($uploadedPaths[(int) $matches[2]] ?? null);
+        }
+
+        if (! in_array($selectedPath, $finalPaths, true)) {
+            $selectedPath = in_array($currentPrimary, $finalPaths, true) ? $currentPrimary : ($finalPaths[0] ?? null);
+        }
+
+        return $selectedPath;
+    }
+
+    private function listingPrimarySelection(?string $selection, array $allDraftPaths, array $keptDraftPaths, ?string $draftPrimary): ?string
+    {
+        if ($selection && preg_match('/^new:(\d+)$/', $selection, $matches)) {
+            return 'new:'.(count($keptDraftPaths) + (int) $matches[1]);
+        }
+
+        $selectedDraftPath = null;
+        if ($selection && preg_match('/^draft:(\d+)$/', $selection, $matches)) {
+            $selectedDraftPath = $allDraftPaths[(int) $matches[1]] ?? null;
+        }
+
+        if (! in_array($selectedDraftPath, $keptDraftPaths, true)) {
+            $selectedDraftPath = in_array($draftPrimary, $keptDraftPaths, true) ? $draftPrimary : null;
+        }
+
+        $index = $selectedDraftPath !== null ? array_search($selectedDraftPath, $keptDraftPaths, true) : false;
+
+        return $index === false ? null : 'new:'.$index;
     }
 
     private function storeWifiQr(Request $request, array $validated): ?string

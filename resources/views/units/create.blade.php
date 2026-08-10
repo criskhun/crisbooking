@@ -15,7 +15,7 @@
             @error('draft')<div class="oauth-error account-alert" role="alert">{{ $message }}</div>@enderror
             @if ($drafts->isNotEmpty())
                 <section class="unit-drafts-panel" aria-labelledby="unit-drafts-title">
-                    <div><span class="eyebrow">Saved work</span><h2 id="unit-drafts-title">Your listing drafts</h2><p>Open a draft to continue. Photos are not stored in drafts and must be selected again.</p></div>
+                    <div><span class="eyebrow">Saved work</span><h2 id="unit-drafts-title">Your listing drafts</h2><p>Open a draft to continue with its details, saved images, and primary image selection.</p></div>
                     <div class="unit-draft-list">
                         @foreach ($drafts as $savedDraft)
                             <article @class(['unit-draft-card', 'active' => $draft?->is($savedDraft)])>
@@ -27,7 +27,7 @@
                 </section>
             @endif
             <section class="listing-form-card">
-                <div class="form-card-heading"><span class="eyebrow">{{ $draft ? 'Continuing draft' : 'New listing' }}</span><h2>What can clients book?</h2><p>Add the details used to calculate availability and booking totals.</p><small class="draft-save-status" data-draft-save-status aria-live="polite">{{ $draft ? 'Draft loaded. Changes save automatically.' : 'Your progress saves automatically after you begin typing.' }}</small></div>
+                <div class="form-card-heading"><span class="eyebrow">{{ $draft ? 'Continuing draft' : 'New listing' }}</span><h2>What can clients book?</h2><p>Add the details used to calculate availability and booking totals.</p><small class="draft-save-status" data-draft-save-status aria-live="polite">{{ $draft ? 'Draft loaded. Details and images save automatically.' : 'Your details and images save automatically after you begin.' }}</small></div>
                 <form method="POST" action="{{ route('units.store') }}" enctype="multipart/form-data" class="account-edit-form" data-unit-draft-form data-draft-save-url="{{ route('unit-drafts.store') }}" data-draft-delete-base-url="{{ url('/unit-drafts') }}" data-draft-id="{{ $draft?->id }}">
                     @csrf
                     <input type="hidden" name="draft_id" value="{{ $draft?->id }}" data-draft-id-input>

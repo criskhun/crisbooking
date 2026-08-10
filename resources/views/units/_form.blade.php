@@ -17,6 +17,10 @@
     $poolDetails = old('pool', $unit->property_details['pool'] ?? ['payment_type' => 'included']);
     $latitudeValue = old('latitude', $unit->latitude ?? null);
     $longitudeValue = old('longitude', $unit->longitude ?? null);
+    $draftPhotoPaths = $editing ? [] : ($draftPhotoPaths ?? []);
+    $draftPrimaryIndex = array_search($draftPrimaryPhotoPath ?? null, $draftPhotoPaths, true);
+    $draftPrimaryValue = $draftPrimaryIndex === false ? null : 'draft:'.$draftPrimaryIndex;
+    $hasStoredPhotos = ($editing && $unit->images->isNotEmpty()) || count($draftPhotoPaths) > 0;
 @endphp
 
 <div class="listing-form-grid">
@@ -36,11 +40,25 @@
                 @endforeach
             </div>
         @endif
+        @if (! $editing && count($draftPhotoPaths) > 0)
+            <div class="existing-photo-grid" data-draft-photo-grid>
+                @foreach ($draftPhotoPaths as $draftPhotoIndex => $draftPhotoPath)
+                    @php($primaryValue = 'draft:'.$draftPhotoIndex)
+                    <div class="existing-photo" data-photo-card data-draft-photo-card>
+                        <img src="{{ Storage::disk('public')->url($draftPhotoPath) }}" alt="Saved draft photo {{ $loop->iteration }}">
+                        <div class="photo-controls">
+                            <label class="photo-choice primary-choice"><input type="radio" name="primary_image" value="{{ $primaryValue }}" @checked(old('primary_image', $draftPrimaryValue) === $primaryValue) data-primary-image> <span>Primary</span></label>
+                            <label class="photo-choice remove-choice"><input type="checkbox" name="remove_draft_photos[]" value="{{ $draftPhotoIndex }}" @checked(in_array($draftPhotoIndex, old('remove_draft_photos', []))) data-remove-image> <span>Remove</span></label>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @endif
         <div class="new-photo-grid" data-photo-preview-grid></div>
         <label class="photo-upload photo-upload-multiple" for="photos">
             <span><strong>Add photos</strong><small>Select multiple JPG, PNG, or WebP images · maximum 5 MB each</small></span>
         </label>
-        <input id="photos" name="photos[]" type="file" accept="image/jpeg,image/png,image/webp" multiple {{ $editing && $unit->images->isNotEmpty() ? '' : 'required' }} data-photo-input>
+        <input id="photos" name="photos[]" type="file" accept="image/jpeg,image/png,image/webp" multiple {{ $hasStoredPhotos ? '' : 'required' }} data-photo-input>
         @error('photos')<p class="error-text">{{ $message }}</p>@enderror
         @error('photos.*')<p class="error-text">{{ $message }}</p>@enderror
         @error('primary_image')<p class="error-text">{{ $message }}</p>@enderror
