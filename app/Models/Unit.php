@@ -67,7 +67,13 @@ class Unit extends Model
     public function rates(): HasMany
     {
         return $this->hasMany(UnitRate::class)
+            ->orderByRaw("CASE coverage WHEN 'within_city' THEN 1 WHEN 'out_of_town' THEN 2 ELSE 3 END")
             ->orderByRaw("CASE period WHEN '12_hours' THEN 1 WHEN 'day' THEN 2 WHEN 'week' THEN 3 WHEN 'month' THEN 4 ELSE 5 END");
+    }
+
+    public function ratesForCoverage(string $coverage): HasMany
+    {
+        return $this->rates()->where('coverage', $coverage);
     }
 
     public function images(): HasMany

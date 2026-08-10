@@ -78,6 +78,7 @@
                             <div><dt>Starts</dt><dd>{{ $booking->start_at->format('M j, Y · g:i A') }}</dd></div>
                             <div><dt>Ends</dt><dd>{{ $booking->end_at->format('M j, Y · g:i A') }}</dd></div>
                             <div><dt>Guests / pax</dt><dd>{{ $booking->party_size }} {{ Str::plural('person', $booking->party_size) }}</dd></div>
+                            @if ($booking->rental_coverage)<div><dt>Rental coverage</dt><dd>{{ ['within_city' => 'Within-city use', 'out_of_town' => 'Out-of-town use'][$booking->rental_coverage] ?? str($booking->rental_coverage)->replace('_', ' ')->title() }}</dd></div>@endif
                             @if ($currentPackages->isNotEmpty())
                                 <div><dt>Packages</dt><dd class="package-breakdown-list">@foreach($currentPackages as $period => $package)<span>{{ $package['quantity'] }} × {{ $rateLabels[$period] ?? str($period)->replace('_', ' ')->title() }} <small>₱{{ number_format($package['unit_price'], 2) }} each</small></span>@endforeach</dd></div>
                             @endif
@@ -137,7 +138,7 @@
                             @if ($unit->isPackageRental())
                                 <div class="booking-package-builder booking-change-package-builder" data-package-builder data-duration-driven="1" data-start-id="change_start_at" data-end-id="change_end_at">
                                     <div class="package-builder-heading"><div><span class="eyebrow">Rates for the new dates</span><h3>Matching rental package</h3></div><small>Dates determine the available rate combination.</small></div>
-                                    <div class="package-quantity-grid">@foreach($unit->rates as $rate)<label class="package-quantity-card" data-package-card><span><strong>{{ $rateLabels[$rate->period] }}</strong><small>₱{{ number_format($rate->price, 2) }} each</small></span><input type="number" name="change_package_quantities[{{ $rate->period }}]" min="0" max="365" value="0" data-package-quantity data-period="{{ $rate->period }}" data-price="{{ $rate->price }}" aria-label="Number of {{ $rateLabels[$rate->period] }} packages" readonly></label>@endforeach</div>
+                                    <div class="package-quantity-grid">@foreach($unit->rates->where('coverage', $unit->category === 'car' ? ($booking->rental_coverage ?: $booking->rate?->coverage) : 'standard') as $rate)<label class="package-quantity-card" data-package-card><span><strong>{{ $rateLabels[$rate->period] }}</strong><small>₱{{ number_format($rate->price, 2) }} each</small></span><input type="number" name="change_package_quantities[{{ $rate->period }}]" min="0" max="365" value="0" data-package-quantity data-period="{{ $rate->period }}" data-price="{{ $rate->price }}" aria-label="Number of {{ $rateLabels[$rate->period] }} packages" readonly></label>@endforeach</div>
                                     <div class="package-calculation-summary"><span><small>Selected return</small><strong data-package-end-note></strong></span><span><small>Estimated package total</small><strong data-package-total></strong></span></div>
                                     @error('change_package_quantities')<p class="error-text">{{ $message }}</p>@enderror
                                 </div>

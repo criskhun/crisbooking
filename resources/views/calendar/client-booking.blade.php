@@ -98,6 +98,11 @@
 
     @if ($selectedUnit)
         @php
+            $coverageLabels = ['within_city' => 'Within-city use', 'out_of_town' => 'Out-of-town use'];
+            $carCoverageRates = $selectedUnit->category === 'car'
+                ? $selectedUnit->rates->groupBy('coverage')->filter(fn ($rates, $coverage) => isset($coverageLabels[$coverage]))
+                : collect();
+            $selectedCoverage = old('rental_coverage', $carCoverageRates->keys()->first());
             $additionalFees = $selectedUnit->category === 'car'
                 ? collect($selectedUnit->car_details['charges'] ?? [])->map(fn ($charge) => $charge['label'].': ₱'.number_format($charge['amount'] ?? 0, 2).(!empty($charge['refundable']) ? ' (refundable)' : ''))->implode("\n")
                 : collect(['parking' => 'Parking', 'pool' => 'Swimming pool'])->map(function ($label, $key) use ($selectedUnit) {
@@ -137,16 +142,42 @@
                 <div data-booking-end-field hidden><input id="end_at" name="end_at" type="hidden" value="{{ old('end_at', $searchEnd->format('Y-m-d\TH:i')) }}"></div>
                 <input name="party_size" type="hidden" value="{{ $partySize }}">
                 @if ($selectedUnit->isPackageRental())
-                    <div class="booking-package-builder" data-package-builder data-duration-driven="1" data-start-id="start_at" data-end-id="end_at">
-                        <div class="package-builder-heading"><div><span class="eyebrow">Rates for your selected dates</span><h3>Your matching rental package</h3></div><small>Change the dates above to see a different rate combination.</small></div>
-                        <div class="package-quantity-grid">
-                            @foreach ($selectedUnit->rates as $rate)
-                                <label class="package-quantity-card" data-package-card><span><strong>{{ $rateLabels[$rate->period] }}</strong><small>₱{{ number_format($rate->price, 2) }} each</small></span><input type="number" name="package_quantities[{{ $rate->period }}]" min="0" max="365" value="0" data-package-quantity data-period="{{ $rate->period }}" data-price="{{ $rate->price }}" aria-label="Number of {{ $rateLabels[$rate->period] }} packages" readonly></label>
-                            @endforeach
+                    @if ($selectedUnit->category === 'car')
+                        <div class="field-group rental-coverage-choice">
+                            <label for="rental_coverage">Where will you drive?</label>
+                            <select id="rental_coverage" name="rental_coverage" required data-rental-coverage-select>
+                                @foreach ($carCoverageRates as $coverage => $coverageRates)
+                                    <option value="{{ $coverage }}" @selected($selectedCoverage === $coverage)>{{ $coverageLabels[$coverage] }}</option>
+                                @endforeach
+                            </select>
+                            <small class="field-help">Choose the travel area so the correct rental price is applied.</small>
+                            @error('rental_coverage')<p class="error-text">{{ $message }}</p>@enderror
                         </div>
-                        <div class="package-calculation-summary"><span><small>Selected return</small><strong data-package-end-note></strong></span><span><small>Estimated package total</small><strong data-package-total></strong></span></div>
-                        @error('package_quantities')<p class="error-text">{{ $message }}</p>@enderror
-                    </div>
+                        @foreach ($carCoverageRates as $coverage => $coverageRates)
+                            <div data-rental-coverage-panel="{{ $coverage }}" @if($selectedCoverage !== $coverage) hidden @endif>
+                                <div class="booking-package-builder" data-package-builder data-duration-driven="1" data-start-id="start_at" data-end-id="end_at">
+                                    <div class="package-builder-heading"><div><span class="eyebrow">{{ $coverageLabels[$coverage] }}</span><h3>Your matching rental package</h3></div><small>Calculated using the selected travel coverage.</small></div>
+                                    <div class="package-quantity-grid">
+                                        @foreach ($coverageRates as $rate)
+                                            <label class="package-quantity-card" data-package-card><span><strong>{{ $rateLabels[$rate->period] }}</strong><small>₱{{ number_format($rate->price, 2) }} each</small></span><input type="number" name="package_quantities[{{ $rate->period }}]" min="0" max="365" value="0" data-package-quantity data-period="{{ $rate->period }}" data-price="{{ $rate->price }}" aria-label="Number of {{ $rateLabels[$rate->period] }} packages" readonly @disabled($selectedCoverage !== $coverage)></label>
+                                        @endforeach
+                                    </div>
+                                    <div class="package-calculation-summary"><span><small>Selected return</small><strong data-package-end-note></strong></span><span><small>Estimated package total</small><strong data-package-total></strong></span></div>
+                                </div>
+                            </div>
+                        @endforeach
+                    @else
+                        <div class="booking-package-builder" data-package-builder data-duration-driven="1" data-start-id="start_at" data-end-id="end_at">
+                            <div class="package-builder-heading"><div><span class="eyebrow">Rates for your selected dates</span><h3>Your matching rental package</h3></div><small>Change the dates above to see a different rate combination.</small></div>
+                            <div class="package-quantity-grid">
+                                @foreach ($selectedUnit->rates->where('coverage', 'standard') as $rate)
+                                    <label class="package-quantity-card" data-package-card><span><strong>{{ $rateLabels[$rate->period] }}</strong><small>₱{{ number_format($rate->price, 2) }} each</small></span><input type="number" name="package_quantities[{{ $rate->period }}]" min="0" max="365" value="0" data-package-quantity data-period="{{ $rate->period }}" data-price="{{ $rate->price }}" aria-label="Number of {{ $rateLabels[$rate->period] }} packages" readonly></label>
+                                @endforeach
+                            </div>
+                            <div class="package-calculation-summary"><span><small>Selected return</small><strong data-package-end-note></strong></span><span><small>Estimated package total</small><strong data-package-total></strong></span></div>
+                        </div>
+                    @endif
+                    @error('package_quantities')<p class="error-text">{{ $message }}</p>@enderror
                 @else
                     <input id="unit_rate_id" name="unit_rate_id" type="hidden" value="">
                 @endif

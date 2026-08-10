@@ -23,6 +23,7 @@ class Booking extends Model
         'change_end_at',
         'status',
         'rate_period',
+        'rental_coverage',
         'rate_quantity',
         'package_breakdown',
         'additional_charges',

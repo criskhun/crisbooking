@@ -325,6 +325,8 @@ class UnitController extends Controller
         $isCar = $request->input('category') === 'car';
         $isProperty = $request->input('category') === 'condo';
         $offeredRates = $request->input('offered_rates', []);
+        $carRateAreas = $request->input('car_rate_areas', []);
+        $carOfferedRates = $request->input('car_offered_rates', []);
         $hasGps = $isCar && in_array('gps', $request->input('car_accessories', []), true);
         $enabledCarCharges = collect(['car_wash', 'delivery', 'deposit'])
             ->filter(fn ($charge) => $isCar && $request->boolean("car_charges.{$charge}.enabled"));
@@ -356,13 +358,28 @@ class UnitController extends Controller
             'capacity' => ['nullable', 'integer', 'min:1', 'max:10000'],
             'price' => [Rule::requiredIf(! $isRental), 'nullable', 'numeric', 'min:0', 'max:9999999999.99'],
             'pricing_unit' => [Rule::requiredIf(! $isRental), 'nullable', Rule::in(['hour', 'day', 'session'])],
-            'offered_rates' => [$isRental ? 'required' : 'nullable', 'array', 'min:1'],
+            'offered_rates' => [$isProperty ? 'required' : 'nullable', 'array', 'min:1'],
             'offered_rates.*' => [Rule::in(['12_hours', 'day', 'week', 'month'])],
             'rates' => ['nullable', 'array'],
-            'rates.12_hours' => [Rule::requiredIf($isRental && in_array('12_hours', $offeredRates, true)), 'nullable', 'numeric', 'min:0', 'max:9999999999.99'],
-            'rates.day' => [Rule::requiredIf($isRental && in_array('day', $offeredRates, true)), 'nullable', 'numeric', 'min:0', 'max:9999999999.99'],
-            'rates.week' => [Rule::requiredIf($isRental && in_array('week', $offeredRates, true)), 'nullable', 'numeric', 'min:0', 'max:9999999999.99'],
-            'rates.month' => [Rule::requiredIf($isRental && in_array('month', $offeredRates, true)), 'nullable', 'numeric', 'min:0', 'max:9999999999.99'],
+            'rates.12_hours' => [Rule::requiredIf($isProperty && in_array('12_hours', $offeredRates, true)), 'nullable', 'numeric', 'min:0', 'max:9999999999.99'],
+            'rates.day' => [Rule::requiredIf($isProperty && in_array('day', $offeredRates, true)), 'nullable', 'numeric', 'min:0', 'max:9999999999.99'],
+            'rates.week' => [Rule::requiredIf($isProperty && in_array('week', $offeredRates, true)), 'nullable', 'numeric', 'min:0', 'max:9999999999.99'],
+            'rates.month' => [Rule::requiredIf($isProperty && in_array('month', $offeredRates, true)), 'nullable', 'numeric', 'min:0', 'max:9999999999.99'],
+            'car_rate_areas' => [$isCar ? 'required' : 'nullable', 'array', 'min:1'],
+            'car_rate_areas.*' => [Rule::in(['within_city', 'out_of_town'])],
+            'car_offered_rates' => ['nullable', 'array'],
+            'car_offered_rates.within_city' => [Rule::requiredIf($isCar && in_array('within_city', $carRateAreas, true)), 'nullable', 'array', 'min:1'],
+            'car_offered_rates.out_of_town' => [Rule::requiredIf($isCar && in_array('out_of_town', $carRateAreas, true)), 'nullable', 'array', 'min:1'],
+            'car_offered_rates.*.*' => [Rule::in(['12_hours', 'day', 'week', 'month'])],
+            'car_rates' => ['nullable', 'array'],
+            'car_rates.within_city.12_hours' => [Rule::requiredIf($isCar && in_array('within_city', $carRateAreas, true) && in_array('12_hours', $carOfferedRates['within_city'] ?? [], true)), 'nullable', 'numeric', 'min:0', 'max:9999999999.99'],
+            'car_rates.within_city.day' => [Rule::requiredIf($isCar && in_array('within_city', $carRateAreas, true) && in_array('day', $carOfferedRates['within_city'] ?? [], true)), 'nullable', 'numeric', 'min:0', 'max:9999999999.99'],
+            'car_rates.within_city.week' => [Rule::requiredIf($isCar && in_array('within_city', $carRateAreas, true) && in_array('week', $carOfferedRates['within_city'] ?? [], true)), 'nullable', 'numeric', 'min:0', 'max:9999999999.99'],
+            'car_rates.within_city.month' => [Rule::requiredIf($isCar && in_array('within_city', $carRateAreas, true) && in_array('month', $carOfferedRates['within_city'] ?? [], true)), 'nullable', 'numeric', 'min:0', 'max:9999999999.99'],
+            'car_rates.out_of_town.12_hours' => [Rule::requiredIf($isCar && in_array('out_of_town', $carRateAreas, true) && in_array('12_hours', $carOfferedRates['out_of_town'] ?? [], true)), 'nullable', 'numeric', 'min:0', 'max:9999999999.99'],
+            'car_rates.out_of_town.day' => [Rule::requiredIf($isCar && in_array('out_of_town', $carRateAreas, true) && in_array('day', $carOfferedRates['out_of_town'] ?? [], true)), 'nullable', 'numeric', 'min:0', 'max:9999999999.99'],
+            'car_rates.out_of_town.week' => [Rule::requiredIf($isCar && in_array('out_of_town', $carRateAreas, true) && in_array('week', $carOfferedRates['out_of_town'] ?? [], true)), 'nullable', 'numeric', 'min:0', 'max:9999999999.99'],
+            'car_rates.out_of_town.month' => [Rule::requiredIf($isCar && in_array('out_of_town', $carRateAreas, true) && in_array('month', $carOfferedRates['out_of_town'] ?? [], true)), 'nullable', 'numeric', 'min:0', 'max:9999999999.99'],
             'car.make' => [Rule::requiredIf($isCar), 'nullable', 'string', 'max:80'],
             'car.model' => [Rule::requiredIf($isCar), 'nullable', 'string', 'max:80'],
             'car.year' => [Rule::requiredIf($isCar), 'nullable', 'integer', 'min:1900', 'max:'.(now()->year + 2)],
@@ -437,8 +454,18 @@ class UnitController extends Controller
 
     private function listingData(array $validated): array
     {
-        $offeredRates = $validated['offered_rates'] ?? [];
-        $rates = collect($validated['rates'] ?? [])->only($offeredRates)->all();
+        $rates = [];
+        if (($validated['category'] ?? null) === 'car') {
+            foreach ($validated['car_rate_areas'] ?? [] as $coverage) {
+                foreach ($validated['car_offered_rates'][$coverage] ?? [] as $period) {
+                    $rates[] = ['coverage' => $coverage, 'period' => $period, 'price' => $validated['car_rates'][$coverage][$period]];
+                }
+            }
+        } elseif (($validated['category'] ?? null) === 'condo') {
+            foreach ($validated['offered_rates'] ?? [] as $period) {
+                $rates[] = ['coverage' => 'standard', 'period' => $period, 'price' => $validated['rates'][$period]];
+            }
+        }
         $carDetails = $validated['car'] ?? [];
         $carDetails['accessories'] = $validated['car_accessories'] ?? [];
         $carDetails['custom_accessories'] = collect($validated['custom_accessories'] ?? [])
@@ -465,7 +492,7 @@ class UnitController extends Controller
         $propertyDetails['amenities'] = $validated['property_amenities'] ?? [];
         $propertyDetails['parking'] = in_array('parking', $propertyDetails['amenities'], true) ? ($validated['parking'] ?? []) : null;
         $propertyDetails['pool'] = in_array('pool', $propertyDetails['amenities'], true) ? ($validated['pool'] ?? []) : null;
-        unset($validated['photos'], $validated['primary_image'], $validated['remove_images'], $validated['remove_draft_photos'], $validated['offered_rates'], $validated['rates'], $validated['car'], $validated['car_accessories'], $validated['custom_accessories'], $validated['car_charges'], $validated['gps'], $validated['wifi'], $validated['wifi_qr'], $validated['remove_wifi_qr'], $validated['parking'], $validated['pool'], $validated['property'], $validated['property_amenities']);
+        unset($validated['photos'], $validated['primary_image'], $validated['remove_images'], $validated['remove_draft_photos'], $validated['offered_rates'], $validated['rates'], $validated['car_rate_areas'], $validated['car_offered_rates'], $validated['car_rates'], $validated['car'], $validated['car_accessories'], $validated['custom_accessories'], $validated['car_charges'], $validated['gps'], $validated['wifi'], $validated['wifi_qr'], $validated['remove_wifi_qr'], $validated['parking'], $validated['pool'], $validated['property'], $validated['property_amenities']);
 
         $validated['car_details'] = $validated['category'] === 'car' ? $carDetails : null;
         $validated['gps_details'] = $validated['category'] === 'car' && in_array('gps', $carDetails['accessories'], true) ? $gpsDetails : null;
@@ -473,9 +500,8 @@ class UnitController extends Controller
         $validated['property_details'] = $validated['category'] === 'condo' ? $propertyDetails : null;
 
         if (in_array($validated['category'], ['car', 'condo'], true)) {
-            $firstPeriod = collect(['12_hours', 'day', 'week', 'month'])->first(fn ($period) => array_key_exists($period, $rates));
-            $validated['price'] = $rates[$firstPeriod];
-            $validated['pricing_unit'] = $firstPeriod;
+            $validated['price'] = $rates[0]['price'];
+            $validated['pricing_unit'] = $rates[0]['period'];
         }
 
         return [$validated, $rates];
@@ -489,11 +515,15 @@ class UnitController extends Controller
             return;
         }
 
-        foreach ($rates as $period => $price) {
-            $unit->rates()->updateOrCreate(['period' => $period], ['price' => $price]);
+        $keptIds = [];
+        foreach ($rates as $rate) {
+            $keptIds[] = $unit->rates()->updateOrCreate(
+                ['coverage' => $rate['coverage'], 'period' => $rate['period']],
+                ['price' => $rate['price']],
+            )->id;
         }
 
-        $unit->rates()->whereNotIn('period', array_keys($rates))->delete();
+        $unit->rates()->whereNotIn('id', $keptIds)->delete();
     }
 
     private function storePhotos(Request $request): array
@@ -685,7 +715,7 @@ class UnitController extends Controller
             return true;
         }
 
-        foreach (['rates', 'car_accessories', 'custom_accessories', 'gps', 'wifi', 'property_amenities'] as $field) {
+        foreach (['rates', 'car_rates', 'car_accessories', 'custom_accessories', 'gps', 'wifi', 'property_amenities'] as $field) {
             if ($filled($payload[$field] ?? null)) {
                 return true;
             }

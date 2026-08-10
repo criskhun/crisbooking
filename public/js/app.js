@@ -194,6 +194,8 @@
         const categorySelect = document.querySelector('#category');
         const standardRateSection = document.querySelector('[data-standard-rate-section]');
         const packageRateSection = document.querySelector('[data-package-rate-section]');
+        const condoRateSet = document.querySelector('[data-condo-rate-set]');
+        const carRateSets = document.querySelector('[data-car-rate-sets]');
         const carDetailsSection = document.querySelector('[data-car-details-section]');
         const propertyDetailsSection = document.querySelector('[data-property-details-section]');
         const gpsAccessory = document.querySelector('[data-gps-accessory]');
@@ -231,15 +233,28 @@
                 return;
             }
 
-            const isPackageRental = ['car', 'condo'].includes(categorySelect.value);
+            const isCar = categorySelect.value === 'car';
+            const isCondo = categorySelect.value === 'condo';
+            const isPackageRental = isCar || isCondo;
             standardRateSection.hidden = isPackageRental;
             packageRateSection.hidden = !isPackageRental;
+            if (condoRateSet) condoRateSet.hidden = !isCondo;
+            if (carRateSets) carRateSets.hidden = !isCar;
 
             standardRateSection.querySelectorAll('input, select').forEach((field) => {
                 field.disabled = isPackageRental;
                 field.required = !isPackageRental;
             });
-            packageRateSection.querySelectorAll('[data-rate-option]').forEach((option) => syncRateOption(option, isPackageRental));
+            condoRateSet?.querySelectorAll('[data-rate-option]').forEach((option) => syncRateOption(option, isCondo));
+            carRateSets?.querySelectorAll('[data-car-rate-coverage]').forEach((coverageCard) => {
+                const coverageToggle = coverageCard.querySelector('[data-car-rate-area-toggle]');
+                const coverageOptions = coverageCard.querySelector('[data-car-rate-options]');
+                const coverageEnabled = isCar && coverageToggle?.checked;
+                coverageCard.classList.toggle('rate-not-offered', !coverageEnabled);
+                if (coverageToggle) coverageToggle.disabled = !isCar;
+                if (coverageOptions) coverageOptions.hidden = !coverageEnabled;
+                coverageCard.querySelectorAll('[data-rate-option]').forEach((option) => syncRateOption(option, coverageEnabled));
+            });
             syncDetailSection(carDetailsSection, categorySelect.value === 'car', ['car[make]', 'car[model]', 'car[year]', 'car[transmission]', 'car[fuel_type]', 'car[color]']);
             syncDetailSection(propertyDetailsSection, categorySelect.value === 'condo', ['property[type]', 'property[bedrooms]', 'property[bathrooms]']);
             const showGpsDetails = categorySelect.value === 'car' && gpsAccessory?.checked;
@@ -286,8 +301,9 @@
 
         categorySelect?.addEventListener('change', syncListingRates);
         packageRateSection?.querySelectorAll('[data-rate-toggle]').forEach((toggle) => {
-            toggle.addEventListener('change', () => syncRateOption(toggle.closest('[data-rate-option]'), ['car', 'condo'].includes(categorySelect?.value)));
+            toggle.addEventListener('change', syncListingRates);
         });
+        packageRateSection?.querySelectorAll('[data-car-rate-area-toggle]').forEach((toggle) => toggle.addEventListener('change', syncListingRates));
         gpsAccessory?.addEventListener('change', syncListingRates);
         document.querySelectorAll('[data-property-amenity], [data-amenity-payment], [data-car-charge-toggle]').forEach((field) => field.addEventListener('change', syncListingRates));
         document.querySelectorAll('[data-password-reveal]').forEach((button) => {
@@ -365,7 +381,7 @@
                     const text = String(value).trim();
                     if (!text) return false;
                     if (['car_accessories[]', 'custom_accessories[]', 'property_amenities[]'].includes(name)) return true;
-                    if (/^rates\[/.test(name) || /^gps\[/.test(name) || /^wifi\[/.test(name)) return true;
+                    if (/^(rates|car_rates)\[/.test(name) || /^gps\[/.test(name) || /^wifi\[/.test(name)) return true;
                     if (/^car\[(make|model|year|color)\]$/.test(name)) return true;
                     if (/^property\[(bedrooms|bathrooms|beds|floor_area_sqm)\]$/.test(name)) return true;
                     if (/^car_charges\[[^\]]+\]\[(amount|enabled)\]$/.test(name)) return name.endsWith('[amount]') || text === '1';
@@ -525,6 +541,23 @@
             const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
             date.setDate(Math.min(originalDay, lastDay));
         };
+
+        document.querySelectorAll('[data-rental-coverage-select]').forEach((select) => {
+            const form = select.closest('form');
+            const panels = Array.from(form?.querySelectorAll('[data-rental-coverage-panel]') || []);
+            const syncRentalCoverage = () => {
+                panels.forEach((panel) => {
+                    const active = panel.dataset.rentalCoveragePanel === select.value;
+                    panel.hidden = !active;
+                    panel.querySelectorAll('[data-package-quantity]').forEach((input) => {
+                        input.disabled = !active;
+                    });
+                });
+                document.getElementById('end_at')?.dispatchEvent(new Event('change'));
+            };
+            select.addEventListener('change', syncRentalCoverage);
+            syncRentalCoverage();
+        });
 
         document.querySelectorAll('[data-package-builder]').forEach((builder) => {
             const startInput = document.getElementById(builder.dataset.startId);

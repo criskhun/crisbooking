@@ -103,7 +103,7 @@
                                 @endphp
                                 @if ($unit->rates->isNotEmpty())
                                     <div class="rental-rate-list">
-                                        @foreach ($unit->rates as $rate)<span><small>{{ $rateLabels[$rate->period] }}</small><strong>₱{{ number_format($rate->price, 2) }}</strong></span>@endforeach
+                                        @foreach ($unit->rates as $rate)<span><small>{{ $unit->category === 'car' ? (['within_city' => 'Within city', 'out_of_town' => 'Out of town'][$rate->coverage] ?? '').' · ' : '' }}{{ $rateLabels[$rate->period] }}</small><strong>₱{{ number_format($rate->price, 2) }}</strong></span>@endforeach
                                     </div>
                                 @else
                                     <p class="rate-setup-note">Edit this listing to add its four rental prices and photo.</p>

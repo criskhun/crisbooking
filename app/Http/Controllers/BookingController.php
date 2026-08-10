@@ -35,6 +35,7 @@ class BookingController extends Controller
             'unit_id' => ['required', 'integer', Rule::exists('units', 'id')->where('is_active', true)],
             'inquiry_id' => ['required', 'integer', 'exists:inquiries,id'],
             'unit_rate_id' => ['nullable', 'integer', 'exists:unit_rates,id'],
+            'rental_coverage' => ['nullable', Rule::in(['within_city', 'out_of_town'])],
             'start_at' => ['required', 'date', 'after:now'],
             'end_at' => ['nullable', 'date', 'after:start_at'],
             'duration_pricing' => ['nullable', 'boolean'],
@@ -52,6 +53,7 @@ class BookingController extends Controller
             $ratePeriod = null;
             $rateQuantity = 1;
             $packageBreakdown = null;
+            $rentalCoverage = null;
             $partySize = (int) ($validated['party_size'] ?? 1);
 
             if (! $request->user()->hasCompleteProfile()) {
@@ -73,6 +75,7 @@ class BookingController extends Controller
             }
 
             if ($unit->isPackageRental()) {
+                $rentalCoverage = $this->resolveRentalCoverage($unit, $validated['rental_coverage'] ?? null, 'rental_coverage');
                 if (! empty($validated['duration_pricing'])) {
                     if (empty($validated['end_at'])) {
                         throw ValidationException::withMessages([
@@ -81,12 +84,12 @@ class BookingController extends Controller
                     }
 
                     $end = Carbon::parse($validated['end_at']);
-                    $packageBreakdown = $this->buildDurationPackageBreakdown($unit, $start, $end, 'package_quantities');
+                    $packageBreakdown = $this->buildDurationPackageBreakdown($unit, $start, $end, 'package_quantities', $rentalCoverage);
                 } else {
                     $quantities = collect($validated['package_quantities'] ?? [])->map(fn ($quantity) => (int) $quantity)->filter()->all();
 
                     if ($quantities === [] && ! empty($validated['unit_rate_id'])) {
-                        $legacyRate = $unit->rates()->whereKey($validated['unit_rate_id'])->first();
+                        $legacyRate = $unit->rates()->where('coverage', $rentalCoverage)->whereKey($validated['unit_rate_id'])->first();
 
                         if (! $legacyRate) {
                             throw ValidationException::withMessages([
@@ -97,13 +100,13 @@ class BookingController extends Controller
                         $quantities = [$legacyRate->period => 1];
                     }
 
-                    $packageBreakdown = $this->buildPackageBreakdown($unit, $quantities, 'package_quantities');
+                    $packageBreakdown = $this->buildPackageBreakdown($unit, $quantities, 'package_quantities', $rentalCoverage);
                     $end = $this->packageEnd($start, $packageBreakdown);
                 }
 
                 $rateQuantity = collect($packageBreakdown)->sum('quantity');
                 $ratePeriod = count($packageBreakdown) === 1 ? array_key_first($packageBreakdown) : 'mixed';
-                $rate = count($packageBreakdown) === 1 ? $unit->rates()->where('period', $ratePeriod)->first() : null;
+                $rate = count($packageBreakdown) === 1 ? $unit->rates()->where('coverage', $rentalCoverage)->where('period', $ratePeriod)->first() : null;
             } else {
                 if (empty($validated['end_at'])) {
                     throw ValidationException::withMessages([
@@ -133,6 +136,7 @@ class BookingController extends Controller
                 'end_at' => $end,
                 'status' => 'pending',
                 'rate_period' => $ratePeriod,
+                'rental_coverage' => $unit->category === 'car' ? $rentalCoverage : null,
                 'rate_quantity' => $rateQuantity,
                 'package_breakdown' => $packageBreakdown,
                 'additional_charges' => $additionalCharges ?: null,
@@ -181,8 +185,13 @@ class BookingController extends Controller
             $packageBreakdown = null;
 
             if ($unit->isPackageRental()) {
+                $rentalCoverage = $this->resolveRentalCoverage(
+                    $unit,
+                    $lockedBooking->rental_coverage ?: $lockedBooking->rate?->coverage,
+                    'change_package_quantities',
+                );
                 if (! empty($validated['change_duration_pricing'])) {
-                    $packageBreakdown = $this->buildDurationPackageBreakdown($unit, $start, $requestedEnd, 'change_package_quantities');
+                    $packageBreakdown = $this->buildDurationPackageBreakdown($unit, $start, $requestedEnd, 'change_package_quantities', $rentalCoverage);
                     $end = $requestedEnd;
                 } else {
                     $quantities = collect($validated['change_package_quantities'] ?? [])->map(fn ($quantity) => (int) $quantity)->filter()->all();
@@ -191,7 +200,7 @@ class BookingController extends Controller
                         $quantities = [$lockedBooking->rate_period => $lockedBooking->packageQuantityFor($start, $requestedEnd)];
                     }
 
-                    $packageBreakdown = $this->buildPackageBreakdown($unit, $quantities, 'change_package_quantities');
+                    $packageBreakdown = $this->buildPackageBreakdown($unit, $quantities, 'change_package_quantities', $rentalCoverage);
                     $end = $this->packageEnd($start, $packageBreakdown);
                 }
             } else {
@@ -269,7 +278,12 @@ class BookingController extends Controller
             $packageBreakdown = $lockedBooking->change_package_breakdown;
             $rateQuantity = $packageBreakdown ? collect($packageBreakdown)->sum('quantity') : 1;
             $ratePeriod = $packageBreakdown ? (count($packageBreakdown) === 1 ? array_key_first($packageBreakdown) : 'mixed') : null;
-            $unitRateId = $ratePeriod && $ratePeriod !== 'mixed' ? $unit->rates()->where('period', $ratePeriod)->value('id') : null;
+            $rentalCoverage = $unit->isPackageRental()
+                ? $this->resolveRentalCoverage($unit, $lockedBooking->rental_coverage ?: $lockedBooking->rate?->coverage, 'change_package_quantities')
+                : null;
+            $unitRateId = $ratePeriod && $ratePeriod !== 'mixed'
+                ? $unit->rates()->where('coverage', $rentalCoverage)->where('period', $ratePeriod)->value('id')
+                : null;
             $total = $packageBreakdown
                 ? $this->packageTotal($packageBreakdown)
                 : $this->calculateTotal($unit, $start, $end);
@@ -324,9 +338,9 @@ class BookingController extends Controller
         return back()->with('status', 'Booking cancelled. The schedule is available again.');
     }
 
-    private function buildPackageBreakdown(Unit $unit, array $quantities, string $errorKey): array
+    private function buildPackageBreakdown(Unit $unit, array $quantities, string $errorKey, string $coverage = 'standard'): array
     {
-        $rates = $unit->rates()->get()->keyBy('period');
+        $rates = $unit->rates()->where('coverage', $coverage)->get()->keyBy('period');
         $selected = [];
 
         foreach ($quantities as $period => $quantity) {
@@ -356,9 +370,9 @@ class BookingController extends Controller
         return $selected;
     }
 
-    private function buildDurationPackageBreakdown(Unit $unit, Carbon $start, Carbon $end, string $errorKey): array
+    private function buildDurationPackageBreakdown(Unit $unit, Carbon $start, Carbon $end, string $errorKey, string $coverage = 'standard'): array
     {
-        $rates = $unit->rates()->get()->keyBy('period');
+        $rates = $unit->rates()->where('coverage', $coverage)->get()->keyBy('period');
         $quantities = [];
         $cursor = $start->copy();
 
@@ -403,7 +417,36 @@ class BookingController extends Controller
             ->mapWithKeys(fn ($period) => [$period => $quantities[$period]])
             ->all();
 
-        return $this->buildPackageBreakdown($unit, $orderedQuantities, $errorKey);
+        return $this->buildPackageBreakdown($unit, $orderedQuantities, $errorKey, $coverage);
+    }
+
+    private function resolveRentalCoverage(Unit $unit, ?string $requestedCoverage, string $errorKey): string
+    {
+        if ($unit->category !== 'car') {
+            return 'standard';
+        }
+
+        $availableCoverages = $unit->rates()
+            ->reorder()
+            ->select('coverage')
+            ->distinct()
+            ->pluck('coverage')
+            ->filter()
+            ->values();
+
+        if ($requestedCoverage && $availableCoverages->contains($requestedCoverage)) {
+            return $requestedCoverage;
+        }
+
+        if ($requestedCoverage) {
+            throw ValidationException::withMessages([$errorKey => 'The selected rental coverage is not offered for this car.']);
+        }
+
+        if ($availableCoverages->count() <= 1) {
+            return (string) ($availableCoverages->first() ?: 'standard');
+        }
+
+        throw ValidationException::withMessages([$errorKey => 'Choose within-city or out-of-town use before booking this car.']);
     }
 
     private function packageEnd(Carbon $start, array $breakdown): Carbon

@@ -1,8 +1,20 @@
 @php
     $editing = isset($unit);
-    $rentalRates = $editing ? $unit->rates->keyBy('period') : collect();
+    $rentalRates = $editing ? $unit->rates->where('coverage', 'standard')->keyBy('period') : collect();
     $defaultOfferedRates = $rentalRates->isNotEmpty() ? $rentalRates->keys()->all() : ['12_hours', 'day', 'week', 'month'];
     $offeredRates = old('offered_rates', $defaultOfferedRates);
+    $carCoverageOptions = [
+        'within_city' => ['Within-city use', 'Driving stays inside the pickup city.'],
+        'out_of_town' => ['Out-of-town use', 'The vehicle may travel beyond city limits.'],
+    ];
+    $storedCarRates = $editing ? $unit->rates->whereIn('coverage', array_keys($carCoverageOptions))->groupBy('coverage') : collect();
+    $defaultCarRateAreas = $storedCarRates->isNotEmpty() ? $storedCarRates->keys()->all() : ['within_city'];
+    $carRateAreas = old('car_rate_areas', $defaultCarRateAreas);
+    $defaultCarOfferedRates = collect(array_keys($carCoverageOptions))->mapWithKeys(function ($coverage) use ($storedCarRates) {
+        $periods = $storedCarRates->get($coverage, collect())->pluck('period')->all();
+        return [$coverage => count($periods) ? $periods : ['12_hours', 'day', 'week', 'month']];
+    })->all();
+    $carOfferedRates = old('car_offered_rates', $defaultCarOfferedRates);
     $carDetails = old('car', $unit->car_details ?? []);
     $carAccessories = old('car_accessories', $unit->car_details['accessories'] ?? []);
     $customAccessories = old('custom_accessories', $unit->car_details['custom_accessories'] ?? []);
@@ -121,16 +133,44 @@
     </div>
 
     <fieldset class="rental-rate-fields" data-package-rate-section>
-        <legend><span class="eyebrow">Rental packages</span><strong>Enable only the durations you offer</strong></legend>
-        @error('offered_rates')<p class="error-text">{{ $message }}</p>@enderror
-        @foreach (['12_hours' => '12 hours', 'day' => '1 day', 'week' => '1 week', 'month' => '1 month'] as $period => $label)
-            <div class="field-group rental-rate-option" data-rate-option>
-                <label class="rate-offer-toggle"><input type="checkbox" name="offered_rates[]" value="{{ $period }}" @checked(in_array($period, $offeredRates)) data-rate-toggle><span>{{ $label }}</span></label>
-                <label class="sr-only" for="rate_{{ $period }}">{{ $label }} price</label>
-                <div class="currency-input"><span>₱</span><input id="rate_{{ $period }}" name="rates[{{ $period }}]" type="number" value="{{ old('rates.'.$period, $rentalRates->get($period)?->price) }}" min="0" max="9999999999.99" step="0.01" placeholder="0.00"></div>
-                @error('rates.'.$period)<p class="error-text">{{ $message }}</p>@enderror
-            </div>
-        @endforeach
+        <legend><span class="eyebrow">Rental pricing</span><strong>Enable only the packages you offer</strong></legend>
+
+        <div data-condo-rate-set>
+            @error('offered_rates')<p class="error-text">{{ $message }}</p>@enderror
+            @foreach (['12_hours' => '12 hours', 'day' => '1 day', 'week' => '1 week', 'month' => '1 month'] as $period => $label)
+                <div class="field-group rental-rate-option" data-rate-option>
+                    <label class="rate-offer-toggle"><input type="checkbox" name="offered_rates[]" value="{{ $period }}" @checked(in_array($period, $offeredRates)) data-rate-toggle><span>{{ $label }}</span></label>
+                    <label class="sr-only" for="rate_{{ $period }}">{{ $label }} price</label>
+                    <div class="currency-input"><span>₱</span><input id="rate_{{ $period }}" name="rates[{{ $period }}]" type="number" value="{{ old('rates.'.$period, $rentalRates->get($period)?->price) }}" min="0" max="9999999999.99" step="0.01" placeholder="0.00"></div>
+                    @error('rates.'.$period)<p class="error-text">{{ $message }}</p>@enderror
+                </div>
+            @endforeach
+        </div>
+
+        <div class="car-coverage-rates" data-car-rate-sets>
+            <div class="detail-subheading"><strong>Rental coverage</strong><small>Set different package prices based on where the renter may drive.</small></div>
+            @error('car_rate_areas')<p class="error-text">{{ $message }}</p>@enderror
+            @foreach ($carCoverageOptions as $coverage => [$coverageLabel, $coverageHelp])
+                @php($coverageRates = $storedCarRates->get($coverage, collect())->keyBy('period'))
+                <section class="rental-coverage-card" data-car-rate-coverage>
+                    <label class="rental-coverage-toggle">
+                        <input type="checkbox" name="car_rate_areas[]" value="{{ $coverage }}" @checked(in_array($coverage, $carRateAreas)) data-car-rate-area-toggle>
+                        <span><strong>{{ $coverageLabel }}</strong><small>{{ $coverageHelp }}</small></span>
+                    </label>
+                    <div class="rental-coverage-options" data-car-rate-options>
+                        @foreach (['12_hours' => '12 hours', 'day' => '1 day', 'week' => '1 week', 'month' => '1 month'] as $period => $label)
+                            <div class="field-group rental-rate-option" data-rate-option>
+                                <label class="rate-offer-toggle"><input type="checkbox" name="car_offered_rates[{{ $coverage }}][]" value="{{ $period }}" @checked(in_array($period, $carOfferedRates[$coverage] ?? [])) data-rate-toggle><span>{{ $label }}</span></label>
+                                <label class="sr-only" for="car_rate_{{ $coverage }}_{{ $period }}">{{ $coverageLabel }} {{ $label }} price</label>
+                                <div class="currency-input"><span>₱</span><input id="car_rate_{{ $coverage }}_{{ $period }}" name="car_rates[{{ $coverage }}][{{ $period }}]" type="number" value="{{ old('car_rates.'.$coverage.'.'.$period, $coverageRates->get($period)?->price) }}" min="0" max="9999999999.99" step="0.01" placeholder="0.00"></div>
+                                @error('car_rates.'.$coverage.'.'.$period)<p class="error-text">{{ $message }}</p>@enderror
+                            </div>
+                        @endforeach
+                    </div>
+                    @error('car_offered_rates.'.$coverage)<p class="error-text">{{ $message }}</p>@enderror
+                </section>
+            @endforeach
+        </div>
     </fieldset>
 
     <fieldset class="category-detail-fields car-detail-fields" data-car-details-section>

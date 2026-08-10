@@ -11,7 +11,7 @@ class UnitRate extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['period', 'price'];
+    protected $fillable = ['coverage', 'period', 'price'];
 
     protected function casts(): array
     {

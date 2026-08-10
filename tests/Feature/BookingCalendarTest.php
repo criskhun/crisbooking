@@ -253,8 +253,9 @@ class BookingCalendarTest extends TestCase
             'capacity' => 5,
             'rules' => "Return with a full tank.\nOnly registered drivers may use the car.",
             'photos' => [UploadedFile::fake()->image('front.jpg'), UploadedFile::fake()->image('inside.jpg')],
-            'offered_rates' => ['12_hours', 'day'],
-            'rates' => ['12_hours' => 1800, 'day' => 2800],
+            'car_rate_areas' => ['within_city'],
+            'car_offered_rates' => ['within_city' => ['12_hours', 'day']],
+            'car_rates' => ['within_city' => ['12_hours' => 1800, 'day' => 2800]],
             'car' => [
                 'make' => 'Toyota',
                 'model' => 'Vios',
@@ -283,6 +284,73 @@ class BookingCalendarTest extends TestCase
         $this->assertTrue($unit->car_details['charges']['deposit']['refundable']);
         $this->assertDatabaseCount('unit_rates', 2);
         $this->assertDatabaseCount('unit_images', 2);
+    }
+
+    public function test_car_can_have_separate_within_city_and_out_of_town_booking_prices(): void
+    {
+        Storage::fake('public');
+        $host = User::factory()->host()->create();
+        $client = User::factory()->create();
+
+        $this->actingAs($host)->get(route('units.create'))
+            ->assertOk()
+            ->assertSee('Rental coverage')
+            ->assertSee('Within-city use')
+            ->assertSee('Out-of-town use');
+
+        $this->actingAs($host)->post(route('units.store'), [
+            'name' => 'Coverage Priced Sedan',
+            'kind' => 'unit',
+            'category' => 'car',
+            'rules' => 'Return on time and follow the selected travel coverage.',
+            'photos' => [UploadedFile::fake()->image('sedan.jpg')],
+            'car_rate_areas' => ['within_city', 'out_of_town'],
+            'car_offered_rates' => [
+                'within_city' => ['day'],
+                'out_of_town' => ['day'],
+            ],
+            'car_rates' => [
+                'within_city' => ['day' => 2500],
+                'out_of_town' => ['day' => 3600],
+            ],
+            'car' => [
+                'make' => 'Toyota',
+                'model' => 'Vios',
+                'year' => 2026,
+                'transmission' => 'automatic',
+                'fuel_type' => 'gasoline',
+                'color' => 'White',
+            ],
+            'is_active' => 1,
+        ])->assertRedirect('/units');
+
+        $unit = Unit::firstOrFail();
+        $this->assertDatabaseHas('unit_rates', ['unit_id' => $unit->id, 'coverage' => 'within_city', 'period' => 'day', 'price' => 2500]);
+        $this->assertDatabaseHas('unit_rates', ['unit_id' => $unit->id, 'coverage' => 'out_of_town', 'period' => 'day', 'price' => 3600]);
+
+        $start = now()->addDays(3)->startOfHour();
+        $inquiry = $this->createInquiry($unit, $client, $start, $start->copy()->addDay());
+        $bookingPayload = [
+            'unit_id' => $unit->id,
+            'inquiry_id' => $inquiry->id,
+            'duration_pricing' => 1,
+            'start_at' => $start->toDateTimeString(),
+            'end_at' => $start->copy()->addDay()->toDateTimeString(),
+        ];
+
+        $this->actingAs($client)->post(route('bookings.store'), $bookingPayload)
+            ->assertSessionHasErrors('rental_coverage');
+
+        $this->actingAs($client)->post(route('bookings.store'), $bookingPayload + ['rental_coverage' => 'out_of_town'])
+            ->assertRedirect();
+
+        $booking = Booking::firstOrFail();
+        $this->assertSame('out_of_town', $booking->rental_coverage);
+        $this->assertSame('3600.00', $booking->total_amount);
+        $this->actingAs($client)->get(route('bookings.show', $booking))
+            ->assertOk()
+            ->assertSee('Rental coverage')
+            ->assertSee('Out-of-town use');
     }
 
     public function test_required_car_charges_are_snapshotted_and_added_to_the_booking_total(): void
@@ -584,8 +652,9 @@ class BookingCalendarTest extends TestCase
             'kind' => 'unit',
             'category' => 'car',
             'photos' => [UploadedFile::fake()->image('suv.jpg')],
-            'offered_rates' => ['day'],
-            'rates' => ['day' => 3500],
+            'car_rate_areas' => ['within_city'],
+            'car_offered_rates' => ['within_city' => ['day']],
+            'car_rates' => ['within_city' => ['day' => 3500]],
             'car' => [
                 'make' => 'Toyota',
                 'model' => 'Fortuner',
