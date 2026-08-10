@@ -1233,26 +1233,159 @@
 (() => {
     document.addEventListener('DOMContentLoaded', () => {
         const selfiePreviewUrls = new Map();
-        document.querySelectorAll('[data-selfie-input]').forEach((input) => {
-            input.addEventListener('change', () => {
-                const file = input.files?.[0];
-                const type = input.dataset.selfieInput;
-                const preview = document.querySelector(`[data-selfie-preview="${type}"]`);
-                if (! file || ! preview) return;
+        const cameraDialog = document.querySelector('[data-selfie-camera-dialog]');
+        const cameraVideo = cameraDialog?.querySelector('[data-camera-video]');
+        const cameraPhoto = cameraDialog?.querySelector('[data-camera-photo]');
+        const cameraCanvas = cameraDialog?.querySelector('[data-camera-canvas]');
+        const cameraTitle = cameraDialog?.querySelector('[data-camera-title]');
+        const cameraInstructions = cameraDialog?.querySelector('[data-camera-instructions]');
+        const cameraStatus = cameraDialog?.querySelector('[data-camera-status]');
+        const captureButton = cameraDialog?.querySelector('[data-camera-capture]');
+        const retakeButton = cameraDialog?.querySelector('[data-camera-retake]');
+        const useButton = cameraDialog?.querySelector('[data-camera-use]');
+        let cameraStream = null;
+        let activeSelfieType = null;
+        let capturedSelfieBlob = null;
+        let capturedPhotoUrl = null;
 
-                if (selfiePreviewUrls.has(type)) URL.revokeObjectURL(selfiePreviewUrls.get(type));
-                const previewUrl = URL.createObjectURL(file);
-                selfiePreviewUrls.set(type, previewUrl);
+        const stopCamera = () => {
+            cameraStream?.getTracks().forEach((track) => track.stop());
+            cameraStream = null;
+            if (cameraVideo) cameraVideo.srcObject = null;
+        };
 
-                preview.querySelector('img, .selfie-placeholder')?.remove();
-                const image = document.createElement('img');
-                image.src = previewUrl;
-                image.alt = type === 'face' ? 'Preview of your face selfie' : 'Preview of your selfie holding a valid ID';
-                preview.prepend(image);
+        const resetCameraCapture = () => {
+            capturedSelfieBlob = null;
+            if (capturedPhotoUrl) URL.revokeObjectURL(capturedPhotoUrl);
+            capturedPhotoUrl = null;
+            if (cameraPhoto) {
+                cameraPhoto.src = '';
+                cameraPhoto.hidden = true;
+            }
+            if (cameraVideo) cameraVideo.hidden = false;
+            if (captureButton) {
+                captureButton.hidden = false;
+                captureButton.disabled = ! cameraStream;
+            }
+            if (retakeButton) retakeButton.hidden = true;
+            if (useButton) useButton.hidden = true;
+        };
 
-                const action = input.closest('.selfie-upload-card')?.querySelector('.selfie-file-action');
-                if (action) action.textContent = `Selected: ${file.name}`;
-            });
+        const closeCamera = () => {
+            stopCamera();
+            resetCameraCapture();
+            cameraDialog?.close();
+        };
+
+        const openCamera = async (type) => {
+            if (! cameraDialog || ! cameraVideo || ! navigator.mediaDevices?.getUserMedia) {
+                window.alert('A live camera is required. Open this page over HTTPS in a browser that supports camera access.');
+                return;
+            }
+
+            activeSelfieType = type;
+            cameraDialog.dataset.cameraMode = type;
+            if (cameraTitle) cameraTitle.textContent = type === 'face' ? 'Take your face selfie' : 'Take a selfie with your valid ID';
+            if (cameraInstructions) cameraInstructions.textContent = type === 'face'
+                ? 'Center your uncovered face inside the oval and look directly at the camera.'
+                : 'Hold the same valid ID from your profile beside your face. Keep both fully visible.';
+            if (cameraStatus) cameraStatus.textContent = 'Starting the front camera…';
+            if (captureButton) captureButton.disabled = true;
+            resetCameraCapture();
+            cameraDialog.showModal();
+
+            try {
+                stopCamera();
+                cameraStream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'user',
+                        width: { ideal: 1280 },
+                        height: { ideal: 960 },
+                    },
+                    audio: false,
+                });
+                cameraVideo.srcObject = cameraStream;
+                await cameraVideo.play();
+                if (captureButton) captureButton.disabled = false;
+                if (cameraStatus) cameraStatus.textContent = 'Camera ready. Align the photo with the guide, then take the photo.';
+            } catch (error) {
+                stopCamera();
+                if (cameraStatus) cameraStatus.textContent = 'Camera access was not available. Allow camera permission and try again.';
+            }
+        };
+
+        document.querySelectorAll('[data-camera-open]').forEach((button) => {
+            button.addEventListener('click', () => openCamera(button.dataset.cameraOpen));
+        });
+
+        captureButton?.addEventListener('click', () => {
+            if (! cameraVideo?.videoWidth || ! cameraVideo?.videoHeight || ! cameraCanvas || ! cameraPhoto) return;
+
+            cameraCanvas.width = cameraVideo.videoWidth;
+            cameraCanvas.height = cameraVideo.videoHeight;
+            const context = cameraCanvas.getContext('2d');
+            context.drawImage(cameraVideo, 0, 0, cameraCanvas.width, cameraCanvas.height);
+            cameraCanvas.toBlob((blob) => {
+                if (! blob) return;
+                capturedSelfieBlob = blob;
+                capturedPhotoUrl = URL.createObjectURL(blob);
+                cameraPhoto.src = capturedPhotoUrl;
+                cameraPhoto.hidden = false;
+                cameraVideo.hidden = true;
+                captureButton.hidden = true;
+                retakeButton.hidden = false;
+                useButton.hidden = false;
+                if (cameraStatus) cameraStatus.textContent = 'Review the photo. Retake it if your face or ID is unclear.';
+            }, 'image/jpeg', .92);
+        });
+
+        retakeButton?.addEventListener('click', () => {
+            resetCameraCapture();
+            if (cameraStatus) cameraStatus.textContent = 'Camera ready. Align the photo with the guide, then take the photo.';
+        });
+
+        useButton?.addEventListener('click', () => {
+            const input = document.querySelector(`[data-selfie-input="${activeSelfieType}"]`);
+            const preview = document.querySelector(`[data-selfie-preview="${activeSelfieType}"]`);
+            if (! input || ! preview || ! capturedSelfieBlob) return;
+
+            const fileName = activeSelfieType === 'face' ? 'face-selfie.jpg' : 'selfie-with-valid-id.jpg';
+            const capturedFile = new File([capturedSelfieBlob], fileName, { type: 'image/jpeg', lastModified: Date.now() });
+            const transfer = new DataTransfer();
+            transfer.items.add(capturedFile);
+            input.files = transfer.files;
+
+            if (selfiePreviewUrls.has(activeSelfieType)) URL.revokeObjectURL(selfiePreviewUrls.get(activeSelfieType));
+            const previewUrl = URL.createObjectURL(capturedSelfieBlob);
+            selfiePreviewUrls.set(activeSelfieType, previewUrl);
+            preview.querySelector('img, .selfie-placeholder')?.remove();
+            const image = document.createElement('img');
+            image.src = previewUrl;
+            image.alt = activeSelfieType === 'face' ? 'Captured face selfie' : 'Captured selfie holding a valid ID';
+            preview.prepend(image);
+
+            const action = input.closest('.selfie-upload-card')?.querySelector('.selfie-file-action');
+            if (action) action.textContent = activeSelfieType === 'face' ? 'Retake face selfie' : 'Retake selfie with ID';
+            closeCamera();
+        });
+
+        cameraDialog?.querySelectorAll('[data-camera-close], [data-camera-cancel]').forEach((button) => button.addEventListener('click', closeCamera));
+        cameraDialog?.addEventListener('cancel', (event) => {
+            event.preventDefault();
+            closeCamera();
+        });
+        cameraDialog?.addEventListener('close', stopCamera);
+
+        const hostApplicationForm = document.querySelector('[data-host-application-form]');
+        hostApplicationForm?.addEventListener('submit', (event) => {
+            const missingCameraPhoto = [...hostApplicationForm.querySelectorAll('[data-camera-required]')]
+                .some((input) => ! input.files?.length);
+            const cameraRequirementError = hostApplicationForm.querySelector('[data-camera-requirement-error]');
+            if (cameraRequirementError) cameraRequirementError.hidden = ! missingCameraPhoto;
+            if (! missingCameraPhoto) return;
+
+            event.preventDefault();
+            cameraRequirementError?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         });
 
         const accountType = document.querySelector('[data-host-account-type]');

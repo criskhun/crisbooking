@@ -64,33 +64,34 @@
                 </section>
 
                 @if ($canEdit && $profileUser->hasCompleteProfile())
-                    <form method="POST" action="{{ route('host-applications.store') }}" enctype="multipart/form-data" class="verification-form host-application-form">
+                    <form method="POST" action="{{ route('host-applications.store') }}" enctype="multipart/form-data" class="verification-form host-application-form" data-host-application-form>
                         @csrf
                         <section>
                             <div class="verification-section-heading"><span>01</span><div><h2>Identity selfies</h2><p>These private images help the administrator compare your face with the valid ID already saved in your profile.</p></div></div>
                             <div class="identity-selfie-grid">
-                                <label class="selfie-upload-card" for="face_selfie">
+                                <div class="selfie-upload-card">
                                     <span class="selfie-preview face-preview" data-selfie-preview="face">
                                         @if($application?->face_selfie_path)<img src="{{ route('host-applications.identity-image', [$application, 'type' => 'face']) }}" alt="Current face selfie">@else<span class="selfie-placeholder">Position your face here</span>@endif
                                         <i aria-hidden="true"></i>
                                     </span>
                                     <strong>Clear face selfie</strong>
                                     <small>Center your face inside the oval. Remove sunglasses, masks, and hats. Use even lighting and include only yourself.</small>
-                                    <span class="selfie-file-action">{{ $application?->face_selfie_path ? 'Replace face selfie' : 'Take or upload selfie' }}</span>
-                                    <input id="face_selfie" name="face_selfie" type="file" accept="image/jpeg,image/png,image/webp" capture="user" data-selfie-input="face" {{ $application?->face_selfie_path ? '' : 'required' }}>
+                                    <button class="selfie-file-action" type="button" data-camera-open="face">{{ $application?->face_selfie_path ? 'Retake face selfie' : 'Open camera for selfie' }}</button>
+                                    <input id="face_selfie" name="face_selfie" type="file" accept="image/jpeg" data-selfie-input="face" {{ $application?->face_selfie_path ? '' : 'data-camera-required=true' }} tabindex="-1" aria-hidden="true">
                                     @error('face_selfie')<span class="error-text">{{ $message }}</span>@enderror
-                                </label>
-                                <label class="selfie-upload-card" for="id_selfie">
+                                </div>
+                                <div class="selfie-upload-card">
                                     <span class="selfie-preview id-hold-preview" data-selfie-preview="id">
                                         @if($application?->id_selfie_path)<img src="{{ route('host-applications.identity-image', [$application, 'type' => 'id']) }}" alt="Current selfie holding a valid ID">@else<span class="selfie-placeholder">Your face and ID must both be visible</span>@endif
                                     </span>
                                     <strong>Selfie holding your valid ID</strong>
                                     <small>Hold the same ID from your profile beside your face. Keep your full face and the ID visible, sharp, and readable.</small>
-                                    <span class="selfie-file-action">{{ $application?->id_selfie_path ? 'Replace selfie with ID' : 'Take or upload selfie with ID' }}</span>
-                                    <input id="id_selfie" name="id_selfie" type="file" accept="image/jpeg,image/png,image/webp" capture="user" data-selfie-input="id" {{ $application?->id_selfie_path ? '' : 'required' }}>
+                                    <button class="selfie-file-action" type="button" data-camera-open="id">{{ $application?->id_selfie_path ? 'Retake selfie with ID' : 'Open camera with ID' }}</button>
+                                    <input id="id_selfie" name="id_selfie" type="file" accept="image/jpeg" data-selfie-input="id" {{ $application?->id_selfie_path ? '' : 'data-camera-required=true' }} tabindex="-1" aria-hidden="true">
                                     @error('id_selfie')<span class="error-text">{{ $message }}</span>@enderror
-                                </label>
+                                </div>
                             </div>
+                            <p class="error-text camera-requirement-error" data-camera-requirement-error hidden>Take both required photos before submitting your host application.</p>
                             <p class="identity-privacy-note">Images are stored privately, are unavailable to clients or hosts, and can only be opened by you and administrators.</p>
                         </section>
                         <section>
@@ -131,6 +132,27 @@
                         </section>
 
                         <div class="verification-actions"><p>Submitting does not publish a listing. Once approved, you can create listings for any supported category.</p><button class="button button-primary" type="submit">{{ $application ? 'Update and resubmit' : 'Submit host application' }}</button></div>
+
+                        <dialog class="selfie-camera-dialog" data-selfie-camera-dialog aria-labelledby="selfie-camera-title">
+                            <div class="selfie-camera-panel">
+                                <header><div><span class="eyebrow">Live camera</span><h2 id="selfie-camera-title" data-camera-title>Take selfie</h2></div><button type="button" data-camera-close aria-label="Close camera">×</button></header>
+                                <p data-camera-instructions>Center your face inside the guide.</p>
+                                <div class="camera-capture-stage" data-camera-stage>
+                                    <video data-camera-video autoplay muted playsinline></video>
+                                    <img data-camera-photo alt="Captured selfie preview" hidden>
+                                    <span class="camera-face-guide" aria-hidden="true"></span>
+                                    <span class="camera-id-guide" aria-hidden="true"><i>Keep your face and ID visible</i></span>
+                                </div>
+                                <canvas data-camera-canvas hidden></canvas>
+                                <p class="camera-status" data-camera-status role="status" aria-live="polite">Allow camera access when prompted.</p>
+                                <div class="camera-actions">
+                                    <button class="button button-ghost" type="button" data-camera-cancel>Cancel</button>
+                                    <button class="button button-primary" type="button" data-camera-capture disabled>Take photo</button>
+                                    <button class="button button-ghost" type="button" data-camera-retake hidden>Retake</button>
+                                    <button class="button button-primary" type="button" data-camera-use hidden>Use this photo</button>
+                                </div>
+                            </div>
+                        </dialog>
                     </form>
                 @elseif ($application)
                     <section class="application-summary-card">

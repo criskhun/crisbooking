@@ -28,7 +28,11 @@ class HostApplicationTest extends TestCase
         $this->actingAs($client)
             ->get(route('host-applications.show'))
             ->assertOk()
-            ->assertSee('Submit host application');
+            ->assertSee('Submit host application')
+            ->assertSee('Open camera for selfie')
+            ->assertSee('Open camera with ID')
+            ->assertSee('Take photo')
+            ->assertDontSee('Take or upload');
 
         $this->actingAs($client)
             ->post(route('host-applications.store'), $this->validApplicationData())
