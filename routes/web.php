@@ -88,6 +88,7 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     Route::get('/host-application', [HostApplicationController::class, 'show'])->name('host-applications.show');
     Route::post('/host-application', [HostApplicationController::class, 'store'])->name('host-applications.store');
     Route::get('/host-application/{hostApplication}/business-document', [HostApplicationController::class, 'businessDocument'])->name('host-applications.business-document');
+    Route::get('/host-application/{hostApplication}/identity-image/{type}', [HostApplicationController::class, 'identityImage'])->whereIn('type', ['face', 'id'])->name('host-applications.identity-image');
 });
 
 Route::middleware(['auth', 'active', 'verified', 'host'])->group(function () {

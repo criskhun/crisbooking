@@ -83,6 +83,10 @@ class AccountController extends Controller
         $wifiQrPaths = $account->units()->whereNotNull('wifi_qr_path')->pluck('wifi_qr_path');
         $governmentIdPath = $account->government_id_path;
         $hostApplicationDocumentPath = $account->hostApplication?->business_document_path;
+        $hostApplicationIdentityPaths = array_filter([
+            $account->hostApplication?->face_selfie_path,
+            $account->hostApplication?->id_selfie_path,
+        ]);
         $inquiryAttachmentPaths = InquiryMessage::query()->whereNotNull('attachment_path')->whereHas('inquiry', fn ($query) => $query->where('client_id', $account->id)->orWhere('host_id', $account->id))->pluck('attachment_path');
         $account->delete();
         Storage::disk('public')->delete($photoPaths->all());
@@ -93,6 +97,7 @@ class AccountController extends Controller
         if ($hostApplicationDocumentPath) {
             Storage::disk('local')->delete($hostApplicationDocumentPath);
         }
+        Storage::disk('local')->delete($hostApplicationIdentityPaths);
         Storage::disk('local')->delete($inquiryAttachmentPaths->all());
 
         return redirect()->route('accounts.index')->with('status', "{$name}'s account was deleted.");

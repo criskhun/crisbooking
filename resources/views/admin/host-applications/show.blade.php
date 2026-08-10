@@ -28,7 +28,16 @@
                             <div><small>Government ID</small><strong>{{ str($applicant->government_id_type)->replace('_', ' ')->title() }}</strong></div>
                             <div><small>Verification</small><strong>{{ $applicant->hasCompleteProfile() ? 'Profile complete' : 'Profile incomplete' }}</strong></div>
                         </div>
-                        @if($applicant->government_id_path)<a class="private-document-link" href="{{ route('profiles.document.preview', $applicant) }}">View private government ID →</a>@endif
+                        @if($applicant->government_id_path)<a class="private-document-link" href="{{ route('profiles.document.preview', ['profile' => $applicant, 'from' => 'host-application', 'application' => $hostApplication->id]) }}">View private government ID →</a>@endif
+                    </section>
+
+                    <section class="application-summary-card">
+                        <div class="application-card-heading"><div><span class="eyebrow">Face comparison</span><h2>Identity selfies</h2><p>Compare the clear selfie, selfie holding the ID, and the government ID before approval.</p></div></div>
+                        <div class="admin-identity-grid">
+                            <figure><div class="admin-face-selfie">@if($hostApplication->face_selfie_path)<img src="{{ route('host-applications.identity-image', [$hostApplication, 'type' => 'face']) }}" alt="Face selfie submitted by {{ $applicant->name }}">@else<span>Missing</span>@endif</div><figcaption>Clear face selfie</figcaption></figure>
+                            <figure><div>@if($hostApplication->id_selfie_path)<img src="{{ route('host-applications.identity-image', [$hostApplication, 'type' => 'id']) }}" alt="{{ $applicant->name }} holding a valid ID">@else<span>Missing</span>@endif</div><figcaption>Selfie holding valid ID</figcaption></figure>
+                        </div>
+                        @if($hostApplication->needsIdentityImages())<p class="identity-missing-warning">Both identity selfies are required before this applicant can be approved.</p>@endif
                     </section>
 
                     <section class="application-summary-card">

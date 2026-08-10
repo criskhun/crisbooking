@@ -84,6 +84,10 @@ class AdminHostApplicationController extends Controller
                 abort(422, 'The applicant must complete their verification profile before approval.');
             }
 
+            if ($validated['status'] === HostApplication::STATUS_APPROVED && $application->needsIdentityImages()) {
+                abort(422, 'A face selfie and a selfie holding the valid ID are required before approval.');
+            }
+
             $fromStatus = $application->status;
             $application->update([
                 'status' => $validated['status'],

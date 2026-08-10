@@ -31,7 +31,7 @@
                                     <td><div class="account-identity"><span>{{ strtoupper(substr($application->user->name, 0, 1)) }}</span><div><strong>{{ $application->user->name }}</strong><small>{{ $application->user->email }}</small></div></div></td>
                                     <td><strong>{{ $application->submitted_at?->format('M j, Y') }}</strong><small class="table-subcopy">{{ $application->submitted_at?->diffForHumans() }}</small></td>
                                     <td><strong>{{ str($application->account_type)->title() }}</strong><small class="table-subcopy">{{ str($application->payout_method)->replace('_', ' ')->title() }}</small></td>
-                                    <td><span class="verification-badge">{{ $application->user->hasCompleteProfile() ? 'Complete' : 'Incomplete' }}</span></td>
+                                    <td><span class="verification-badge">{{ $application->user->hasCompleteProfile() ? 'Complete' : 'Incomplete' }}</span><small class="table-subcopy">{{ $application->needsIdentityImages() ? 'Selfies missing' : 'Selfies ready' }}</small></td>
                                     <td><span class="application-status-badge status-{{ $application->status }}">{{ $application->statusLabel() }}</span></td>
                                     <td>{{ $application->reviewer?->name ?? 'Unassigned' }}</td>
                                     <td><a class="table-review-link" href="{{ route('admin.host-applications.show', $application) }}">Review →</a></td>

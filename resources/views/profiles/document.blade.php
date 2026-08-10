@@ -6,7 +6,7 @@
 @section('content')
     <main class="document-viewer-shell">
         <header class="document-viewer-header">
-            <a class="document-viewer-back" href="{{ $backUrl }}">← Back to profile</a>
+            <a class="document-viewer-back" href="{{ $backUrl }}">← {{ $backLabel }}</a>
             <div>
                 <span>Private verification document</span>
                 <strong>{{ $profileUser->name }}</strong>

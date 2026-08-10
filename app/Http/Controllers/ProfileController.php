@@ -29,7 +29,9 @@ class ProfileController extends Controller
     {
         $user = $request->user();
         $normalizedPhone = PhoneNumber::normalize($request->string('phone')->toString());
-        if ($normalizedPhone) $request->merge(['phone' => $normalizedPhone]);
+        if ($normalizedPhone) {
+            $request->merge(['phone' => $normalizedPhone]);
+        }
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -61,7 +63,10 @@ class ProfileController extends Controller
             'profile_completed_at' => now(),
         ]);
 
-        if ($newPath && $oldPath) Storage::disk('local')->delete($oldPath);
+        if ($newPath && $oldPath) {
+            Storage::disk('local')->delete($oldPath);
+        }
+
         return redirect()->route('profile.edit')->with('status', 'Your verification profile is complete and ready to share with booking partners.');
     }
 
@@ -88,17 +93,33 @@ class ProfileController extends Controller
         abort_unless($this->canView($request->user(), $profile), 403);
         abort_unless($profile->government_id_path && Storage::disk('local')->exists($profile->government_id_path), 404);
 
+        $backUrl = $request->user()->is($profile) ? route('profile.edit') : route('profiles.show', $profile);
+        $backLabel = 'Back to profile';
+        $application = $profile->hostApplication;
+
+        if ($request->string('from')->toString() === 'host-application'
+            && $application
+            && $application->id === $request->integer('application')) {
+            $backUrl = $request->user()->is_admin
+                ? route('admin.host-applications.show', $application)
+                : route('host-applications.show');
+            $backLabel = 'Back to host application';
+        }
+
         return view('profiles.document', [
             'profileUser' => $profile,
             'documentUrl' => route('profiles.document', $profile),
             'isPdf' => str_ends_with(strtolower($profile->government_id_path), '.pdf'),
-            'backUrl' => $request->user()->is($profile) ? route('profile.edit') : route('profiles.show', $profile),
+            'backUrl' => $backUrl,
+            'backLabel' => $backLabel,
         ]);
     }
 
     private function canView(User $viewer, User $profile): bool
     {
-        if ($viewer->is_admin || $viewer->is($profile)) return true;
+        if ($viewer->is_admin || $viewer->is($profile)) {
+            return true;
+        }
 
         $hasInquiry = Inquiry::query()->where(function ($query) use ($viewer, $profile) {
             $query->where('client_id', $viewer->id)->where('host_id', $profile->id);
@@ -106,7 +127,9 @@ class ProfileController extends Controller
             $query->where('host_id', $viewer->id)->where('client_id', $profile->id);
         })->exists();
 
-        if ($hasInquiry) return true;
+        if ($hasInquiry) {
+            return true;
+        }
 
         return Booking::query()->where(function ($query) use ($viewer, $profile) {
             $query->where('client_id', $viewer->id)->whereHas('unit', fn ($units) => $units->where('host_id', $profile->id));

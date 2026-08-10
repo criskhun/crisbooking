@@ -1232,6 +1232,29 @@
 
 (() => {
     document.addEventListener('DOMContentLoaded', () => {
+        const selfiePreviewUrls = new Map();
+        document.querySelectorAll('[data-selfie-input]').forEach((input) => {
+            input.addEventListener('change', () => {
+                const file = input.files?.[0];
+                const type = input.dataset.selfieInput;
+                const preview = document.querySelector(`[data-selfie-preview="${type}"]`);
+                if (! file || ! preview) return;
+
+                if (selfiePreviewUrls.has(type)) URL.revokeObjectURL(selfiePreviewUrls.get(type));
+                const previewUrl = URL.createObjectURL(file);
+                selfiePreviewUrls.set(type, previewUrl);
+
+                preview.querySelector('img, .selfie-placeholder')?.remove();
+                const image = document.createElement('img');
+                image.src = previewUrl;
+                image.alt = type === 'face' ? 'Preview of your face selfie' : 'Preview of your selfie holding a valid ID';
+                preview.prepend(image);
+
+                const action = input.closest('.selfie-upload-card')?.querySelector('.selfie-file-action');
+                if (action) action.textContent = `Selected: ${file.name}`;
+            });
+        });
+
         const accountType = document.querySelector('[data-host-account-type]');
         const businessFields = document.querySelector('[data-host-business-fields]');
         if (! accountType || ! businessFields) return;

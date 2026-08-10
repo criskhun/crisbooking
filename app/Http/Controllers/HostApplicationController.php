@@ -48,6 +48,22 @@ class HostApplicationController extends Controller
                 'mimes:jpg,jpeg,png,webp,pdf',
                 'max:5120',
             ],
+            'face_selfie' => [
+                'nullable',
+                Rule::requiredIf(fn () => ! $application?->face_selfie_path),
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'dimensions:min_width=480,min_height=480',
+                'max:5120',
+            ],
+            'id_selfie' => [
+                'nullable',
+                Rule::requiredIf(fn () => ! $application?->id_selfie_path),
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'dimensions:min_width=640,min_height=480',
+                'max:5120',
+            ],
             'hosting_experience' => ['required', Rule::in(['none', 'less_than_one_year', 'one_to_three_years', 'more_than_three_years'])],
             'motivation' => ['required', 'string', 'min:30', 'max:2000'],
             'payout_method' => ['required', Rule::in(['bank_transfer', 'e_wallet'])],
@@ -68,10 +84,14 @@ class HostApplicationController extends Controller
 
         $oldBusinessDocument = $application?->business_document_path;
         $newBusinessDocument = $request->file('business_document')?->store('host-application-documents/'.$user->id, 'local');
+        $oldFaceSelfie = $application?->face_selfie_path;
+        $oldIdSelfie = $application?->id_selfie_path;
+        $newFaceSelfie = $request->file('face_selfie')?->store('host-application-identity/'.$user->id, 'local');
+        $newIdSelfie = $request->file('id_selfie')?->store('host-application-identity/'.$user->id, 'local');
         $removeBusinessDocument = $validated['account_type'] === 'individual';
 
         try {
-            DB::transaction(function () use ($user, $application, $validated, $newBusinessDocument): void {
+            DB::transaction(function () use ($user, $application, $validated, $newBusinessDocument, $newFaceSelfie, $newIdSelfie): void {
                 $application ??= new HostApplication(['user_id' => $user->id]);
                 $fromStatus = $application->exists ? $application->status : null;
                 $confirmationTime = now();
@@ -84,6 +104,8 @@ class HostApplicationController extends Controller
                     'business_document_path' => $validated['account_type'] === 'business'
                         ? ($newBusinessDocument ?: $application->business_document_path)
                         : null,
+                    'face_selfie_path' => $newFaceSelfie ?: $application->face_selfie_path,
+                    'id_selfie_path' => $newIdSelfie ?: $application->id_selfie_path,
                     'hosting_experience' => $validated['hosting_experience'],
                     'motivation' => $validated['motivation'],
                     'payout_method' => $validated['payout_method'],
@@ -108,9 +130,7 @@ class HostApplicationController extends Controller
                 ]);
             });
         } catch (\Throwable $exception) {
-            if ($newBusinessDocument) {
-                Storage::disk('local')->delete($newBusinessDocument);
-            }
+            Storage::disk('local')->delete(array_filter([$newBusinessDocument, $newFaceSelfie, $newIdSelfie]));
 
             throw $exception;
         }
@@ -118,6 +138,10 @@ class HostApplicationController extends Controller
         if ($oldBusinessDocument && ($newBusinessDocument || $removeBusinessDocument)) {
             Storage::disk('local')->delete($oldBusinessDocument);
         }
+        Storage::disk('local')->delete(array_filter([
+            $newFaceSelfie ? $oldFaceSelfie : null,
+            $newIdSelfie ? $oldIdSelfie : null,
+        ]));
 
         return redirect()->route('host-applications.show')->with('status', 'Your host application has been submitted for review.');
     }
@@ -131,5 +155,23 @@ class HostApplicationController extends Controller
             $hostApplication->business_document_path,
             'business-document.'.pathinfo($hostApplication->business_document_path, PATHINFO_EXTENSION),
         );
+    }
+
+    public function identityImage(Request $request, HostApplication $hostApplication, string $type): StreamedResponse
+    {
+        abort_unless($request->user()->is_admin || $request->user()->is($hostApplication->user), 403);
+
+        $path = match ($type) {
+            'face' => $hostApplication->face_selfie_path,
+            'id' => $hostApplication->id_selfie_path,
+            default => null,
+        };
+
+        abort_unless($path && Storage::disk('local')->exists($path), 404);
+
+        return Storage::disk('local')->response($path, null, [
+            'Cache-Control' => 'private, no-store, max-age=0',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 }

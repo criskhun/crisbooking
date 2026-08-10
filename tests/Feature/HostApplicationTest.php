@@ -14,6 +14,13 @@ class HostApplicationTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Storage::fake('local');
+    }
+
     public function test_client_personal_information_comes_from_the_profile_and_is_not_duplicated(): void
     {
         $client = User::factory()->create(['name' => 'Original Profile Name']);
@@ -30,6 +37,8 @@ class HostApplicationTest extends TestCase
         $application = $client->hostApplication()->firstOrFail();
 
         $this->assertSame(HostApplication::STATUS_SUBMITTED, $application->status);
+        Storage::disk('local')->assertExists($application->face_selfie_path);
+        Storage::disk('local')->assertExists($application->id_selfie_path);
         $this->assertFalse(Schema::hasColumn('host_applications', 'name'));
         $this->assertFalse(Schema::hasColumn('host_applications', 'email'));
         $this->assertFalse(Schema::hasColumn('host_applications', 'phone'));
@@ -56,7 +65,6 @@ class HostApplicationTest extends TestCase
 
     public function test_business_application_requires_and_privately_stores_registration_document(): void
     {
-        Storage::fake('local');
         $client = User::factory()->create();
         $data = [
             ...$this->validApplicationData(),
@@ -85,6 +93,25 @@ class HostApplicationTest extends TestCase
         $this->assertSame(1, $client->hostApplication->histories()->count());
     }
 
+    public function test_both_identity_selfies_are_required_and_must_meet_minimum_dimensions(): void
+    {
+        $client = User::factory()->create();
+
+        $data = $this->validApplicationData();
+        unset($data['face_selfie'], $data['id_selfie']);
+
+        $this->actingAs($client)
+            ->post(route('host-applications.store'), $data)
+            ->assertSessionHasErrors(['face_selfie', 'id_selfie']);
+
+        $this->actingAs($client)
+            ->post(route('host-applications.store'), $this->validApplicationData([
+                'face_selfie' => UploadedFile::fake()->image('small-face.jpg', 200, 200),
+                'id_selfie' => UploadedFile::fake()->image('small-id.jpg', 300, 200),
+            ]))
+            ->assertSessionHasErrors(['face_selfie', 'id_selfie']);
+    }
+
     public function test_only_admin_can_open_the_applicant_table_and_review_page(): void
     {
         $client = User::factory()->create();
@@ -99,7 +126,9 @@ class HostApplicationTest extends TestCase
             ->get(route('admin.host-applications.index'))
             ->assertOk()
             ->assertSee($client->name)
-            ->assertSee('Submitted');
+            ->assertSee('Submitted')
+            ->assertSee('Selfies ready')
+            ->assertSee('1 applications need review');
         $this->actingAs($admin)
             ->get(route('admin.host-applications.show', $application))
             ->assertOk()
@@ -152,6 +181,22 @@ class HostApplicationTest extends TestCase
         $this->actingAs($client)->get(route('units.index'))->assertOk();
     }
 
+    public function test_admin_cannot_approve_a_legacy_application_until_both_selfies_are_added(): void
+    {
+        $client = User::factory()->create(['role' => 'client']);
+        $admin = User::factory()->host()->create(['is_admin' => true]);
+        $this->actingAs($client)->post(route('host-applications.store'), $this->validApplicationData());
+        $application = $client->hostApplication;
+        $application->update(['face_selfie_path' => null, 'id_selfie_path' => null]);
+
+        $this->actingAs($admin)->patch(route('admin.host-applications.review', $application), [
+            'status' => HostApplication::STATUS_APPROVED,
+        ])->assertStatus(422);
+
+        $this->assertSame('client', $client->refresh()->role);
+        $this->assertTrue($application->refresh()->needsIdentityImages());
+    }
+
     public function test_rejection_keeps_the_applicant_as_a_client(): void
     {
         $client = User::factory()->create(['role' => 'client']);
@@ -169,7 +214,6 @@ class HostApplicationTest extends TestCase
 
     public function test_private_business_document_is_limited_to_applicant_and_admin(): void
     {
-        Storage::fake('local');
         $client = User::factory()->create();
         $otherClient = User::factory()->create();
         $admin = User::factory()->host()->create(['is_admin' => true]);
@@ -187,6 +231,55 @@ class HostApplicationTest extends TestCase
         $this->actingAs($otherClient)->get(route('host-applications.business-document', $application))->assertForbidden();
     }
 
+    public function test_identity_selfies_are_private_to_the_applicant_and_admin(): void
+    {
+        $client = User::factory()->create();
+        $otherClient = User::factory()->create();
+        $admin = User::factory()->host()->create(['is_admin' => true]);
+        $this->actingAs($client)->post(route('host-applications.store'), $this->validApplicationData());
+        $application = $client->hostApplication;
+
+        foreach (['face', 'id'] as $type) {
+            $url = route('host-applications.identity-image', [$application, 'type' => $type]);
+            $response = $this->actingAs($client)->get($url)->assertOk();
+            $this->assertStringContainsString('private', $response->headers->get('Cache-Control'));
+            $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
+            $this->actingAs($admin)->get($url)->assertOk();
+            $this->actingAs($otherClient)->get($url)->assertForbidden();
+        }
+    }
+
+    public function test_government_id_preview_returns_to_the_host_application_context(): void
+    {
+        $client = User::factory()->create();
+        $admin = User::factory()->host()->create(['is_admin' => true]);
+        Storage::disk('local')->put($client->government_id_path, 'private-id-image');
+        $this->actingAs($client)->post(route('host-applications.store'), $this->validApplicationData());
+        $application = $client->hostApplication;
+
+        $url = route('profiles.document.preview', [
+            'profile' => $client,
+            'from' => 'host-application',
+            'application' => $application->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->get($url)
+            ->assertOk()
+            ->assertSee('Back to host application')
+            ->assertSee(route('admin.host-applications.show', $application), false);
+    }
+
+    public function test_incomplete_profile_shows_a_sidebar_attention_badge(): void
+    {
+        $client = User::factory()->incompleteProfile()->create();
+
+        $this->actingAs($client)
+            ->get(route('profile.edit'))
+            ->assertOk()
+            ->assertSee('Your verification profile needs attention');
+    }
+
     private function validApplicationData(array $overrides = []): array
     {
         return [
@@ -197,6 +290,8 @@ class HostApplicationTest extends TestCase
             'payout_provider' => 'GCash',
             'payout_account_name' => 'Test Account Holder',
             'payout_account_number' => '09171234567',
+            'face_selfie' => UploadedFile::fake()->image('face-selfie.jpg', 800, 800),
+            'id_selfie' => UploadedFile::fake()->image('selfie-with-id.jpg', 1200, 900),
             'authority_confirmed' => '1',
             'safety_confirmed' => '1',
             'terms_accepted' => '1',

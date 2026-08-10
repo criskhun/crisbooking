@@ -27,6 +27,8 @@ class HostApplication extends Model
         'business_name',
         'business_registration_number',
         'business_document_path',
+        'face_selfie_path',
+        'id_selfie_path',
         'hosting_experience',
         'motivation',
         'payout_method',
@@ -46,6 +48,8 @@ class HostApplication extends Model
     protected $hidden = [
         'business_registration_number',
         'business_document_path',
+        'face_selfie_path',
+        'id_selfie_path',
         'payout_account_number',
     ];
 
@@ -80,7 +84,13 @@ class HostApplication extends Model
 
     public function canBeEditedByApplicant(): bool
     {
-        return in_array($this->status, [self::STATUS_DRAFT, self::STATUS_NEEDS_CHANGES, self::STATUS_REJECTED], true);
+        return in_array($this->status, [self::STATUS_DRAFT, self::STATUS_NEEDS_CHANGES, self::STATUS_REJECTED], true)
+            || ($this->status === self::STATUS_SUBMITTED && $this->needsIdentityImages());
+    }
+
+    public function needsIdentityImages(): bool
+    {
+        return ! $this->face_selfie_path || ! $this->id_selfie_path;
     }
 
     public function statusLabel(): string

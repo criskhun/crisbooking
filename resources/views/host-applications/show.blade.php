@@ -28,7 +28,7 @@
                         <span aria-hidden="true">{{ $application->status === 'approved' ? '✓' : ($application->status === 'rejected' ? '×' : '!') }}</span>
                         <div>
                             <small>Application #{{ $application->id }} · {{ $application->statusLabel() }}</small>
-                            <h2>{{ match($application->status) {
+                            <h2>{{ $application->status === 'submitted' && $application->needsIdentityImages() ? 'Add your identity selfies to continue.' : match($application->status) {
                                 'submitted' => 'Your application is in the review queue.',
                                 'under_review' => 'An administrator is reviewing your application.',
                                 'needs_changes' => 'Changes are required before review can continue.',
@@ -67,7 +67,34 @@
                     <form method="POST" action="{{ route('host-applications.store') }}" enctype="multipart/form-data" class="verification-form host-application-form">
                         @csrf
                         <section>
-                            <div class="verification-section-heading"><span>01</span><div><h2>Hosting setup</h2><p>Tell the review team how you intend to operate on the marketplace.</p></div></div>
+                            <div class="verification-section-heading"><span>01</span><div><h2>Identity selfies</h2><p>These private images help the administrator compare your face with the valid ID already saved in your profile.</p></div></div>
+                            <div class="identity-selfie-grid">
+                                <label class="selfie-upload-card" for="face_selfie">
+                                    <span class="selfie-preview face-preview" data-selfie-preview="face">
+                                        @if($application?->face_selfie_path)<img src="{{ route('host-applications.identity-image', [$application, 'type' => 'face']) }}" alt="Current face selfie">@else<span class="selfie-placeholder">Position your face here</span>@endif
+                                        <i aria-hidden="true"></i>
+                                    </span>
+                                    <strong>Clear face selfie</strong>
+                                    <small>Center your face inside the oval. Remove sunglasses, masks, and hats. Use even lighting and include only yourself.</small>
+                                    <span class="selfie-file-action">{{ $application?->face_selfie_path ? 'Replace face selfie' : 'Take or upload selfie' }}</span>
+                                    <input id="face_selfie" name="face_selfie" type="file" accept="image/jpeg,image/png,image/webp" capture="user" data-selfie-input="face" {{ $application?->face_selfie_path ? '' : 'required' }}>
+                                    @error('face_selfie')<span class="error-text">{{ $message }}</span>@enderror
+                                </label>
+                                <label class="selfie-upload-card" for="id_selfie">
+                                    <span class="selfie-preview id-hold-preview" data-selfie-preview="id">
+                                        @if($application?->id_selfie_path)<img src="{{ route('host-applications.identity-image', [$application, 'type' => 'id']) }}" alt="Current selfie holding a valid ID">@else<span class="selfie-placeholder">Your face and ID must both be visible</span>@endif
+                                    </span>
+                                    <strong>Selfie holding your valid ID</strong>
+                                    <small>Hold the same ID from your profile beside your face. Keep your full face and the ID visible, sharp, and readable.</small>
+                                    <span class="selfie-file-action">{{ $application?->id_selfie_path ? 'Replace selfie with ID' : 'Take or upload selfie with ID' }}</span>
+                                    <input id="id_selfie" name="id_selfie" type="file" accept="image/jpeg,image/png,image/webp" capture="user" data-selfie-input="id" {{ $application?->id_selfie_path ? '' : 'required' }}>
+                                    @error('id_selfie')<span class="error-text">{{ $message }}</span>@enderror
+                                </label>
+                            </div>
+                            <p class="identity-privacy-note">Images are stored privately, are unavailable to clients or hosts, and can only be opened by you and administrators.</p>
+                        </section>
+                        <section>
+                            <div class="verification-section-heading"><span>02</span><div><h2>Hosting setup</h2><p>Tell the review team how you intend to operate on the marketplace.</p></div></div>
                             <div class="verification-grid">
                                 <div class="field-group"><label for="account_type">Applying as</label><select id="account_type" name="account_type" required data-host-account-type><option value="individual" @selected(old('account_type', $application?->account_type ?? 'individual') === 'individual')>Individual</option><option value="business" @selected(old('account_type', $application?->account_type) === 'business')>Registered business</option></select>@error('account_type')<p class="error-text">{{ $message }}</p>@enderror</div>
                                 <div class="field-group"><label for="hosting_experience">Hosting experience</label><select id="hosting_experience" name="hosting_experience" required>@foreach(['none' => 'No previous experience', 'less_than_one_year' => 'Less than 1 year', 'one_to_three_years' => '1–3 years', 'more_than_three_years' => 'More than 3 years'] as $value => $label)<option value="{{ $value }}" @selected(old('hosting_experience', $application?->hosting_experience) === $value)>{{ $label }}</option>@endforeach</select>@error('hosting_experience')<p class="error-text">{{ $message }}</p>@enderror</div>
@@ -83,7 +110,7 @@
                         </section>
 
                         <section>
-                            <div class="verification-section-heading"><span>02</span><div><h2>Payout destination</h2><p>Stored privately and used only to prepare host payouts. You can leave the account number blank when resubmitting to keep the current one.</p></div></div>
+                            <div class="verification-section-heading"><span>03</span><div><h2>Payout destination</h2><p>Stored privately and used only to prepare host payouts. You can leave the account number blank when resubmitting to keep the current one.</p></div></div>
                             <div class="verification-grid">
                                 <div class="field-group"><label for="payout_method">Payout method</label><select id="payout_method" name="payout_method" required><option value="bank_transfer" @selected(old('payout_method', $application?->payout_method) === 'bank_transfer')>Bank transfer</option><option value="e_wallet" @selected(old('payout_method', $application?->payout_method) === 'e_wallet')>E-wallet</option></select>@error('payout_method')<p class="error-text">{{ $message }}</p>@enderror</div>
                                 <div class="field-group"><label for="payout_provider">Bank or wallet provider</label><input id="payout_provider" name="payout_provider" value="{{ old('payout_provider', $application?->payout_provider) }}" placeholder="Example: BPI or GCash" required>@error('payout_provider')<p class="error-text">{{ $message }}</p>@enderror</div>
@@ -93,7 +120,7 @@
                         </section>
 
                         <section>
-                            <div class="verification-section-heading"><span>03</span><div><h2>Declarations</h2><p>Listing-specific permits, ownership evidence, insurance, photos, and safety information will be requested in the applicable listing form.</p></div></div>
+                            <div class="verification-section-heading"><span>04</span><div><h2>Declarations</h2><p>Listing-specific permits, ownership evidence, insurance, photos, and safety information will be requested in the applicable listing form.</p></div></div>
                             <div class="application-checklist">
                                 <label><input type="checkbox" name="authority_confirmed" value="1" required @checked(old('authority_confirmed'))><span><strong>I have authority to offer my listings.</strong><small>I own them or can provide permission from the owner when a listing requires it.</small></span></label>
                                 <label><input type="checkbox" name="safety_confirmed" value="1" required @checked(old('safety_confirmed'))><span><strong>I will meet safety and legal requirements.</strong><small>I will keep listing documents, registrations, insurance, permits, and maintenance information accurate.</small></span></label>
