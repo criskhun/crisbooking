@@ -334,40 +334,80 @@
         if (draftForm) {
             const status = document.querySelector('[data-draft-save-status]');
             const draftIdInput = draftForm.querySelector('[data-draft-id-input]');
+            const leaveDialog = document.querySelector('[data-draft-leave-dialog]');
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
             let saveTimer = null;
             let saving = false;
             let saveAgain = false;
             let submitting = false;
+            let changedSinceLoad = false;
+            let allowLeave = false;
+            let pendingDestination = null;
 
-            const saveDraft = async () => {
-                if (submitting || saving) {
-                    saveAgain = saving;
-                    return;
-                }
-
-                saving = true;
-                if (status) status.textContent = 'Saving draft…';
+            const draftPayload = () => {
                 const payload = new FormData();
                 new FormData(draftForm).forEach((value, key) => {
                     if (!(value instanceof File)) payload.append(key, value);
                 });
+                return payload;
+            };
+
+            const hasMeaningfulDraftData = () => {
+                const payload = draftPayload();
+                const filled = (name) => payload.getAll(name).some((value) => String(value).trim() !== '');
+
+                if (['name', 'location', 'description', 'rules', 'capacity', 'price', 'latitude', 'longitude'].some(filled)) return true;
+                if ((payload.get('kind') || 'unit') !== 'unit' || (payload.get('category') || 'car') !== 'car') return true;
+
+                return Array.from(payload.entries()).some(([name, value]) => {
+                    const text = String(value).trim();
+                    if (!text) return false;
+                    if (['car_accessories[]', 'custom_accessories[]', 'property_amenities[]'].includes(name)) return true;
+                    if (/^rates\[/.test(name) || /^gps\[/.test(name) || /^wifi\[/.test(name)) return true;
+                    if (/^car\[(make|model|year|color)\]$/.test(name)) return true;
+                    if (/^property\[(bedrooms|bathrooms|beds|floor_area_sqm)\]$/.test(name)) return true;
+                    if (/^car_charges\[[^\]]+\]\[(amount|enabled)\]$/.test(name)) return name.endsWith('[amount]') || text === '1';
+                    if (/^(parking|pool)\[(rate|payment_type)\]$/.test(name)) return name.endsWith('[rate]') || text === 'separate';
+                    return false;
+                });
+            };
+
+            const setDraftId = (id) => {
+                const value = id ? String(id) : '';
+                draftForm.dataset.draftId = value;
+                if (draftIdInput) draftIdInput.value = value;
+                const url = new URL(window.location.href);
+                if (value) url.searchParams.set('draft', value);
+                else url.searchParams.delete('draft');
+                window.history.replaceState({}, '', url);
+            };
+
+            const saveDraft = async () => {
+                if (submitting || saving) {
+                    saveAgain = saving;
+                    return false;
+                }
+
+                window.clearTimeout(saveTimer);
+                saving = true;
+                if (status) status.textContent = 'Saving draft…';
 
                 try {
                     const response = await fetch(draftForm.dataset.draftSaveUrl, {
                         method: 'POST',
-                        body: payload,
+                        body: draftPayload(),
                         headers: {'Accept': 'application/json'},
                     });
                     const result = await response.json();
                     if (!response.ok) throw new Error(result.message || 'Draft could not be saved.');
-                    draftForm.dataset.draftId = String(result.id);
-                    if (draftIdInput) draftIdInput.value = String(result.id);
-                    const url = new URL(window.location.href);
-                    url.searchParams.set('draft', result.id);
-                    window.history.replaceState({}, '', url);
-                    if (status) status.textContent = `Draft saved at ${new Date().toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'})}. Photos are not included.`;
+                    setDraftId(result.id);
+                    if (status) status.textContent = result.empty
+                        ? 'No draft saved yet. Start entering listing details to create one.'
+                        : `Draft saved at ${new Date().toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'})}. Photos are not included.`;
+                    return true;
                 } catch (error) {
                     if (status) status.textContent = error.message || 'Draft could not be saved. Check your connection.';
+                    return false;
                 } finally {
                     saving = false;
                     if (saveAgain) {
@@ -378,16 +418,76 @@
             };
             const scheduleDraftSave = () => {
                 if (submitting) return;
+                changedSinceLoad = true;
                 window.clearTimeout(saveTimer);
-                if (status) status.textContent = 'Unsaved changes…';
+                if (status) status.textContent = hasMeaningfulDraftData() ? 'Unsaved changes…' : 'No listing details entered yet.';
                 saveTimer = window.setTimeout(saveDraft, 900);
+            };
+
+            const leave = () => {
+                allowLeave = true;
+                window.location.assign(pendingDestination || draftForm.querySelector('.button-ghost')?.href || '/');
+            };
+
+            const discardDraft = async () => {
+                window.clearTimeout(saveTimer);
+                while (saving) await new Promise((resolve) => window.setTimeout(resolve, 50));
+                const draftId = draftForm.dataset.draftId;
+                if (!draftId) return true;
+
+                try {
+                    const response = await fetch(`${draftForm.dataset.draftDeleteBaseUrl}/${encodeURIComponent(draftId)}`, {
+                        method: 'DELETE',
+                        headers: {'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken || ''},
+                    });
+                    if (!response.ok) throw new Error('The draft could not be discarded.');
+                    setDraftId(null);
+                    return true;
+                } catch (error) {
+                    if (status) status.textContent = error.message;
+                    return false;
+                }
             };
 
             draftForm.addEventListener('input', scheduleDraftSave);
             draftForm.addEventListener('change', scheduleDraftSave);
             draftForm.addEventListener('submit', () => {
                 submitting = true;
+                allowLeave = true;
                 window.clearTimeout(saveTimer);
+            });
+
+            document.addEventListener('click', (event) => {
+                const link = event.target.closest('a[href]');
+                if (!link || allowLeave || !changedSinceLoad || !hasMeaningfulDraftData()) return;
+                if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || link.target === '_blank' || link.hasAttribute('download')) return;
+                const destination = new URL(link.href, window.location.href);
+                if (destination.href === window.location.href || destination.hash && destination.pathname === window.location.pathname && destination.search === window.location.search) return;
+
+                event.preventDefault();
+                pendingDestination = destination.href;
+                leaveDialog?.showModal();
+            });
+
+            leaveDialog?.querySelector('[data-draft-leave-save]')?.addEventListener('click', async () => {
+                const saved = await saveDraft();
+                if (saved) leave();
+            });
+            leaveDialog?.querySelector('[data-draft-leave-discard]')?.addEventListener('click', async () => {
+                if (await discardDraft()) leave();
+            });
+            leaveDialog?.querySelector('[data-draft-leave-cancel]')?.addEventListener('click', () => {
+                pendingDestination = null;
+                leaveDialog.close();
+            });
+            leaveDialog?.addEventListener('cancel', () => {
+                pendingDestination = null;
+            });
+
+            window.addEventListener('beforeunload', (event) => {
+                if (allowLeave || submitting || !changedSinceLoad || !hasMeaningfulDraftData()) return;
+                event.preventDefault();
+                event.returnValue = '';
             });
         }
 

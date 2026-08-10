@@ -914,6 +914,13 @@ html[data-color-mode="dark"] .profile-required-banner, html[data-color-mode="dar
 .unit-draft-card > a strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .unit-draft-card small, .draft-save-status { color: var(--muted, #61706b); }
 .unit-draft-card button { border: 0; background: transparent; color: #a33c36; font-weight: 700; cursor: pointer; }
+.draft-leave-dialog { width: min(92vw, 520px); padding: 0; border: 0; border-radius: 20px; color: var(--ink, #18231f); background: var(--surface, #fff); box-shadow: 0 24px 70px rgba(15, 36, 30, .28); }
+.draft-leave-dialog::backdrop { background: rgba(10, 25, 21, .58); backdrop-filter: blur(3px); }
+.draft-leave-dialog form { padding: 1.5rem; }
+.draft-leave-dialog h2 { margin: .3rem 0 .55rem; }
+.draft-leave-dialog p { margin: 0; color: var(--muted, #61706b); line-height: 1.6; }
+.draft-leave-actions { display: flex; flex-wrap: wrap; gap: .65rem; margin-top: 1.35rem; }
+.draft-leave-actions .button-danger { background: #a33c36; border-color: #a33c36; color: #fff; }
 .draft-save-status { display: block; margin-top: .55rem; }
 .detail-subheading { display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; margin-top: .35rem; }
 .detail-subheading small { color: var(--muted, #61706b); }

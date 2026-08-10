@@ -27,7 +27,7 @@
             @endif
             <section class="listing-form-card">
                 <div class="form-card-heading"><span class="eyebrow">{{ $draft ? 'Continuing draft' : 'New listing' }}</span><h2>What can clients book?</h2><p>Add the details used to calculate availability and booking totals.</p><small class="draft-save-status" data-draft-save-status aria-live="polite">{{ $draft ? 'Draft loaded. Changes save automatically.' : 'Your progress saves automatically after you begin typing.' }}</small></div>
-                <form method="POST" action="{{ route('units.store') }}" enctype="multipart/form-data" class="account-edit-form" data-unit-draft-form data-draft-save-url="{{ route('unit-drafts.store') }}" data-draft-id="{{ $draft?->id }}">
+                <form method="POST" action="{{ route('units.store') }}" enctype="multipart/form-data" class="account-edit-form" data-unit-draft-form data-draft-save-url="{{ route('unit-drafts.store') }}" data-draft-delete-base-url="{{ url('/unit-drafts') }}" data-draft-id="{{ $draft?->id }}">
                     @csrf
                     <input type="hidden" name="draft_id" value="{{ $draft?->id }}" data-draft-id-input>
                     @include('units._form')
@@ -35,4 +35,16 @@
             </section>
         </main>
     </div>
+    <dialog class="draft-leave-dialog" data-draft-leave-dialog>
+        <form method="dialog">
+            <span class="eyebrow">Unsaved listing</span>
+            <h2>Save your work before leaving?</h2>
+            <p>You entered listing details. Save them as a draft so you can continue later, or discard the draft and leave.</p>
+            <div class="draft-leave-actions">
+                <button class="button button-primary" type="button" data-draft-leave-save>Save draft &amp; leave</button>
+                <button class="button button-danger" type="button" data-draft-leave-discard>Discard &amp; leave</button>
+                <button class="button button-ghost" type="button" data-draft-leave-cancel>Keep editing</button>
+            </div>
+        </form>
+    </dialog>
 @endsection

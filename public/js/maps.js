@@ -189,7 +189,8 @@
         enableAddressSearch(container, map, geocoder, addressInput, (position) => setPoint(position));
         container.querySelector('[data-map-use-location]')?.addEventListener('click', () => geolocate(container, (position) => setPoint(position, true)));
         container.querySelector('[data-map-find-address]')?.addEventListener('click', () => geocodeAddress(container, geocoder, addressInput, (position) => setPoint(position)));
-        if (!hasSavedPoint) geolocate(container, (position) => setPoint(position, true));
+        // Do not write location data just by opening the listing form. The host
+        // can explicitly search, click the map, or choose "Use my location".
     };
 
     const initializeSearchMap = (container) => {

@@ -23,6 +23,22 @@ class BookingCalendarTest extends TestCase
         $host = User::factory()->host()->create();
         $otherHost = User::factory()->host()->create();
 
+        $this->actingAs($host)->postJson(route('unit-drafts.store'), [
+            'kind' => 'unit',
+            'category' => 'car',
+            'pricing_unit' => 'day',
+            'offered_rates' => ['12_hours', 'day', 'week', 'month'],
+            'car' => ['transmission' => 'automatic', 'fuel_type' => 'gasoline'],
+            'custom_accessories' => [''],
+            'car_charges' => [
+                'car_wash' => ['enabled' => '0', 'amount' => ''],
+                'delivery' => ['enabled' => '0', 'amount' => ''],
+                'deposit' => ['enabled' => '0', 'amount' => ''],
+            ],
+            'is_active' => '1',
+        ])->assertOk()->assertJson(['id' => null, 'empty' => true]);
+        $this->assertDatabaseCount('unit_drafts', 0);
+
         $response = $this->actingAs($host)->postJson(route('unit-drafts.store'), [
             'name' => 'Draft Family Van',
             'kind' => 'unit',
@@ -39,13 +55,22 @@ class BookingCalendarTest extends TestCase
 
         $this->actingAs($host)->get(route('units.create', ['draft' => $draft]))
             ->assertOk()
-            ->assertSee('Draft Family Van')
-            ->assertSee('Portable tire inflator')
+            ->assertSee('value="Draft Family Van"', false)
+            ->assertSee('value="Pearl White"', false)
+            ->assertSee('value="Portable tire inflator"', false)
             ->assertSee('Delete');
 
         $this->actingAs($otherHost)->delete(route('unit-drafts.destroy', $draft))->assertForbidden();
-        $this->actingAs($host)->delete(route('unit-drafts.destroy', $draft))->assertRedirect(route('units.create'));
+        $this->actingAs($host)->deleteJson(route('unit-drafts.destroy', $draft))->assertOk()->assertJson(['deleted' => true]);
         $this->assertDatabaseMissing('unit_drafts', ['id' => $draft->id]);
+
+        $redirectDraft = UnitDraft::create([
+            'host_id' => $host->id,
+            'title' => 'Delete from draft list',
+            'payload' => ['name' => 'Delete from draft list'],
+        ]);
+        $this->actingAs($host)->delete(route('unit-drafts.destroy', $redirectDraft))->assertRedirect(route('units.create'));
+        $this->assertDatabaseMissing('unit_drafts', ['id' => $redirectDraft->id]);
     }
 
     public function test_host_can_register_a_unit_and_client_cannot(): void

@@ -44,7 +44,9 @@ class UnitController extends Controller
             $draft = $request->user()->unitDrafts()->findOrFail($request->integer('draft'));
 
             if (! $request->session()->hasOldInput()) {
-                $request->session()->flashInput($draft->payload ?? []);
+                // Draft values belong to this response only. Flashing them leaves
+                // the values for the next request and can render this form blank.
+                $request->session()->now('_old_input', $draft->payload ?? []);
             }
         }
 
@@ -103,6 +105,19 @@ class UnitController extends Controller
         $payload = $this->sanitizeDraftPayload($request->except([
             '_token', '_method', 'draft_id', 'photos', 'primary_image', 'remove_images', 'wifi_qr', 'remove_wifi_qr',
         ]));
+
+        if (! $this->hasMeaningfulDraftData($payload)) {
+            if ($draft->exists) {
+                $draft->delete();
+            }
+
+            return response()->json([
+                'id' => null,
+                'title' => null,
+                'empty' => true,
+            ]);
+        }
+
         $name = trim((string) ($payload['name'] ?? ''));
         $category = Str::of((string) ($payload['category'] ?? 'listing'))->replace('_', ' ')->title();
 
@@ -118,12 +133,16 @@ class UnitController extends Controller
         ]);
     }
 
-    public function destroyDraft(Request $request, UnitDraft $draft): RedirectResponse
+    public function destroyDraft(Request $request, UnitDraft $draft): JsonResponse|RedirectResponse
     {
         abort_unless($request->user()->is_admin || $draft->host_id === $request->user()->id, 403);
 
         $title = $draft->title ?: 'Listing draft';
         $draft->delete();
+
+        if ($request->expectsJson()) {
+            return response()->json(['deleted' => true]);
+        }
 
         return redirect()->route('units.create')->with('status', "{$title} was deleted.");
     }
@@ -475,5 +494,62 @@ class UnitController extends Controller
                 return is_scalar($value) || $value === null ? $value : null;
             })
             ->all();
+    }
+
+    private function hasMeaningfulDraftData(array $payload): bool
+    {
+        $filled = static function (mixed $value): bool {
+            if (is_array($value)) {
+                return collect($value)->contains(fn ($item) => is_array($item)
+                    ? collect($item)->flatten()->contains(fn ($nested) => trim((string) $nested) !== '')
+                    : trim((string) $item) !== '');
+            }
+
+            return $value !== null && trim((string) $value) !== '';
+        };
+
+        foreach (['name', 'location', 'description', 'rules', 'capacity', 'price', 'latitude', 'longitude'] as $field) {
+            if ($filled(data_get($payload, $field))) {
+                return true;
+            }
+        }
+
+        if (($payload['kind'] ?? 'unit') !== 'unit' || ($payload['category'] ?? 'car') !== 'car') {
+            return true;
+        }
+
+        foreach (['rates', 'car_accessories', 'custom_accessories', 'gps', 'wifi', 'property_amenities'] as $field) {
+            if ($filled($payload[$field] ?? null)) {
+                return true;
+            }
+        }
+
+        foreach (['make', 'model', 'year', 'color'] as $field) {
+            if ($filled(data_get($payload, "car.{$field}"))) {
+                return true;
+            }
+        }
+
+        foreach (['bedrooms', 'bathrooms', 'beds', 'floor_area_sqm'] as $field) {
+            if ($filled(data_get($payload, "property.{$field}"))) {
+                return true;
+            }
+        }
+
+        foreach (['car_wash', 'delivery', 'deposit'] as $charge) {
+            if (filter_var(data_get($payload, "car_charges.{$charge}.enabled"), FILTER_VALIDATE_BOOL)
+                || $filled(data_get($payload, "car_charges.{$charge}.amount"))) {
+                return true;
+            }
+        }
+
+        foreach (['parking', 'pool'] as $amenity) {
+            if (data_get($payload, "{$amenity}.payment_type") === 'separate'
+                || $filled(data_get($payload, "{$amenity}.rate"))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
