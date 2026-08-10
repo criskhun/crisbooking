@@ -12,6 +12,7 @@
                 @include('partials.user-badge')
             </header>
             @if (session('status'))<div class="flash-message account-alert" role="status">{{ session('status') }}</div>@endif
+            @error('draft')<div class="oauth-error account-alert" role="alert">{{ $message }}</div>@enderror
             @if ($drafts->isNotEmpty())
                 <section class="unit-drafts-panel" aria-labelledby="unit-drafts-title">
                     <div><span class="eyebrow">Saved work</span><h2 id="unit-drafts-title">Your listing drafts</h2><p>Open a draft to continue. Photos are not stored in drafts and must be selected again.</p></div>

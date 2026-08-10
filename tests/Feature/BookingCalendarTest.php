@@ -73,6 +73,54 @@ class BookingCalendarTest extends TestCase
         $this->assertDatabaseMissing('unit_drafts', ['id' => $redirectDraft->id]);
     }
 
+    public function test_legacy_plain_json_draft_is_recovered_and_encrypted_when_opened(): void
+    {
+        $host = User::factory()->host()->create();
+        $legacyPayload = [
+            'name' => 'Legacy Draft Van',
+            'kind' => 'unit',
+            'category' => 'car',
+            'car' => ['make' => 'Toyota', 'color' => 'Silver'],
+        ];
+        $draftId = DB::table('unit_drafts')->insertGetId([
+            'host_id' => $host->id,
+            'title' => 'Legacy Draft Van',
+            'payload' => json_encode($legacyPayload),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->actingAs($host)->get(route('units.create', ['draft' => $draftId]))
+            ->assertOk()
+            ->assertSee('value="Legacy Draft Van"', false)
+            ->assertSee('value="Silver"', false);
+
+        $rawPayload = DB::table('unit_drafts')->where('id', $draftId)->value('payload');
+        $this->assertNotSame(json_encode($legacyPayload), $rawPayload);
+        $this->assertSame('Legacy Draft Van', UnitDraft::findOrFail($draftId)->payload['name']);
+    }
+
+    public function test_draft_encrypted_with_an_unavailable_key_shows_a_recoverable_error_instead_of_500(): void
+    {
+        $host = User::factory()->host()->create();
+        $draftId = DB::table('unit_drafts')->insertGetId([
+            'host_id' => $host->id,
+            'title' => 'Old encrypted draft',
+            'payload' => 'payload-that-cannot-be-decrypted',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->actingAs($host)->followingRedirects()->get(route('units.create', ['draft' => $draftId]))
+            ->assertOk()
+            ->assertSee('does not match the current application key')
+            ->assertSee('Old encrypted draft');
+
+        $this->actingAs($host)->delete(route('unit-drafts.destroy', $draftId))
+            ->assertRedirect(route('units.create'));
+        $this->assertDatabaseMissing('unit_drafts', ['id' => $draftId]);
+    }
+
     public function test_host_can_register_a_unit_and_client_cannot(): void
     {
         Storage::fake('public');

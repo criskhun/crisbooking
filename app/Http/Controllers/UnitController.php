@@ -5,10 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\InquiryMessage;
 use App\Models\Unit;
 use App\Models\UnitDraft;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -42,11 +45,18 @@ class UnitController extends Controller
 
         if ($request->filled('draft')) {
             $draft = $request->user()->unitDrafts()->findOrFail($request->integer('draft'));
+            $draftPayload = $this->readDraftPayload($draft);
+
+            if ($draftPayload === null) {
+                return redirect()->route('units.create')->withErrors([
+                    'draft' => 'This draft cannot be opened because its encrypted data does not match the current application key. Restore the previous APP_KEY or delete this draft and create a new one.',
+                ]);
+            }
 
             if (! $request->session()->hasOldInput()) {
                 // Draft values belong to this response only. Flashing them leaves
                 // the values for the next request and can render this form blank.
-                $request->session()->now('_old_input', $draft->payload ?? []);
+                $request->session()->now('_old_input', $draftPayload);
             }
         }
 
@@ -494,6 +504,36 @@ class UnitController extends Controller
                 return is_scalar($value) || $value === null ? $value : null;
             })
             ->all();
+    }
+
+    private function readDraftPayload(UnitDraft $draft): ?array
+    {
+        try {
+            $payload = $draft->payload;
+
+            return is_array($payload) ? $payload : [];
+        } catch (DecryptException $exception) {
+            // Early draft versions may have stored JSON before the encrypted
+            // model cast was introduced. Recover and immediately encrypt those.
+            $legacyPayload = json_decode((string) $draft->getRawOriginal('payload'), true);
+
+            if (json_last_error() === JSON_ERROR_NONE && is_array($legacyPayload)) {
+                DB::table('unit_drafts')->where('id', $draft->id)->update([
+                    'payload' => Crypt::encrypt(json_encode($legacyPayload, JSON_THROW_ON_ERROR), false),
+                    'updated_at' => now(),
+                ]);
+
+                return $legacyPayload;
+            }
+
+            Log::warning('A listing draft could not be decrypted.', [
+                'draft_id' => $draft->id,
+                'host_id' => $draft->host_id,
+                'exception' => $exception::class,
+            ]);
+
+            return null;
+        }
     }
 
     private function hasMeaningfulDraftData(array $payload): bool
