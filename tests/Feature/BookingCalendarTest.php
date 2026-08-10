@@ -353,6 +353,71 @@ class BookingCalendarTest extends TestCase
             ->assertSee('Out-of-town use');
     }
 
+    public function test_editing_a_legacy_car_restores_prices_and_can_add_out_of_town_rates(): void
+    {
+        Storage::fake('public');
+        $host = User::factory()->host()->create();
+        $unit = $this->createUnit($host, [
+            'name' => 'Legacy City Car',
+            'kind' => 'unit',
+            'category' => 'car',
+            'price' => 1800,
+            'pricing_unit' => '12_hours',
+            'car_details' => [
+                'make' => 'Toyota',
+                'model' => 'Vios',
+                'year' => 2025,
+                'transmission' => 'automatic',
+                'fuel_type' => 'gasoline',
+                'color' => 'Silver',
+                'accessories' => [],
+            ],
+        ]);
+        $unit->images()->create(['path' => 'listings/legacy-car.jpg', 'sort_order' => 1]);
+        $unit->rates()->createMany([
+            ['coverage' => 'standard', 'period' => '12_hours', 'price' => 1800],
+            ['coverage' => 'standard', 'period' => 'day', 'price' => 2800],
+        ]);
+
+        $this->actingAs($host)->get(route('units.edit', $unit))
+            ->assertOk()
+            ->assertSee('name="car_rates[within_city][12_hours]" type="number" value="1800.00"', false)
+            ->assertSee('name="car_rates[within_city][day]" type="number" value="2800.00"', false);
+
+        $this->actingAs($host)->put(route('units.update', $unit), [
+            'name' => 'Legacy City Car',
+            'kind' => 'unit',
+            'category' => 'car',
+            'rules' => 'Follow the selected travel coverage and return on time.',
+            'car_rate_areas' => ['within_city', 'out_of_town'],
+            'car_offered_rates' => [
+                'within_city' => ['12_hours', 'day'],
+                'out_of_town' => ['12_hours', 'day'],
+            ],
+            'car_rates' => [
+                'within_city' => ['12_hours' => 1900, 'day' => 2900],
+                'out_of_town' => ['12_hours' => 2400, 'day' => 3600],
+            ],
+            'car' => [
+                'make' => 'Toyota',
+                'model' => 'Vios',
+                'year' => 2025,
+                'transmission' => 'automatic',
+                'fuel_type' => 'gasoline',
+                'color' => 'Silver',
+            ],
+            'is_active' => 1,
+        ])->assertRedirect('/units');
+
+        $this->assertDatabaseMissing('unit_rates', ['unit_id' => $unit->id, 'coverage' => 'standard']);
+        $this->assertDatabaseHas('unit_rates', ['unit_id' => $unit->id, 'coverage' => 'within_city', 'period' => 'day', 'price' => 2900]);
+        $this->assertDatabaseHas('unit_rates', ['unit_id' => $unit->id, 'coverage' => 'out_of_town', 'period' => 'day', 'price' => 3600]);
+
+        $this->actingAs($host)->get(route('units.edit', $unit->fresh()))
+            ->assertOk()
+            ->assertSee('name="car_rates[out_of_town][day]" type="number" value="3600.00"', false);
+    }
+
     public function test_required_car_charges_are_snapshotted_and_added_to_the_booking_total(): void
     {
         $host = User::factory()->host()->create();

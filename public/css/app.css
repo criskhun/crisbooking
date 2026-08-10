@@ -439,6 +439,9 @@ html[data-color-mode="dark"] .verification-logout { color: var(--lime); }
 .photo-upload > span { display: grid; justify-items: center; gap: .35rem; padding: 2rem; color: var(--muted); text-align: center; }
 .photo-upload > span::before { content: "＋"; display: grid; place-items: center; width: 3rem; height: 3rem; margin-bottom: .25rem; border-radius: 50%; color: var(--forest); background: var(--lime); font-size: 1.15rem; font-weight: 800; }
 .photo-upload strong { color: var(--ink); font-size: .85rem; }.photo-upload small { font-size: .7rem; }
+.photo-upload.photo-upload-multiple { min-height: 92px; }
+.photo-upload.photo-upload-multiple > span { grid-template-columns: auto minmax(0, 1fr); justify-items: start; align-items: center; column-gap: .75rem; padding: .85rem 1rem; text-align: left; }
+.photo-upload.photo-upload-multiple > span::before { grid-row: 1 / span 2; width: 2.4rem; height: 2.4rem; margin: 0; }
 .standard-rate-fields { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 1.1rem; }
 .rental-rate-fields { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .8rem; min-width: 0; padding: 1.1rem; margin: 0; border: 1px solid var(--card-line); border-radius: 14px; background: var(--surface-tint); }
 .rental-rate-fields legend { display: block; width: 100%; padding: 0 0 .9rem; }
@@ -943,14 +946,19 @@ html[data-color-mode="dark"] .profile-required-banner, html[data-color-mode="dar
 .custom-accessory-panel .private-detail-heading > div, .car-charge-panel .private-detail-heading > div { flex: 1; display: grid; }
 .custom-accessory-list { display: grid; gap: .55rem; margin-top: .8rem; }
 .custom-accessory-row { display: flex; gap: .5rem; }
-.custom-accessory-row input { flex: 1; }
-.custom-accessory-row button { width: 2.5rem; border: 1px solid var(--line, #dce5e1); border-radius: 10px; background: transparent; color: #a33c36; font-size: 1.25rem; cursor: pointer; }
+.custom-accessory-row input { flex: 1; width: 100%; min-height: 3.35rem; padding: .8rem 1rem; border: 1px solid #d4ddd9; border-radius: 11px; outline: none; color: var(--ink); background: #fbfcfa; transition: border .18s, box-shadow .18s, background .18s; }
+.custom-accessory-row input:focus { border-color: #4d7c6f; box-shadow: 0 0 0 4px rgba(77,124,111,.1); background: white; }
+.custom-accessory-row button { flex: 0 0 3.35rem; width: 3.35rem; min-height: 3.35rem; border: 1px solid #d4ddd9; border-radius: 11px; background: #fbfcfa; color: #a33c36; font-size: 1.25rem; cursor: pointer; }
 .car-charge-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; margin-top: .9rem; }
-.car-charge-card { padding: .85rem; border: 1px solid var(--line, #dce5e1); border-radius: 13px; background: var(--surface, #fff); }
+.car-charge-card { display: grid; align-content: start; gap: .75rem; padding: .95rem; border: 1px solid var(--line, #dce5e1); border-radius: 13px; background: var(--surface, #fff); }
 .car-charge-card > label { display: flex; gap: .55rem; align-items: flex-start; cursor: pointer; }
 .car-charge-card > label span { display: grid; }
 .car-charge-card > label small { color: var(--muted, #61706b); }
-.car-charge-card .currency-input { margin-top: .75rem; }
+.car-charge-amount-field { display: grid; gap: .5rem; margin-top: auto; }
+.car-charge-amount-field > label { color: #35443f; font-size: .7rem; font-weight: 700; }
+.car-charge-card .currency-input input { width: 100%; min-height: 3.35rem; padding: .8rem 1rem .8rem 1.75rem; border: 1px solid #d4ddd9; border-radius: 11px; outline: none; color: var(--ink); background: #fbfcfa; transition: border .18s, box-shadow .18s, background .18s; }
+.car-charge-card .currency-input input:focus { border-color: #4d7c6f; box-shadow: 0 0 0 4px rgba(77,124,111,.1); background: white; }
+html[data-color-mode="dark"] .custom-accessory-row input, html[data-color-mode="dark"] .custom-accessory-row button, html[data-color-mode="dark"] .car-charge-card .currency-input input { border-color: var(--card-line); color: var(--ink); background: var(--surface-soft); }
 .detail-chip-list.custom span { border-style: dashed; }
 @media (max-width: 760px) {
     .car-charge-grid { grid-template-columns: 1fr; }

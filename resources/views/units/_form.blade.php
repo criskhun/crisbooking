@@ -7,7 +7,20 @@
         'within_city' => ['Within-city use', 'Driving stays inside the pickup city.'],
         'out_of_town' => ['Out-of-town use', 'The vehicle may travel beyond city limits.'],
     ];
-    $storedCarRates = $editing ? $unit->rates->whereIn('coverage', array_keys($carCoverageOptions))->groupBy('coverage') : collect();
+    $storedCarRates = collect();
+    if ($editing) {
+        $withinCityRates = $unit->rates->where('coverage', 'within_city');
+        if ($withinCityRates->isEmpty()) {
+            $withinCityRates = $unit->rates->where('coverage', 'standard');
+        }
+        if ($withinCityRates->isNotEmpty()) {
+            $storedCarRates->put('within_city', $withinCityRates);
+        }
+        $outOfTownRates = $unit->rates->where('coverage', 'out_of_town');
+        if ($outOfTownRates->isNotEmpty()) {
+            $storedCarRates->put('out_of_town', $outOfTownRates);
+        }
+    }
     $defaultCarRateAreas = $storedCarRates->isNotEmpty() ? $storedCarRates->keys()->all() : ['within_city'];
     $carRateAreas = old('car_rate_areas', $defaultCarRateAreas);
     $defaultCarOfferedRates = collect(array_keys($carCoverageOptions))->mapWithKeys(function ($coverage) use ($storedCarRates) {
@@ -205,7 +218,10 @@
                     @php($charge = $carCharges[$chargeKey] ?? ['enabled' => false, 'amount' => ''])
                     <div class="car-charge-card" data-car-charge>
                         <label><input type="hidden" name="car_charges[{{ $chargeKey }}][enabled]" value="0"><input type="checkbox" name="car_charges[{{ $chargeKey }}][enabled]" value="1" @checked(filter_var($charge['enabled'] ?? false, FILTER_VALIDATE_BOOL)) data-car-charge-toggle><span><strong>{{ $chargeLabel }}</strong><small>{{ $chargeHelp }}</small></span></label>
-                        <div class="currency-input" data-car-charge-amount><span>₱</span><input name="car_charges[{{ $chargeKey }}][amount]" type="number" value="{{ $charge['amount'] ?? '' }}" min="0" max="9999999999.99" step="0.01" placeholder="0.00"></div>
+                        <div class="car-charge-amount-field" data-car-charge-amount>
+                            <label for="car_charge_{{ $chargeKey }}">Amount (PHP)</label>
+                            <div class="currency-input"><span>₱</span><input id="car_charge_{{ $chargeKey }}" name="car_charges[{{ $chargeKey }}][amount]" type="number" value="{{ $charge['amount'] ?? '' }}" min="0" max="9999999999.99" step="0.01" placeholder="0.00"></div>
+                        </div>
                         @error('car_charges.'.$chargeKey.'.amount')<p class="error-text">{{ $message }}</p>@enderror
                     </div>
                 @endforeach

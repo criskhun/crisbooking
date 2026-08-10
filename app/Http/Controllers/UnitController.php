@@ -517,10 +517,28 @@ class UnitController extends Controller
 
         $keptIds = [];
         foreach ($rates as $rate) {
-            $keptIds[] = $unit->rates()->updateOrCreate(
-                ['coverage' => $rate['coverage'], 'period' => $rate['period']],
-                ['price' => $rate['price']],
-            )->id;
+            $storedRate = $unit->rates()
+                ->where('coverage', $rate['coverage'])
+                ->where('period', $rate['period'])
+                ->first();
+
+            if (! $storedRate && $unit->category === 'car' && $rate['coverage'] === 'within_city') {
+                $storedRate = $unit->rates()
+                    ->where('coverage', 'standard')
+                    ->where('period', $rate['period'])
+                    ->first();
+            }
+
+            if ($storedRate) {
+                $storedRate->update([
+                    'coverage' => $rate['coverage'],
+                    'price' => $rate['price'],
+                ]);
+            } else {
+                $storedRate = $unit->rates()->create($rate);
+            }
+
+            $keptIds[] = $storedRate->id;
         }
 
         $unit->rates()->whereNotIn('id', $keptIds)->delete();
