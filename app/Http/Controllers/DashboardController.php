@@ -12,6 +12,7 @@ class DashboardController extends Controller
     public function __invoke(Request $request): View
     {
         $user = $request->user();
+        $user->loadMissing('hostApplication');
         $bookings = Booking::query();
 
         if ($user->isHost() || $user->is_admin) {
@@ -97,6 +98,7 @@ class DashboardController extends Controller
             'marketingUnits' => $marketingUnits,
             'overviewMapUnits' => $overviewMapUnits,
             'hostUnits' => $hostUnits,
+            'hostApplication' => $user->hostApplication,
         ]);
     }
 }

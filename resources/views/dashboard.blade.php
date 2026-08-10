@@ -26,6 +26,10 @@
 
             @if (auth()->user()->isClient())
                 <section class="client-overview">
+                    <div class="host-application-prompt">
+                        <div><span class="eyebrow">Have something to offer?</span><h2>{{ $hostApplication ? 'Host application: '.str($hostApplication->status)->replace('_', ' ')->title() : 'Turn your vehicle, property, or service into a listing.' }}</h2><p>{{ $hostApplication?->review_note ?: 'Apply using your existing verification profile. After approval, create category-specific listings without entering your personal information again.' }}</p></div>
+                        <a class="button button-primary" href="{{ route('host-applications.show') }}">{{ $hostApplication ? 'View application' : 'Apply as a host' }} →</a>
+                    </div>
                     <div class="client-market-hero">
                         <div><span class="eyebrow">Book trusted local rentals</span><h2>Find the right ride, stay, or service for your next plan.</h2><p>Compare verified hosts, choose your exact schedule, and see the rental package that matches your dates.</p><a class="button button-primary" href="{{ route('calendar.index') }}">Explore available rentals <span>→</span></a></div>
                         <div class="market-hero-points"><span><strong>{{ $marketingUnits->count() }}</strong><small>Featured options</small></span><span><strong>Verified</strong><small>Host profiles</small></span><span><strong>Realtime</strong><small>Inquiry chat</small></span></div>

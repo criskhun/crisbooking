@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\AdminHostApplicationController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\FacebookAuthController;
 use App\Http\Controllers\Auth\GoogleAuthController;
@@ -8,6 +9,7 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\HostApplicationController;
 use App\Http\Controllers\InquiryController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProfileLocationController;
@@ -83,6 +85,9 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     Route::post('/inquiries/{inquiry}/messages', [InquiryController::class, 'message'])->name('inquiries.messages.store');
     Route::post('/inquiries/{inquiry}/typing', [InquiryController::class, 'typing'])->name('inquiries.typing');
     Route::get('/inquiry-attachments/{message}', [InquiryController::class, 'attachment'])->name('inquiries.attachments.show');
+    Route::get('/host-application', [HostApplicationController::class, 'show'])->name('host-applications.show');
+    Route::post('/host-application', [HostApplicationController::class, 'store'])->name('host-applications.store');
+    Route::get('/host-application/{hostApplication}/business-document', [HostApplicationController::class, 'businessDocument'])->name('host-applications.business-document');
 });
 
 Route::middleware(['auth', 'active', 'verified', 'host'])->group(function () {
@@ -92,6 +97,9 @@ Route::middleware(['auth', 'active', 'verified', 'host'])->group(function () {
 });
 
 Route::middleware(['auth', 'active', 'verified', 'admin'])->group(function () {
+    Route::get('/admin/host-applications', [AdminHostApplicationController::class, 'index'])->name('admin.host-applications.index');
+    Route::get('/admin/host-applications/{hostApplication}', [AdminHostApplicationController::class, 'show'])->name('admin.host-applications.show');
+    Route::patch('/admin/host-applications/{hostApplication}', [AdminHostApplicationController::class, 'review'])->name('admin.host-applications.review');
     Route::get('/accounts', [AccountController::class, 'index'])->name('accounts.index');
     Route::get('/accounts/{account}/edit', [AccountController::class, 'edit'])->name('accounts.edit');
     Route::put('/accounts/{account}', [AccountController::class, 'update'])->name('accounts.update');

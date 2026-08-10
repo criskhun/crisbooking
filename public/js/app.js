@@ -1229,3 +1229,23 @@
         }
     });
 })();
+
+(() => {
+    document.addEventListener('DOMContentLoaded', () => {
+        const accountType = document.querySelector('[data-host-account-type]');
+        const businessFields = document.querySelector('[data-host-business-fields]');
+        if (! accountType || ! businessFields) return;
+
+        const inputs = businessFields.querySelectorAll('input');
+        const syncBusinessFields = () => {
+            const isBusiness = accountType.value === 'business';
+            businessFields.hidden = ! isBusiness;
+            inputs.forEach((input) => {
+                if (['business_name', 'business_registration_number'].includes(input.name)) input.required = isBusiness;
+            });
+        };
+
+        accountType.addEventListener('change', syncBusinessFields);
+        syncBusinessFields();
+    });
+})();
