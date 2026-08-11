@@ -64,6 +64,11 @@ class Unit extends Model
         return $this->hasMany(Booking::class);
     }
 
+    public function inquiries(): HasMany
+    {
+        return $this->hasMany(Inquiry::class);
+    }
+
     public function rates(): HasMany
     {
         return $this->hasMany(UnitRate::class)

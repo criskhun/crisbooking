@@ -1354,6 +1354,67 @@ class BookingCalendarTest extends TestCase
         $this->assertDatabaseCount('bookings', 0);
     }
 
+    public function test_admin_can_moderate_all_listings_but_recorded_listings_are_disabled_instead_of_deleted(): void
+    {
+        Storage::fake('public');
+        Storage::fake('local');
+        $admin = User::factory()->create(['is_admin' => true, 'name' => 'Site Administrator']);
+        $firstHost = User::factory()->host()->create(['name' => 'First Listing Host']);
+        $secondHost = User::factory()->host()->create(['name' => 'Second Listing Host']);
+        $client = User::factory()->create();
+        $recordedUnit = $this->createUnit($firstHost, ['name' => 'Recorded Rental']);
+        $emptyUnit = $this->createUnit($secondHost, ['name' => 'Unused Rental']);
+        $start = now()->subMonth();
+
+        Booking::create([
+            'unit_id' => $recordedUnit->id,
+            'client_id' => $client->id,
+            'start_at' => $start,
+            'end_at' => $start->copy()->addHour(),
+            'status' => 'cancelled',
+            'total_amount' => 600,
+        ]);
+
+        $this->actingAs($admin)->get(route('units.index'))
+            ->assertOk()
+            ->assertSee('Administrator listing moderation')
+            ->assertSee('Recorded Rental')
+            ->assertSee('Unused Rental')
+            ->assertSee('First Listing Host')
+            ->assertSee('Second Listing Host')
+            ->assertSee('Deletion locked');
+
+        $this->actingAs($admin)->delete(route('units.destroy', $recordedUnit))
+            ->assertRedirect(route('units.index'))
+            ->assertSessionHas('status', 'Recorded Rental was disabled instead of deleted because its booking or inquiry records must be retained.');
+
+        $this->assertDatabaseHas('units', ['id' => $recordedUnit->id, 'is_active' => false]);
+        $this->assertDatabaseHas('bookings', ['unit_id' => $recordedUnit->id]);
+
+        $this->actingAs($admin)->patch(route('units.availability', $recordedUnit), ['is_active' => 1])
+            ->assertRedirect(route('units.index'));
+        $this->assertDatabaseHas('units', ['id' => $recordedUnit->id, 'is_active' => true]);
+
+        $this->actingAs($admin)->delete(route('units.destroy', $emptyUnit))
+            ->assertRedirect(route('units.index'));
+        $this->assertDatabaseMissing('units', ['id' => $emptyUnit->id]);
+    }
+
+    public function test_listing_with_inquiry_history_is_disabled_instead_of_deleted(): void
+    {
+        $host = User::factory()->host()->create();
+        $client = User::factory()->create();
+        $unit = $this->createUnit($host, ['name' => 'Inquired Rental']);
+        $start = now()->addDay();
+        $this->createInquiry($unit, $client, $start, $start->copy()->addHour());
+
+        $this->actingAs($host)->delete(route('units.destroy', $unit))
+            ->assertRedirect(route('units.index'));
+
+        $this->assertDatabaseHas('units', ['id' => $unit->id, 'is_active' => false]);
+        $this->assertDatabaseHas('inquiries', ['unit_id' => $unit->id]);
+    }
+
     private function createUnit(User $host, array $attributes = []): Unit
     {
         return Unit::create(array_merge([

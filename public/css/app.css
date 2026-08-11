@@ -570,8 +570,15 @@ html[data-color-mode="dark"] .identity-missing-warning { border-color: #76504b; 
 .listing-meta strong { overflow: hidden; font-size: .7rem; text-overflow: ellipsis; white-space: nowrap; }
 .listing-card-actions { display: flex; align-items: center; gap: .7rem; padding-top: .8rem; border-top: 1px solid var(--row-line); }
 .listing-card-actions a, .listing-card-actions button { padding: 0; border: 0; color: var(--forest); background: transparent; font-size: .68rem; font-weight: 800; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
-.listing-card-actions form { margin-left: auto; }
 .listing-card-actions button { color: var(--danger); }
+.listing-moderation-actions { display: flex; align-items: center; gap: .6rem; margin-left: auto; }
+.listing-moderation-actions form { margin: 0; }
+.listing-moderation-actions button.availability-action { color: var(--forest); }
+.listing-moderation-actions > span { color: var(--muted); font-size: .6rem; font-weight: 700; white-space: nowrap; }
+.listing-record-summary { display: flex; align-items: center; gap: .55rem; padding: .55rem .65rem; margin-bottom: .75rem; border: 1px solid var(--card-line); border-radius: 9px; background: var(--surface-tint); }
+.listing-record-summary > strong { display: grid; place-items: center; width: 1.8rem; height: 1.8rem; border-radius: 50%; color: var(--forest); background: var(--lime); font-size: .7rem; }
+.listing-record-summary > span { display: grid; color: var(--ink); font-size: .62rem; font-weight: 800; }
+.listing-record-summary small { margin-top: .08rem; color: var(--muted); font-size: .54rem; font-weight: 600; }
 .empty-listing-state { grid-column: 1 / -1; padding: clamp(2rem, 6vw, 5rem); border: 1px dashed var(--card-line); border-radius: 18px; background: var(--surface); text-align: center; }
 .empty-listing-state > span { display: grid; place-items: center; width: 3.5rem; height: 3.5rem; margin: 0 auto 1rem; border-radius: 50%; color: var(--forest); background: var(--lime); font-size: 1.3rem; }
 .empty-listing-state h2 { margin: 0; font: 800 1.4rem Manrope; }

@@ -8,7 +8,7 @@
         @include('partials.dashboard-sidebar')
         <main class="dashboard-main">
             <header class="dashboard-header">
-                <div><span class="form-kicker">Host inventory</span><h1>Units & services</h1></div>
+                <div><span class="form-kicker">{{ auth()->user()->is_admin ? 'Administrator listing moderation' : 'Host inventory' }}</span><h1>Units & services</h1></div>
                 <div class="header-actions"><a class="button button-primary button-small" href="{{ route('units.create') }}">＋ Register listing</a>@include('partials.user-badge')</div>
             </header>
 
@@ -28,6 +28,7 @@
                         @php
                             $icons = ['car' => '🚗', 'condo' => '🏢', 'driving' => '🛞', 'pet_transport' => '🐾', 'other' => '◇'];
                             $isBooked = $unit->active_bookings_count > 0;
+                            $recordCount = $unit->bookings_count + $unit->inquiries_count;
                         @endphp
                         <article class="listing-card">
                             <div class="listing-photo">
@@ -48,9 +49,12 @@
                                     <span class="availability-badge available">Available</span>
                                 @endif
                             </div>
-                            <span class="listing-kind">{{ ucfirst($unit->kind) }} · {{ str($unit->category)->replace('_', ' ')->title() }}</span>
+                            <span class="listing-kind">{{ ucfirst($unit->kind) }} · {{ str($unit->category)->replace('_', ' ')->title() }}@if(auth()->user()->is_admin) · Host: {{ $unit->host->name }}@endif</span>
                             <h2>{{ $unit->name }}</h2>
                             <p>{{ $unit->description ?: 'No description added yet.' }}</p>
+                            @if (auth()->user()->is_admin)
+                                <div class="listing-record-summary"><strong>{{ $recordCount }}</strong><span>{{ Str::plural('retained record', $recordCount) }}<small>{{ $unit->bookings_count }} bookings · {{ $unit->inquiries_count }} inquiries</small></span></div>
+                            @endif
                             @if ($unit->category === 'car' && $unit->car_details)
                                 <div class="listing-detail-summary"><strong>{{ $unit->car_details['year'] ?? '' }} {{ $unit->car_details['make'] ?? '' }} {{ $unit->car_details['model'] ?? '' }}</strong><small>{{ $unit->car_details['color'] ?? 'Color not specified' }} · {{ ucfirst($unit->car_details['transmission'] ?? '') }} · {{ ucfirst($unit->car_details['fuel_type'] ?? '') }}</small></div>
                                 @if (! empty($unit->car_details['accessories']))<div class="detail-chip-list">@foreach ($unit->car_details['accessories'] as $accessory)<span>{{ str($accessory)->replace('_', ' ')->title() }}</span>@endforeach</div>@endif
@@ -113,10 +117,21 @@
                                 <a href="{{ route('listings.show', $unit) }}" target="_blank" rel="noopener">Public page</a>
                                 <a href="{{ route('calendar.index', ['date' => now()->format('Y-m-d')]) }}">View calendar</a>
                                 <a href="{{ route('units.edit', $unit) }}">Edit</a>
-                                <form method="POST" action="{{ route('units.destroy', $unit) }}" onsubmit="return confirm('Remove this listing?')">
-                                    @csrf @method('DELETE')
-                                    <button type="submit">Remove</button>
-                                </form>
+                                <div class="listing-moderation-actions">
+                                    <form method="POST" action="{{ route('units.availability', $unit) }}">
+                                        @csrf @method('PATCH')
+                                        <input type="hidden" name="is_active" value="{{ $unit->is_active ? 0 : 1 }}">
+                                        <button class="availability-action" type="submit">{{ $unit->is_active ? 'Disable' : 'Enable' }}</button>
+                                    </form>
+                                    @if ($recordCount === 0)
+                                        <form method="POST" action="{{ route('units.destroy', $unit) }}" onsubmit="return confirm('Permanently delete this listing? This cannot be undone.')">
+                                            @csrf @method('DELETE')
+                                            <button type="submit">Delete</button>
+                                        </form>
+                                    @else
+                                        <span title="Listings with booking or inquiry records cannot be deleted">Deletion locked</span>
+                                    @endif
+                                </div>
                             </div>
                         </article>
                     @empty

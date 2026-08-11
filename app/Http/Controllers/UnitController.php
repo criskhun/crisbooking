@@ -24,10 +24,14 @@ class UnitController extends Controller
     public function index(Request $request): View
     {
         $units = Unit::query()
-            ->with(['rates', 'images'])
-            ->withCount(['bookings as active_bookings_count' => fn ($query) => $query->blocking()
-                ->where('start_at', '<', now())
-                ->where('end_at', '>', now())])
+            ->with(['rates', 'images', 'host:id,name'])
+            ->withCount([
+                'bookings',
+                'inquiries',
+                'bookings as active_bookings_count' => fn ($query) => $query->blocking()
+                    ->where('start_at', '<', now())
+                    ->where('end_at', '>', now()),
+            ])
             ->when(! $request->user()->is_admin, fn ($query) => $query->where('host_id', $request->user()->id))
             ->latest()
             ->get();
@@ -286,8 +290,13 @@ class UnitController extends Controller
     {
         $this->authorizeOwner($request, $unit);
 
-        if ($unit->bookings()->whereIn('status', ['pending', 'confirmed'])->where('end_at', '>', now())->exists()) {
-            return back()->withErrors(['unit' => 'This listing has an active or upcoming booking. Mark it unavailable instead.']);
+        if ($unit->bookings()->exists() || $unit->inquiries()->exists()) {
+            $unit->update(['is_active' => false]);
+
+            return redirect()->route('units.index')->with(
+                'status',
+                "{$unit->name} was disabled instead of deleted because its booking or inquiry records must be retained."
+            );
         }
 
         $name = $unit->name;
@@ -302,6 +311,22 @@ class UnitController extends Controller
         Storage::disk('local')->delete($inquiryAttachmentPaths->all());
 
         return redirect()->route('units.index')->with('status', "{$name} was removed.");
+    }
+
+    public function updateAvailability(Request $request, Unit $unit): RedirectResponse
+    {
+        $this->authorizeOwner($request, $unit);
+
+        $validated = $request->validate([
+            'is_active' => ['required', 'boolean'],
+        ]);
+
+        $unit->update(['is_active' => (bool) $validated['is_active']]);
+
+        return redirect()->route('units.index')->with(
+            'status',
+            $unit->is_active ? "{$unit->name} is available again." : "{$unit->name} was disabled and is hidden from public booking."
+        );
     }
 
     public function wifiQr(Request $request, Unit $unit): StreamedResponse

@@ -104,6 +104,7 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
 Route::middleware(['auth', 'active', 'verified', 'host'])->group(function () {
     Route::post('/unit-drafts', [UnitController::class, 'saveDraft'])->name('unit-drafts.store');
     Route::delete('/unit-drafts/{draft}', [UnitController::class, 'destroyDraft'])->name('unit-drafts.destroy');
+    Route::patch('/units/{unit}/availability', [UnitController::class, 'updateAvailability'])->name('units.availability');
     Route::resource('units', UnitController::class)->except('show');
 });
 
