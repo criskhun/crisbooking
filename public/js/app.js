@@ -1288,7 +1288,7 @@
             if (cameraTitle) cameraTitle.textContent = type === 'face' ? 'Take your face selfie' : 'Take a selfie with your valid ID';
             if (cameraInstructions) cameraInstructions.textContent = type === 'face'
                 ? 'Center your uncovered face inside the oval and look directly at the camera.'
-                : 'Hold the same valid ID from your profile beside your face. Keep both fully visible.';
+                : 'Place your face inside the left oval and hold the same valid ID inside the right box. Keep both fully visible.';
             if (cameraStatus) cameraStatus.textContent = 'Starting the front camera…';
             if (captureButton) captureButton.disabled = true;
             resetCameraCapture();

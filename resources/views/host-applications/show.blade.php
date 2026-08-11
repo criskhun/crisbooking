@@ -141,7 +141,7 @@
                                     <video data-camera-video autoplay muted playsinline></video>
                                     <img data-camera-photo alt="Captured selfie preview" hidden>
                                     <span class="camera-face-guide" aria-hidden="true"></span>
-                                    <span class="camera-id-guide" aria-hidden="true"><i>Keep your face and ID visible</i></span>
+                                    <span class="camera-id-guide" aria-hidden="true"><i>Hold ID here</i></span>
                                 </div>
                                 <canvas data-camera-canvas hidden></canvas>
                                 <p class="camera-status" data-camera-status role="status" aria-live="polite">Allow camera access when prompted.</p>
