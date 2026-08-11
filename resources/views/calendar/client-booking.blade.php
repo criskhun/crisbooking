@@ -2,10 +2,18 @@
     $categories = [
         'car' => ['icon' => '🚗', 'label' => 'Car rental', 'copy' => 'Drive on your own schedule'],
         'condo' => ['icon' => '🏢', 'label' => 'Stay', 'copy' => 'Condos, rooms, and properties'],
-        'driving' => ['icon' => '🛞', 'label' => 'Driving service', 'copy' => 'Book a driver for your trip'],
-        'pet_transport' => ['icon' => '🐾', 'label' => 'Pet transport', 'copy' => 'Safe travel for your pet'],
-        'other' => ['icon' => '◇', 'label' => 'Other service', 'copy' => 'Browse other bookable services'],
+        'cleaning' => ['icon' => '🧹', 'label' => 'Cleaning', 'copy' => 'Book help for your space'],
+        'driving' => ['icon' => '🛞', 'label' => 'Driving', 'copy' => 'Book a driver for your trip'],
+        'massage' => ['icon' => '💆', 'label' => 'Massage', 'copy' => 'Book a massage session'],
+        'consultancy' => ['icon' => '💬', 'label' => 'Consultancy', 'copy' => 'Book professional advice'],
     ];
+    foreach ($discoverableServiceCategories ?? [] as $serviceCategory) {
+        $categories[$serviceCategory] ??= [
+            'icon' => '◇',
+            'label' => str($serviceCategory)->replace('_', ' ')->title(),
+            'copy' => 'Browse available '.str($serviceCategory)->replace('_', ' ')->lower().' services',
+        ];
+    }
     $rateLabels = ['12_hours' => '12 hours', 'day' => '1 day', 'week' => '1 week', 'month' => '1 month'];
     $minimumStart = now()->addMinute()->startOfMinute();
     $defaultStart = now()->addHours(2)->startOfHour();

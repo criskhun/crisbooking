@@ -16,7 +16,7 @@ class CalendarController extends Controller
         $validated = $request->validate([
             'month' => ['nullable', 'date_format:Y-m'],
             'date' => ['nullable', 'date_format:Y-m-d'],
-            'category' => ['nullable', Rule::in(['car', 'condo', 'driving', 'pet_transport', 'other'])],
+            'category' => ['nullable', 'string', 'max:30', 'regex:/^[a-z0-9]+(?:_[a-z0-9]+)*$/'],
             'search_start' => ['nullable', 'date', 'after:now'],
             'search_end' => ['nullable', 'date', 'after:search_start'],
             'party_size' => ['nullable', 'integer', 'min:1', 'max:10000'],
@@ -75,6 +75,12 @@ class CalendarController extends Controller
             ->unique();
 
         $category = $validated['category'] ?? null;
+        $discoverableServiceCategories = collect(['cleaning', 'driving', 'massage', 'consultancy'])
+            ->merge(Unit::query()->where('kind', 'service')->where('is_active', true)->distinct()->pluck('category'))
+            ->when($category && ! in_array($category, ['car', 'condo'], true), fn ($categories) => $categories->push($category))
+            ->filter()
+            ->unique()
+            ->values();
         $searchStart = ! empty($validated['search_start']) ? Carbon::parse($validated['search_start']) : null;
         $searchEnd = ! empty($validated['search_end']) ? Carbon::parse($validated['search_end']) : null;
         $partySize = (int) ($validated['party_size'] ?? 1);
@@ -162,6 +168,7 @@ class CalendarController extends Controller
             'bookings' => $bookings,
             'bookedUnitIds' => $bookedUnitIds,
             'category' => $category,
+            'discoverableServiceCategories' => $discoverableServiceCategories,
             'searchStart' => $searchStart,
             'searchEnd' => $searchEnd,
             'partySize' => $partySize,

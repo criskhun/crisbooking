@@ -240,6 +240,47 @@ class BookingCalendarTest extends TestCase
         $this->actingAs($client)->post(route('units.store'), $payload)->assertForbidden();
     }
 
+    public function test_service_listing_categories_change_and_other_can_add_a_custom_category(): void
+    {
+        Storage::fake('public');
+        $host = User::factory()->host()->create();
+
+        $this->actingAs($host)->get(route('units.create'))
+            ->assertOk()
+            ->assertSee('data-category-group="service"', false)
+            ->assertSee('<option value="cleaning"', false)
+            ->assertSee('<option value="driving"', false)
+            ->assertSee('<option value="massage"', false)
+            ->assertSee('<option value="consultancy"', false)
+            ->assertSee('name="custom_category"', false);
+
+        $this->actingAs($host)->post(route('units.store'), [
+            'name' => 'Weekend Lawn Care',
+            'kind' => 'service',
+            'category' => 'other',
+            'custom_category' => 'Lawn Care',
+            'rules' => 'Client must provide access to the property.',
+            'photos' => [UploadedFile::fake()->image('lawn-care.jpg')],
+            'price' => 750,
+            'pricing_unit' => 'session',
+            'is_active' => 1,
+        ])->assertRedirect(route('units.index'));
+
+        $unit = Unit::firstOrFail();
+        $this->assertSame('service', $unit->kind);
+        $this->assertSame('lawn_care', $unit->category);
+
+        $client = User::factory()->create();
+        $this->actingAs($client)->get(route('calendar.index', ['category' => 'lawn_care']))
+            ->assertOk()
+            ->assertSee('Lawn Care');
+
+        $this->actingAs($host)->get(route('units.edit', $unit))
+            ->assertOk()
+            ->assertSee('value="other" selected', false)
+            ->assertSee('name="custom_category" type="text" value="Lawn Care"', false);
+    }
+
     public function test_car_registration_stores_vehicle_details_and_accessories(): void
     {
         Storage::fake('public');

@@ -46,6 +46,16 @@
     $draftPrimaryIndex = array_search($draftPrimaryPhotoPath ?? null, $draftPhotoPaths, true);
     $draftPrimaryValue = $draftPrimaryIndex === false ? null : 'draft:'.$draftPrimaryIndex;
     $hasStoredPhotos = ($editing && $unit->images->isNotEmpty()) || count($draftPhotoPaths) > 0;
+    $assetCategories = ['car' => 'Car rental', 'condo' => 'Condo rental'];
+    $serviceCategories = ['cleaning' => 'Cleaning', 'driving' => 'Driving', 'massage' => 'Massage', 'consultancy' => 'Consultancy', 'other' => 'Other'];
+    $selectedKind = old('kind', $unit->kind ?? 'unit');
+    $storedCategory = old('category', $unit->category ?? 'car');
+    $selectedCategory = $selectedKind === 'service' && ! array_key_exists($storedCategory, $serviceCategories)
+        ? 'other'
+        : $storedCategory;
+    $customCategory = old('custom_category', $editing && $unit->kind === 'service' && ! array_key_exists($unit->category, $serviceCategories)
+        ? str($unit->category)->replace('_', ' ')->title()
+        : '');
 @endphp
 
 <div class="listing-form-grid">
@@ -107,11 +117,25 @@
     <div class="field-group">
         <label for="category">Category</label>
         <select id="category" name="category" required>
-            @foreach (['car' => 'Car rental', 'condo' => 'Condo rental', 'driving' => 'Driving service', 'pet_transport' => 'Pet transportation', 'other' => 'Other'] as $value => $label)
-                <option value="{{ $value }}" @selected(old('category', $unit->category ?? 'car') === $value)>{{ $label }}</option>
-            @endforeach
+            <optgroup label="Rentals" data-category-group="unit" @if($selectedKind !== 'unit') disabled hidden @endif>
+                @foreach ($assetCategories as $value => $label)
+                    <option value="{{ $value }}" @selected($selectedCategory === $value)>{{ $label }}</option>
+                @endforeach
+            </optgroup>
+            <optgroup label="Services" data-category-group="service" @if($selectedKind !== 'service') disabled hidden @endif>
+                @foreach ($serviceCategories as $value => $label)
+                    <option value="{{ $value }}" @selected($selectedCategory === $value)>{{ $label }}</option>
+                @endforeach
+            </optgroup>
         </select>
         @error('category')<p class="error-text">{{ $message }}</p>@enderror
+    </div>
+
+    <div class="field-group" data-custom-category-section @if(! ($selectedKind === 'service' && $selectedCategory === 'other')) hidden @endif>
+        <label for="custom_category">Add service category</label>
+        <input id="custom_category" name="custom_category" type="text" value="{{ $customCategory }}" maxlength="30" placeholder="e.g. Lawn care" @required($selectedKind === 'service' && $selectedCategory === 'other')>
+        <small class="field-help">Enter the service category when it is not listed above.</small>
+        @error('custom_category')<p class="error-text">{{ $message }}</p>@enderror
     </div>
 
     <div class="field-group listing-location-field" data-listing-location-map data-map-id="{{ config('services.google.maps_map_id') }}">

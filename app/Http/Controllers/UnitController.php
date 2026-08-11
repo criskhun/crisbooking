@@ -191,7 +191,10 @@ class UnitController extends Controller
         }
 
         $name = trim((string) ($payload['name'] ?? ''));
-        $category = Str::of((string) ($payload['category'] ?? 'listing'))->replace('_', ' ')->title();
+        $draftCategory = ($payload['category'] ?? null) === 'other' && filled($payload['custom_category'] ?? null)
+            ? $payload['custom_category']
+            : ($payload['category'] ?? 'listing');
+        $category = Str::of((string) $draftCategory)->replace('_', ' ')->title();
 
         try {
             $draft->fill([
@@ -321,6 +324,8 @@ class UnitController extends Controller
 
     private function validated(Request $request, ?Unit $unit = null, array $draftPhotoPaths = []): array
     {
+        $kind = $request->input('kind');
+        $selectedCategory = $request->input('category');
         $isRental = in_array($request->input('category'), ['car', 'condo'], true);
         $isCar = $request->input('category') === 'car';
         $isProperty = $request->input('category') === 'condo';
@@ -342,7 +347,10 @@ class UnitController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'kind' => ['required', Rule::in(['unit', 'service'])],
-            'category' => ['required', Rule::in(['car', 'condo', 'driving', 'pet_transport', 'other'])],
+            'category' => ['required', Rule::in($kind === 'service'
+                ? ['cleaning', 'driving', 'massage', 'consultancy', 'other']
+                : ['car', 'condo'])],
+            'custom_category' => [Rule::requiredIf($kind === 'service' && $selectedCategory === 'other'), 'nullable', 'string', 'max:30', 'regex:/[A-Za-z0-9]/'],
             'location' => ['nullable', 'string', 'max:180'],
             'latitude' => ['nullable', 'required_with:longitude', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'required_with:latitude', 'numeric', 'between:-180,180'],
@@ -422,6 +430,17 @@ class UnitController extends Controller
             'pool.rate_unit' => [Rule::requiredIf($paidPool), 'nullable', Rule::in(['hour', 'day', 'booking', 'person'])],
             'is_active' => ['required', 'boolean'],
         ]);
+
+        if (($validated['kind'] ?? null) === 'service' && ($validated['category'] ?? null) === 'other') {
+            $customCategory = trim(Str::substr(Str::slug($validated['custom_category'], '_'), 0, 30), '_');
+
+            if (in_array($customCategory, ['car', 'condo'], true)) {
+                throw ValidationException::withMessages(['custom_category' => 'Choose a service category other than Car or Condo.']);
+            }
+
+            $validated['category'] = $customCategory;
+        }
+        unset($validated['custom_category']);
 
         if ($unit) {
             $removedCount = collect($validated['remove_images'] ?? [])->unique()->count();

@@ -191,7 +191,10 @@
             chooseAvailablePrimary();
         });
 
+        const kindSelect = document.querySelector('#kind');
         const categorySelect = document.querySelector('#category');
+        const categoryGroups = Array.from(categorySelect?.querySelectorAll('[data-category-group]') || []);
+        const customCategorySection = document.querySelector('[data-custom-category-section]');
         const standardRateSection = document.querySelector('[data-standard-rate-section]');
         const packageRateSection = document.querySelector('[data-package-rate-section]');
         const condoRateSet = document.querySelector('[data-condo-rate-set]');
@@ -228,6 +231,24 @@
             });
         };
 
+        const syncCategoryOptions = () => {
+            if (!kindSelect || !categorySelect) return;
+
+            const activeKind = kindSelect.value;
+            categoryGroups.forEach((group) => {
+                const inactive = group.dataset.categoryGroup !== activeKind;
+                group.disabled = inactive;
+                group.hidden = inactive;
+            });
+
+            const selectedOption = categorySelect.selectedOptions[0];
+            if (selectedOption?.parentElement?.dataset.categoryGroup !== activeKind) {
+                const activeGroup = categoryGroups.find((group) => group.dataset.categoryGroup === activeKind);
+                const firstOption = activeGroup?.querySelector('option');
+                if (firstOption) categorySelect.value = firstOption.value;
+            }
+        };
+
         const syncListingRates = () => {
             if (!categorySelect || !standardRateSection || !packageRateSection) {
                 return;
@@ -236,6 +257,8 @@
             const isCar = categorySelect.value === 'car';
             const isCondo = categorySelect.value === 'condo';
             const isPackageRental = isCar || isCondo;
+            const showCustomCategory = kindSelect?.value === 'service' && categorySelect.value === 'other';
+            syncDetailSection(customCategorySection, showCustomCategory, ['custom_category']);
             standardRateSection.hidden = isPackageRental;
             packageRateSection.hidden = !isPackageRental;
             if (condoRateSet) condoRateSet.hidden = !isCondo;
@@ -291,7 +314,9 @@
                 car: ['Car rules', 'Include fuel, mileage, pickup, driver, smoking, and damage rules.'],
                 condo: ['House rules', 'Include check-in, visitors, noise, smoking, pets, and cleaning rules.'],
                 driving: ['Driving service rules', 'Include waiting time, route changes, passenger, luggage, and cancellation rules.'],
-                pet_transport: ['Pet transport rules', 'Include crate, vaccination, behavior, pickup, and cleaning requirements.'],
+                cleaning: ['Cleaning service rules', 'Include the covered areas, supplies, access, timing, and cancellation rules.'],
+                massage: ['Massage service rules', 'Include session preparation, health limitations, timing, and cancellation rules.'],
+                consultancy: ['Consultancy rules', 'Include preparation, meeting format, deliverables, timing, and cancellation rules.'],
                 other: ['Service rules', 'Explain requirements, limitations, cancellations, and client responsibilities.'],
             };
             const [label, help] = rulesCopy[categorySelect.value] || rulesCopy.other;
@@ -299,6 +324,10 @@
             if (rulesHelp) rulesHelp.textContent = `${help} Clients will see these before booking.`;
         };
 
+        kindSelect?.addEventListener('change', () => {
+            syncCategoryOptions();
+            syncListingRates();
+        });
         categorySelect?.addEventListener('change', syncListingRates);
         packageRateSection?.querySelectorAll('[data-rate-toggle]').forEach((toggle) => {
             toggle.addEventListener('change', syncListingRates);
@@ -315,6 +344,7 @@
                 button.textContent = reveal ? 'Hide password' : 'Show password';
             });
         });
+        syncCategoryOptions();
         syncListingRates();
 
         document.querySelectorAll('[data-custom-accessories]').forEach((panel) => {
