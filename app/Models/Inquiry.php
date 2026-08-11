@@ -14,7 +14,7 @@ class Inquiry extends Model
 
     protected $fillable = [
         'unit_id', 'client_id', 'host_id', 'desired_start_at', 'desired_end_at',
-        'party_size', 'status',
+        'party_size', 'status', 'affiliate_partnership_id', 'affiliate_commission_percentage',
     ];
 
     protected function casts(): array
@@ -23,14 +23,39 @@ class Inquiry extends Model
             'desired_start_at' => 'datetime',
             'desired_end_at' => 'datetime',
             'party_size' => 'integer',
+            'affiliate_commission_percentage' => 'decimal:2',
         ];
     }
 
-    public function unit(): BelongsTo { return $this->belongsTo(Unit::class); }
-    public function client(): BelongsTo { return $this->belongsTo(User::class, 'client_id'); }
-    public function host(): BelongsTo { return $this->belongsTo(User::class, 'host_id'); }
-    public function messages(): HasMany { return $this->hasMany(InquiryMessage::class); }
-    public function booking(): HasOne { return $this->hasOne(Booking::class); }
+    public function unit(): BelongsTo
+    {
+        return $this->belongsTo(Unit::class);
+    }
+
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'client_id');
+    }
+
+    public function host(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'host_id');
+    }
+
+    public function messages(): HasMany
+    {
+        return $this->hasMany(InquiryMessage::class);
+    }
+
+    public function booking(): HasOne
+    {
+        return $this->hasOne(Booking::class);
+    }
+
+    public function affiliatePartnership(): BelongsTo
+    {
+        return $this->belongsTo(AffiliatePartnership::class);
+    }
 
     public function involves(User $user): bool
     {

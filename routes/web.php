@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AdminHostApplicationController;
+use App\Http\Controllers\AffiliateController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\FacebookAuthController;
 use App\Http\Controllers\Auth\GoogleAuthController;
@@ -13,6 +14,7 @@ use App\Http\Controllers\HostApplicationController;
 use App\Http\Controllers\InquiryController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProfileLocationController;
+use App\Http\Controllers\PublicListingController;
 use App\Http\Controllers\UnitController;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
@@ -21,6 +23,8 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 })->name('home');
+
+Route::get('/listings/{unit}', [PublicListingController::class, 'show'])->name('listings.show');
 
 Route::middleware('guest')->group(function () {
     Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
@@ -44,7 +48,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) {
         $request->fulfill();
 
-        return redirect()->route('dashboard')->with('status', 'Your email address has been verified.');
+        return redirect()->intended(route('dashboard'))->with('status', 'Your email address has been verified.');
     })->middleware(['signed', 'throttle:6,1'])->name('verification.verify');
 
     Route::post('/email/verification-notification', function (Request $request) {
@@ -61,6 +65,7 @@ Route::middleware(['auth', 'active'])->group(function () {
 });
 
 Route::middleware(['auth', 'active', 'verified'])->group(function () {
+    Route::get('/listings/{unit}/inquire', [PublicListingController::class, 'inquire'])->name('listings.inquire');
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
     Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar.index');
     Route::get('/units/{unit}/wifi-qr', [UnitController::class, 'wifiQr'])->name('units.wifi-qr');
@@ -89,6 +94,11 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     Route::post('/host-application', [HostApplicationController::class, 'store'])->name('host-applications.store');
     Route::get('/host-application/{hostApplication}/business-document', [HostApplicationController::class, 'businessDocument'])->name('host-applications.business-document');
     Route::get('/host-application/{hostApplication}/identity-image/{type}', [HostApplicationController::class, 'identityImage'])->whereIn('type', ['face', 'id'])->name('host-applications.identity-image');
+    Route::get('/affiliates', [AffiliateController::class, 'index'])->name('affiliates.index');
+    Route::post('/affiliates', [AffiliateController::class, 'store'])->name('affiliates.store');
+    Route::get('/affiliates/{affiliate}', [AffiliateController::class, 'show'])->name('affiliates.show');
+    Route::patch('/affiliates/{affiliate}', [AffiliateController::class, 'review'])->name('affiliates.review');
+    Route::post('/affiliates/{affiliate}/messages', [AffiliateController::class, 'message'])->name('affiliates.messages.store');
 });
 
 Route::middleware(['auth', 'active', 'verified', 'host'])->group(function () {

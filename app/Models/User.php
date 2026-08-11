@@ -68,6 +68,16 @@ class User extends Authenticatable implements MustVerifyEmailContract
         return $this->hasMany(Inquiry::class, 'host_id');
     }
 
+    public function marketerAffiliatePartnerships(): HasMany
+    {
+        return $this->hasMany(AffiliatePartnership::class, 'marketer_id');
+    }
+
+    public function hostAffiliatePartnerships(): HasMany
+    {
+        return $this->hasMany(AffiliatePartnership::class, 'host_id');
+    }
+
     public function hasCompleteProfile(): bool
     {
         return $this->profile_completed_at !== null

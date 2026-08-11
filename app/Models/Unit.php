@@ -81,6 +81,11 @@ class Unit extends Model
         return $this->hasMany(UnitImage::class)->orderBy('sort_order')->orderBy('id');
     }
 
+    public function publicUrl(?string $referralCode = null): string
+    {
+        return route('listings.show', array_filter(['unit' => $this, 'ref' => $referralCode]));
+    }
+
     public function isPackageRental(): bool
     {
         return in_array($this->category, ['car', 'condo'], true);

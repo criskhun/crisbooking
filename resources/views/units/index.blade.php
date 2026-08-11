@@ -110,6 +110,7 @@
                                 @endif
                             @endif
                             <div class="listing-card-actions">
+                                <a href="{{ route('listings.show', $unit) }}" target="_blank" rel="noopener">Public page</a>
                                 <a href="{{ route('calendar.index', ['date' => now()->format('Y-m-d')]) }}">View calendar</a>
                                 <a href="{{ route('units.edit', $unit) }}">Edit</a>
                                 <form method="POST" action="{{ route('units.destroy', $unit) }}" onsubmit="return confirm('Remove this listing?')">

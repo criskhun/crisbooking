@@ -2,11 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AffiliatePartnership;
 use App\Models\Inquiry;
 use App\Models\InquiryMessage;
 use App\Models\Unit;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -44,6 +45,7 @@ class InquiryController extends Controller
             'desired_end_at' => ['required', 'date', 'after:desired_start_at'],
             'party_size' => ['required', 'integer', 'min:1', 'max:10000'],
             'initial_message' => ['required', 'string', 'min:10', 'max:2000'],
+            'referral_code' => ['nullable', 'string', 'max:32'],
         ]);
 
         $unit = Unit::query()->where('is_active', true)->with('host')->findOrFail($validated['unit_id']);
@@ -56,7 +58,15 @@ class InquiryController extends Controller
             throw ValidationException::withMessages(['party_size' => "This listing can accommodate up to {$unit->capacity} people."]);
         }
 
-        $inquiry = DB::transaction(function () use ($request, $validated, $unit) {
+        $affiliate = filled($validated['referral_code'] ?? null)
+            ? AffiliatePartnership::query()
+                ->where('referral_code', $validated['referral_code'])
+                ->where('host_id', $unit->host_id)
+                ->where('status', 'accepted')
+                ->first()
+            : null;
+
+        $inquiry = DB::transaction(function () use ($request, $validated, $unit, $affiliate) {
             $inquiry = Inquiry::create([
                 'unit_id' => $unit->id,
                 'client_id' => $request->user()->id,
@@ -65,6 +75,8 @@ class InquiryController extends Controller
                 'desired_end_at' => $validated['desired_end_at'],
                 'party_size' => $validated['party_size'],
                 'status' => 'open',
+                'affiliate_partnership_id' => $affiliate?->id,
+                'affiliate_commission_percentage' => $affiliate?->commission_percentage,
             ]);
             $inquiry->messages()->create([
                 'sender_id' => $request->user()->id,
@@ -113,6 +125,7 @@ class InquiryController extends Controller
 
         if ($request->expectsJson()) {
             $message->load('sender');
+
             return response()->json(['message' => $this->messagePayload($message, $request->user()->id)]);
         }
 
@@ -141,8 +154,11 @@ class InquiryController extends Controller
         $validated = $request->validate(['is_typing' => ['required', 'boolean']]);
         $key = $this->typingKey($inquiry, $request->user()->id);
 
-        if ($validated['is_typing']) Cache::put($key, true, now()->addSeconds(5));
-        else Cache::forget($key);
+        if ($validated['is_typing']) {
+            Cache::put($key, true, now()->addSeconds(5));
+        } else {
+            Cache::forget($key);
+        }
 
         return response()->json(['ok' => true]);
     }

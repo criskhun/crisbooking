@@ -36,6 +36,9 @@ class Booking extends Model
         'change_requested_at',
         'change_reviewed_at',
         'notes',
+        'affiliate_partnership_id',
+        'affiliate_commission_percentage',
+        'affiliate_commission_amount',
     ];
 
     protected function casts(): array
@@ -54,6 +57,8 @@ class Booking extends Model
             'change_package_breakdown' => 'array',
             'change_requested_at' => 'datetime',
             'change_reviewed_at' => 'datetime',
+            'affiliate_commission_percentage' => 'decimal:2',
+            'affiliate_commission_amount' => 'decimal:2',
         ];
     }
 
@@ -75,6 +80,11 @@ class Booking extends Model
     public function rate(): BelongsTo
     {
         return $this->belongsTo(UnitRate::class, 'unit_rate_id');
+    }
+
+    public function affiliatePartnership(): BelongsTo
+    {
+        return $this->belongsTo(AffiliatePartnership::class);
     }
 
     public function scopeBlocking(Builder $query): Builder

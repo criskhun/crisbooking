@@ -127,6 +127,11 @@ class BookingController extends Controller
             $rentalTotal = $packageBreakdown
                 ? $this->packageTotal($packageBreakdown)
                 : $this->calculateTotal($unit, $start, $end);
+            $bookingTotal = round($rentalTotal + $this->additionalChargeTotal($additionalCharges), 2);
+            $commissionableTotal = max(0, $bookingTotal - (float) collect($additionalCharges)
+                ->filter(fn ($charge) => (bool) ($charge['refundable'] ?? false))
+                ->sum('amount'));
+            $commissionPercentage = $inquiry->affiliate_commission_percentage;
 
             return $unit->bookings()->create([
                 'inquiry_id' => $inquiry->id,
@@ -140,9 +145,14 @@ class BookingController extends Controller
                 'rate_quantity' => $rateQuantity,
                 'package_breakdown' => $packageBreakdown,
                 'additional_charges' => $additionalCharges ?: null,
-                'total_amount' => round($rentalTotal + $this->additionalChargeTotal($additionalCharges), 2),
+                'total_amount' => $bookingTotal,
                 'party_size' => $partySize,
                 'notes' => $validated['notes'] ?? null,
+                'affiliate_partnership_id' => $inquiry->affiliate_partnership_id,
+                'affiliate_commission_percentage' => $commissionPercentage,
+                'affiliate_commission_amount' => $commissionPercentage !== null
+                    ? round($commissionableTotal * (float) $commissionPercentage / 100, 2)
+                    : null,
             ]);
         });
 
@@ -288,6 +298,9 @@ class BookingController extends Controller
                 ? $this->packageTotal($packageBreakdown)
                 : $this->calculateTotal($unit, $start, $end);
             $total = round($total + $this->additionalChargeTotal($lockedBooking->additional_charges ?? []), 2);
+            $commissionableTotal = max(0, $total - (float) collect($lockedBooking->additional_charges ?? [])
+                ->filter(fn ($charge) => (bool) ($charge['refundable'] ?? false))
+                ->sum('amount'));
 
             $lockedBooking->update([
                 'start_at' => $start,
@@ -298,6 +311,9 @@ class BookingController extends Controller
                 'rate_quantity' => $rateQuantity,
                 'package_breakdown' => $packageBreakdown,
                 'total_amount' => $total,
+                'affiliate_commission_amount' => $lockedBooking->affiliate_commission_percentage !== null
+                    ? round($commissionableTotal * (float) $lockedBooking->affiliate_commission_percentage / 100, 2)
+                    : null,
                 'change_request_status' => 'approved',
                 'change_reviewed_at' => now(),
             ]);
