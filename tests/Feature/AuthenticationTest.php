@@ -7,6 +7,7 @@ use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password;
 use Tests\TestCase;
 
 class AuthenticationTest extends TestCase
@@ -83,6 +84,18 @@ class AuthenticationTest extends TestCase
         ])->assertRedirect(route('login'));
 
         $this->assertTrue(Hash::check('newbooking123', $user->fresh()->password));
+    }
+
+    public function test_mail_transport_failure_returns_to_recovery_form_instead_of_a_500_error(): void
+    {
+        $user = User::factory()->create(['email' => 'mail-failure@example.com']);
+        Password::shouldReceive('sendResetLink')->once()->andThrow(new \RuntimeException('SMTP authentication failed'));
+
+        $this->post(route('password.email'), ['email' => $user->email])
+            ->assertRedirect()
+            ->assertSessionHasErrors([
+                'email' => 'We could not send the reset email right now. Please try again shortly or contact support.',
+            ]);
     }
 
     public function test_an_existing_user_can_log_in(): void

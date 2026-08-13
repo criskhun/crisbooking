@@ -99,6 +99,7 @@ MAIL_HOST=smtp.hostinger.com
 MAIL_PORT=465
 MAIL_USERNAME=bookings@davaorentzone.com
 MAIL_PASSWORD=your_mailbox_password
+MAIL_TIMEOUT=15
 MAIL_FROM_ADDRESS=bookings@davaorentzone.com
 MAIL_FROM_NAME="${APP_NAME}"
 NOTIFICATION_EMAIL_INACTIVE_MINUTES=5
@@ -114,7 +115,20 @@ $PHP_BIN artisan optimize:clear
 $PHP_BIN artisan config:cache
 ```
 
-Then open `/forgot-password`, enter a real account email, and confirm that the reset email arrives. If it does not, check `storage/logs/laravel.log`, verify the mailbox credentials in hPanel, and make sure `APP_URL` uses the live HTTPS domain so links in the email point to the public site.
+Then open `/forgot-password`, enter a real account email, and confirm that the reset email arrives. If it does not, inspect the most recent mail error:
+
+```bash
+tail -n 100 storage/logs/laravel.log
+```
+
+Verify the mailbox credentials in **hPanel -> Emails -> Manage -> Connect Apps & Devices**, and make sure `APP_URL` uses the live HTTPS domain so links in the email point to the public site. Hostinger's primary outgoing configuration is SSL on port 465. If the log reports an encryption or connection problem, try Hostinger's fallback:
+
+```env
+MAIL_SCHEME=smtp
+MAIL_PORT=587
+```
+
+Then clear and rebuild the configuration cache again. An incorrect mailbox username/password usually appears in the log as an SMTP authentication failure.
 
 ### 5. Configure Google and Facebook login
 
