@@ -4,7 +4,7 @@ Davao Rent Zone is a Laravel application for car rentals, condo rentals, driving
 
 ## Requirements
 
-- PHP 8.3 or newer
+- PHP 8.4.1 or newer
 - Composer 2
 - MySQL/MariaDB for production (SQLite is supported for local development and tests)
 - Apache with `mod_rewrite` or an equivalent web server
@@ -32,7 +32,7 @@ Do **not** use Hostinger's **Deploy Web App**, **Node.js**, **Vite**, or static 
 
 ### 1. Configure PHP and the domain
 
-In hPanel, set the website to PHP 8.3 or PHP 8.4. On Hostinger Web and Cloud hosting, the document root is normally fixed at `public_html`. Deploy this entire repository into `public_html`; the root `.htaccess` included here safely forwards requests to Laravel's `public/` directory.
+In hPanel, set the website to PHP 8.4. The locked Symfony dependencies require PHP 8.4.1 or newer, so the website runtime and SSH deployment command must both use PHP 8.4. On Hostinger Web and Cloud hosting, the document root is normally fixed at `public_html`. Deploy this entire repository into `public_html`; the root `.htaccess` included here safely forwards requests to Laravel's `public/` directory.
 
 On a VPS, configure Apache or Nginx so the document root points directly to `PROJECT/public`, which is Laravel's preferred layout. Do not move Laravel's `index.php` into the project root and do not expose `.env`.
 
@@ -81,7 +81,7 @@ chmod +x scripts/deploy-hostinger.sh
 Hostinger Web/Cloud plans normally provide Composer as `composer2`. If SSH uses a different PHP version from the website, run the script with Hostinger's PHP binary, for example. The script uses this binary for both Composer and Artisan:
 
 ```bash
-PHP_BIN=/opt/alt/php83/usr/bin/php ./scripts/deploy-hostinger.sh
+PHP_BIN=/opt/alt/php84/usr/bin/php ./scripts/deploy-hostinger.sh
 ```
 
 The script installs production dependencies, checks the PHP version and environment, makes Laravel's runtime folders writable, runs migrations, creates the public storage link, and caches configuration, routes, and views.

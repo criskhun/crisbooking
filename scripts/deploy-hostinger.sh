@@ -27,8 +27,9 @@ if [[ ! -f .env ]]; then
     exit 1
 fi
 
-if ! "$PHP_BIN" -r 'exit(version_compare(PHP_VERSION, "8.3.0", ">=") ? 0 : 1);'; then
-    echo "Davao Rent Zone requires PHP 8.3 or newer. Current CLI: $($PHP_BIN -r 'echo PHP_VERSION;')" >&2
+if ! "$PHP_BIN" -r 'exit(version_compare(PHP_VERSION, "8.4.1", ">=") ? 0 : 1);'; then
+    echo "The locked production dependencies require PHP 8.4.1 or newer. Current CLI: $($PHP_BIN -r 'echo PHP_VERSION;')" >&2
+    echo "On Hostinger, select PHP 8.4 in hPanel and deploy with: PHP_BIN=/opt/alt/php84/usr/bin/php ./scripts/deploy-hostinger.sh" >&2
     exit 1
 fi
 
