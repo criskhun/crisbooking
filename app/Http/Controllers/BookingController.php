@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Booking;
 use App\Models\Inquiry;
 use App\Models\Unit;
+use App\Services\AppNotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -164,6 +165,14 @@ class BookingController extends Controller
             'desired_end_at' => $booking->end_at,
             'party_size' => $booking->party_size,
         ]);
+        $booking->loadMissing('unit.host');
+        app(AppNotificationService::class)->send(
+            $booking->unit->host,
+            'booking_request',
+            'New booking request',
+            $request->user()->name.' requested to book '.$booking->unit->name.'.',
+            route('inquiries.show', $booking->inquiry_id),
+        );
 
         return redirect()->route('calendar.index', [
             'mode' => 'book',
@@ -244,6 +253,15 @@ class BookingController extends Controller
                 'change_reviewed_at' => null,
             ]);
         });
+
+        $booking->loadMissing('unit.host');
+        app(AppNotificationService::class)->send(
+            $booking->unit->host,
+            'booking_change',
+            'Booking change requested',
+            $request->user()->name.' requested changes to '.$booking->unit->name.'.',
+            route('bookings.show', $booking),
+        );
 
         return back()->with('status', 'Your change request was sent to the host. The current booking stays unchanged until approval.');
     }
@@ -327,6 +345,15 @@ class BookingController extends Controller
             ]);
         });
 
+        $booking->loadMissing('unit');
+        app(AppNotificationService::class)->send(
+            $booking->client,
+            'booking_change_reviewed',
+            $validated['decision'] === 'approve' ? 'Booking change approved' : 'Booking change declined',
+            'Your requested changes for '.$booking->unit->name.' were '.$validated['decision'].'d.',
+            route('bookings.show', $booking),
+        );
+
         return back()->with('status', $validated['decision'] === 'approve'
             ? 'Booking changes approved and the schedule has been updated.'
             : 'Booking change request declined. The original schedule remains active.');
@@ -342,6 +369,14 @@ class BookingController extends Controller
         $validated = $request->validate(['status' => ['required', Rule::in(['confirmed', 'cancelled'])]]);
         $booking->update(['status' => $validated['status']]);
         $booking->inquiry()->update(['status' => $validated['status'] === 'confirmed' ? 'confirmed' : 'closed']);
+        $booking->loadMissing('unit');
+        app(AppNotificationService::class)->send(
+            $booking->client,
+            'booking_status',
+            $validated['status'] === 'confirmed' ? 'Booking approved' : 'Booking declined',
+            $booking->unit->name.' was '.($validated['status'] === 'confirmed' ? 'approved.' : 'declined.'),
+            route('bookings.show', $booking),
+        );
 
         return back()->with('status', $validated['status'] === 'confirmed' ? 'Booking confirmed.' : 'Booking declined.');
     }
@@ -353,6 +388,14 @@ class BookingController extends Controller
 
         $booking->update(['status' => 'cancelled']);
         $booking->inquiry()->update(['status' => 'closed']);
+        $booking->loadMissing('unit.host');
+        app(AppNotificationService::class)->send(
+            $booking->unit->host,
+            'booking_cancelled',
+            'Booking cancelled',
+            $request->user()->name.' cancelled the booking for '.$booking->unit->name.'.',
+            route('bookings.show', $booking),
+        );
 
         return back()->with('status', 'Booking cancelled. The schedule is available again.');
     }

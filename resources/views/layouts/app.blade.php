@@ -62,5 +62,6 @@
     </aside>
 
     <div class="connectivity-status" data-connectivity-status hidden role="status" aria-live="polite"></div>
+    @auth<div class="notification-toast-stack" data-notification-toasts aria-live="polite" aria-atomic="false"></div>@endauth
 </body>
 </html>

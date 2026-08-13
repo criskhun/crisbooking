@@ -12,6 +12,7 @@ use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HostApplicationController;
 use App\Http\Controllers\InquiryController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProfileLocationController;
 use App\Http\Controllers\PublicListingController;
@@ -62,6 +63,11 @@ Route::middleware(['auth', 'active'])->group(function () {
     })->middleware('throttle:6,1')->name('verification.send');
 
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::patch('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
+    Route::patch('/notifications/{notification}/read', [NotificationController::class, 'read'])->name('notifications.read');
+    Route::post('/push-subscriptions', [NotificationController::class, 'subscribe'])->name('push-subscriptions.store');
+    Route::delete('/push-subscriptions', [NotificationController::class, 'unsubscribe'])->name('push-subscriptions.destroy');
 });
 
 Route::middleware(['auth', 'active', 'verified'])->group(function () {

@@ -17,6 +17,13 @@
                         @foreach ($inquiry->messages as $message)
                             <article @class(['chat-message', 'mine' => $message->sender_id === auth()->id()]) data-message-id="{{ $message->id }}"><div><strong>{{ $message->sender_id === auth()->id() ? 'You' : $message->sender->name }}</strong><time>{{ $message->created_at->format('M j, g:i A') }}</time></div>@if ($message->body !== '')<p>{{ $message->body }}</p>@endif @if ($message->attachment_path)<a class="chat-image-attachment" href="{{ route('inquiries.attachments.show', $message) }}" target="_blank"><img src="{{ route('inquiries.attachments.show', $message) }}" alt="{{ $message->attachment_name ?: 'Chat attachment' }}"><small>{{ $message->attachment_name }}</small></a>@endif</article>
                         @endforeach
+                        @if ($inquiry->booking)
+                            <article class="chat-booking-request" data-booking-request-id="{{ $inquiry->booking->id }}">
+                                <span>{{ $inquiry->booking->status === 'pending' ? '◷' : ($inquiry->booking->status === 'confirmed' ? '✓' : '×') }}</span>
+                                <div><small>Booking request</small><strong>{{ auth()->id() === $inquiry->host_id ? $inquiry->client->name.' requested this booking.' : 'Your booking request was sent.' }}</strong><p>{{ $inquiry->booking->start_at->format('M j, Y · g:i A') }} – {{ $inquiry->booking->end_at->format('M j, Y · g:i A') }} · ₱{{ number_format($inquiry->booking->total_amount, 2) }}</p><a href="{{ route('bookings.show', $inquiry->booking) }}">View request</a></div>
+                                <em class="booking-status status-{{ $inquiry->booking->status }}">{{ ucfirst($inquiry->booking->status) }}</em>
+                            </article>
+                        @endif
                     </div>
                     <div class="chat-typing-indicator" data-typing-indicator hidden><span></span><span></span><span></span><strong data-typing-text></strong></div>
                     @if ($inquiry->status !== 'closed')

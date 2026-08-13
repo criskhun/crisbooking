@@ -903,6 +903,169 @@
             document.addEventListener('visibilitychange', () => { if (!document.hidden) pollMessages(); });
         }
 
+        const notificationCenter = document.querySelector('[data-notification-center]');
+
+        if (notificationCenter) {
+            const toggle = notificationCenter.querySelector('[data-notification-toggle]');
+            const panel = notificationCenter.querySelector('[data-notification-panel]');
+            const list = notificationCenter.querySelector('[data-notification-list]');
+            const empty = notificationCenter.querySelector('[data-notification-empty]');
+            const count = notificationCenter.querySelector('[data-notification-count]');
+            const readAll = notificationCenter.querySelector('[data-notifications-read-all]');
+            const pushToggle = notificationCenter.querySelector('[data-push-toggle]');
+            const pushStatus = notificationCenter.querySelector('[data-push-status]');
+            const toastStack = document.querySelector('[data-notification-toasts]');
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+            let initialized = false;
+            let newestId = Number(sessionStorage.getItem('davao-rent-zone-newest-notification') || 0);
+
+            const request = (url, options = {}) => fetch(url, {
+                ...options,
+                headers: {'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken, ...(options.headers || {})},
+            });
+            const readUrl = (id) => notificationCenter.dataset.readUrlTemplate.replace('__ID__', id);
+
+            const showToast = (notification) => {
+                if (!toastStack) return;
+                const toast = document.createElement('button');
+                toast.type = 'button';
+                toast.className = 'notification-toast';
+                const icon = document.createElement('span');
+                icon.textContent = notification.type === 'booking_request' ? '◷' : '✦';
+                const copy = document.createElement('span');
+                const title = document.createElement('strong');
+                title.textContent = notification.title;
+                const body = document.createElement('small');
+                body.textContent = notification.body;
+                copy.append(title, body);
+                toast.append(icon, copy);
+                toast.addEventListener('click', async () => {
+                    await request(readUrl(notification.id), {method: 'PATCH'}).catch(() => {});
+                    window.location.href = notification.url;
+                });
+                toastStack.append(toast);
+                requestAnimationFrame(() => toast.classList.add('show'));
+                setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 250); }, 6000);
+            };
+
+            const render = (data) => {
+                if (!list || !empty || !count) return;
+                list.replaceChildren();
+                const notifications = data.notifications || [];
+                notifications.forEach((notification) => {
+                    const item = document.createElement('button');
+                    item.type = 'button';
+                    item.className = `notification-item${notification.read ? '' : ' unread'}`;
+                    const marker = document.createElement('span');
+                    marker.textContent = notification.type === 'booking_request' ? '◷' : '✦';
+                    const copy = document.createElement('span');
+                    const title = document.createElement('strong');
+                    title.textContent = notification.title;
+                    const body = document.createElement('small');
+                    body.textContent = notification.body;
+                    const time = document.createElement('time');
+                    time.textContent = notification.time;
+                    copy.append(title, body, time);
+                    item.append(marker, copy);
+                    item.addEventListener('click', async () => {
+                        await request(readUrl(notification.id), {method: 'PATCH'}).catch(() => {});
+                        window.location.href = notification.url;
+                    });
+                    list.append(item);
+                });
+                empty.hidden = notifications.length > 0;
+                count.textContent = data.unread_count > 99 ? '99+' : String(data.unread_count || 0);
+                count.hidden = !data.unread_count;
+
+                const maxId = Math.max(0, ...notifications.map((notification) => Number(notification.id) || 0));
+                if (initialized && maxId > newestId) {
+                    notifications.filter((notification) => notification.id > newestId).reverse().forEach(showToast);
+                }
+                newestId = Math.max(newestId, maxId);
+                sessionStorage.setItem('davao-rent-zone-newest-notification', String(newestId));
+                initialized = true;
+            };
+
+            const refresh = async () => {
+                try {
+                    const response = await request(notificationCenter.dataset.indexUrl);
+                    if (response.ok) render(await response.json());
+                } catch (error) {}
+            };
+
+            toggle?.addEventListener('click', () => {
+                panel.hidden = !panel.hidden;
+                toggle.setAttribute('aria-expanded', String(!panel.hidden));
+                if (!panel.hidden) refresh();
+            });
+            document.addEventListener('click', (event) => {
+                if (!panel?.hidden && !notificationCenter.contains(event.target)) {
+                    panel.hidden = true;
+                    toggle?.setAttribute('aria-expanded', 'false');
+                }
+            });
+            readAll?.addEventListener('click', async () => {
+                await request(notificationCenter.dataset.readAllUrl, {method: 'PATCH'});
+                await refresh();
+            });
+
+            const urlBase64ToUint8Array = (value) => {
+                const padding = '='.repeat((4 - value.length % 4) % 4);
+                const raw = atob((value + padding).replace(/-/g, '+').replace(/_/g, '/'));
+                return Uint8Array.from([...raw].map((character) => character.charCodeAt(0)));
+            };
+            const syncPushState = async () => {
+                if (!pushToggle || !pushStatus) return;
+                if (!('serviceWorker' in navigator) || !('PushManager' in window) || !notificationCenter.dataset.vapidPublicKey) {
+                    pushToggle.hidden = true;
+                    pushStatus.textContent = 'Push notifications are not supported on this browser.';
+                    return;
+                }
+                const registration = await navigator.serviceWorker.ready;
+                const subscription = await registration.pushManager.getSubscription();
+                pushToggle.textContent = subscription ? 'Disable mobile notifications' : 'Enable mobile notifications';
+                pushStatus.textContent = subscription ? 'Mobile notifications are enabled on this device.' : 'Receive updates even when the app is closed.';
+                pushToggle.dataset.subscribed = subscription ? '1' : '0';
+            };
+            pushToggle?.addEventListener('click', async () => {
+                pushToggle.disabled = true;
+                try {
+                    const registration = await navigator.serviceWorker.ready;
+                    let subscription = await registration.pushManager.getSubscription();
+                    if (subscription) {
+                        await request(notificationCenter.dataset.unsubscribeUrl, {method: 'DELETE', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({endpoint: subscription.endpoint})});
+                        await subscription.unsubscribe();
+                    } else {
+                        const permission = await window.Notification.requestPermission();
+                        if (permission !== 'granted') throw new Error('Notification permission was not granted.');
+                        subscription = await registration.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(notificationCenter.dataset.vapidPublicKey)});
+                        const json = subscription.toJSON();
+                        await request(notificationCenter.dataset.subscribeUrl, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({...json, content_encoding: (PushManager.supportedContentEncodings || ['aes128gcm'])[0]})});
+                    }
+                    await syncPushState();
+                } catch (error) {
+                    if (pushStatus) pushStatus.textContent = error.message || 'Mobile notifications could not be enabled.';
+                } finally {
+                    pushToggle.disabled = false;
+                }
+            });
+
+            navigator.serviceWorker?.addEventListener('message', (event) => {
+                if (event.data?.type === 'APP_NOTIFICATION') refresh();
+            });
+            const openedNotificationId = new URLSearchParams(window.location.search).get('notification');
+            if (openedNotificationId) {
+                request(readUrl(openedNotificationId), {method: 'PATCH'}).finally(() => {
+                    const cleanUrl = new URL(window.location.href);
+                    cleanUrl.searchParams.delete('notification');
+                    history.replaceState({}, '', cleanUrl);
+                });
+            }
+            refresh();
+            syncPushState().catch(() => {});
+            setInterval(refresh, 8000);
+        }
+
         const verificationForm = document.querySelector('[data-verification-form]');
 
         if (false && verificationForm) {

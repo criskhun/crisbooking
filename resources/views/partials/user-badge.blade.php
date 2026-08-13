@@ -1,3 +1,4 @@
+@include('partials.notification-center')
 <details class="profile-menu">
     <summary class="user-badge" aria-label="Open profile and appearance settings">
         @if (auth()->user()->google_avatar || auth()->user()->facebook_avatar)

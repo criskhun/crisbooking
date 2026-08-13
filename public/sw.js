@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'davao-rent-zone-v8';
+const CACHE_VERSION = 'davao-rent-zone-v9';
 const OFFLINE_URL = new URL('./offline.html', self.registration.scope).href;
 const PRECACHE_URLS = [
     './offline.html',
@@ -85,4 +85,42 @@ self.addEventListener('fetch', (event) => {
         if (cachedResponse) return cachedResponse;
         return updateStaticCache(request, await fetch(request));
     }));
+});
+
+self.addEventListener('push', (event) => {
+    event.waitUntil((async () => {
+        let payload = {};
+        try { payload = event.data?.json() || {}; } catch (error) { payload = {title: 'Davao Rent Zone', body: event.data?.text() || 'You have a new update.'}; }
+        const openClients = await self.clients.matchAll({type: 'window', includeUncontrolled: true});
+        const visibleClient = openClients.find((client) => client.visibilityState === 'visible');
+
+        if (visibleClient) {
+            visibleClient.postMessage({type: 'APP_NOTIFICATION', payload});
+            return;
+        }
+
+        await self.registration.showNotification(payload.title || 'Davao Rent Zone', {
+            body: payload.body || 'You have a new update.',
+            icon: payload.icon || new URL('./icons/icon-192.png', self.registration.scope).href,
+            badge: payload.badge || new URL('./icons/icon-192.png', self.registration.scope).href,
+            data: {url: payload.url || new URL('./notifications', self.registration.scope).href, notificationId: payload.notification_id || null},
+            tag: payload.notification_id ? `notification-${payload.notification_id}` : undefined,
+            renotify: true,
+        });
+    })());
+});
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    event.waitUntil((async () => {
+        const target = new URL(event.notification.data?.url || './dashboard', self.registration.scope);
+        if (event.notification.data?.notificationId) target.searchParams.set('notification', event.notification.data.notificationId);
+        const openClients = await self.clients.matchAll({type: 'window', includeUncontrolled: true});
+        const existing = openClients.find((client) => new URL(client.url).origin === target.origin);
+        if (existing) {
+            await existing.navigate(target.href);
+            return existing.focus();
+        }
+        return self.clients.openWindow(target.href);
+    })());
 });

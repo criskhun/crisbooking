@@ -6,6 +6,7 @@ use App\Models\AffiliatePartnership;
 use App\Models\Inquiry;
 use App\Models\InquiryMessage;
 use App\Models\Unit;
+use App\Services\AppNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -90,6 +91,14 @@ class InquiryController extends Controller
             return $inquiry;
         });
 
+        app(AppNotificationService::class)->send(
+            $unit->host,
+            'inquiry',
+            'New listing inquiry',
+            $request->user()->name.' sent an inquiry about '.$unit->name.'.',
+            route('inquiries.show', $inquiry),
+        );
+
         return redirect()->route('inquiries.show', $inquiry)->with('status', 'Your inquiry was sent. You can now chat with the host before booking.');
     }
 
@@ -126,6 +135,14 @@ class InquiryController extends Controller
         ]);
         $inquiry->touch();
         Cache::forget($this->typingKey($inquiry, $request->user()->id));
+        $recipient = $request->user()->id === $inquiry->client_id ? $inquiry->host : $inquiry->client;
+        app(AppNotificationService::class)->send(
+            $recipient,
+            'chat_message',
+            'New chat message',
+            $request->user()->name.' sent a message about '.$inquiry->unit->name.'.',
+            route('inquiries.show', $inquiry),
+        );
 
         if ($request->expectsJson()) {
             $message->load('sender');

@@ -985,6 +985,44 @@ html[data-color-mode="dark"] .profile-required-banner, html[data-color-mode="dar
 .confirmed-wifi-access span small { color: var(--muted); font-size: .55rem; text-transform: uppercase; }
 .confirmed-wifi-access img { width: 130px; height: 130px; margin-top: .25rem; border: 1px solid var(--card-line); border-radius: 8px; object-fit: contain; background: white; }
 .locked-access-note { min-height: 0 !important; padding: .55rem .65rem; margin-top: .5rem !important; border-radius: 7px; color: var(--muted) !important; background: var(--surface-tint); font-size: .61rem !important; }
+
+/* Notifications and booking request events */
+.notification-center { position: relative; z-index: 45; }
+.notification-bell { position: relative; display: grid; place-items: center; width: 2.65rem; height: 2.65rem; padding: 0; border: 1px solid var(--card-line); border-radius: 50%; color: var(--ink); background: var(--surface); font-size: 1.15rem; cursor: pointer; box-shadow: var(--card-shadow); }
+.notification-bell > span { transform: rotate(45deg); }
+.notification-bell > b { position: absolute; top: -.32rem; right: -.32rem; display: grid; place-items: center; min-width: 1.2rem; height: 1.2rem; padding: 0 .25rem; border: 2px solid var(--surface); border-radius: 99px; color: #173c34; background: var(--lime); font-size: .52rem; font-weight: 900; }
+.notification-panel { position: absolute; top: calc(100% + .65rem); right: 0; width: min(390px, calc(100vw - 2rem)); overflow: hidden; border: 1px solid var(--card-line); border-radius: 15px; background: var(--surface); box-shadow: 0 20px 50px rgba(20, 44, 37, .2); }
+.notification-panel > header { display: flex; align-items: center; justify-content: space-between; gap: .8rem; padding: .9rem 1rem; border-bottom: 1px solid var(--row-line); }
+.notification-panel h2 { margin: .12rem 0 0; font: 800 1rem Manrope; }
+.notification-panel header button, .notification-panel footer button { padding: 0; border: 0; color: var(--forest); background: transparent; font-size: .62rem; font-weight: 800; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.notification-list { display: grid; max-height: 390px; overflow-y: auto; }
+.notification-item { display: grid; grid-template-columns: 2rem 1fr; gap: .65rem; width: 100%; padding: .8rem 1rem; border: 0; border-bottom: 1px solid var(--row-line); color: var(--ink); background: var(--surface); text-align: left; cursor: pointer; }
+.notification-item:hover, .notification-item.unread { background: var(--surface-tint); }
+.notification-item > span:first-child { display: grid; place-items: center; width: 1.8rem; height: 1.8rem; border-radius: 8px; color: var(--forest); background: var(--mint); font-weight: 900; }
+.notification-item > span:last-child { display: grid; gap: .14rem; min-width: 0; }
+.notification-item strong { font-size: .7rem; }
+.notification-item small { color: var(--muted); font-size: .62rem; line-height: 1.42; }
+.notification-item time { color: var(--muted); font-size: .54rem; }
+.notification-empty { padding: 1.5rem; margin: 0; color: var(--muted); font-size: .68rem; text-align: center; }
+.notification-panel footer { display: grid; gap: .25rem; padding: .75rem 1rem; border-top: 1px solid var(--row-line); background: var(--surface-soft); }
+.notification-panel footer button { justify-self: start; }
+.notification-panel footer small { color: var(--muted); font-size: .56rem; }
+.notification-toast-stack { position: fixed; z-index: 1000; top: 1rem; right: 1rem; display: grid; gap: .6rem; width: min(370px, calc(100vw - 2rem)); pointer-events: none; }
+.notification-toast { display: grid; grid-template-columns: 2.2rem 1fr; align-items: center; gap: .7rem; width: 100%; padding: .85rem; border: 1px solid var(--card-line); border-radius: 13px; color: var(--ink); background: var(--surface); box-shadow: 0 18px 45px rgba(15, 38, 31, .25); text-align: left; cursor: pointer; opacity: 0; pointer-events: auto; transform: translateY(-12px); transition: opacity .2s, transform .2s; }
+.notification-toast.show { opacity: 1; transform: translateY(0); }
+.notification-toast > span:first-child { display: grid; place-items: center; width: 2.1rem; height: 2.1rem; border-radius: 9px; color: var(--forest); background: var(--lime); font-weight: 900; }
+.notification-toast > span:last-child { display: grid; gap: .18rem; }
+.notification-toast strong { font-size: .72rem; }.notification-toast small { color: var(--muted); font-size: .62rem; line-height: 1.4; }
+.chat-booking-request { display: grid; grid-template-columns: 2.3rem minmax(0, 1fr) auto; align-items: start; gap: .7rem; padding: .85rem; margin: .55rem 0; border: 1px solid color-mix(in srgb, var(--forest) 25%, var(--card-line)); border-radius: 12px; background: var(--surface-tint); }
+.chat-booking-request > span { display: grid; place-items: center; width: 2.2rem; height: 2.2rem; border-radius: 9px; color: var(--forest); background: var(--lime); font-weight: 900; }
+.chat-booking-request > div { display: grid; gap: .18rem; }.chat-booking-request small { color: var(--muted); font-size: .56rem; font-weight: 800; text-transform: uppercase; }.chat-booking-request strong { font-size: .72rem; }.chat-booking-request p { margin: 0; color: var(--muted); font-size: .62rem; }.chat-booking-request a { justify-self: start; margin-top: .2rem; color: var(--forest); font-size: .65rem; font-weight: 900; text-decoration: underline; text-underline-offset: 3px; }.chat-booking-request > em { font-style: normal; }
+
+@media (max-width: 560px) {
+    .notification-panel { position: fixed; top: 4.5rem; right: .75rem; left: .75rem; width: auto; }
+    .notification-list { max-height: min(55vh, 420px); }
+    .chat-booking-request { grid-template-columns: 2.3rem 1fr; }
+    .chat-booking-request > em { grid-column: 2; justify-self: start; }
+}
 /* Listing drafts and car-specific pricing */
 .unit-drafts-panel { margin: 0 0 1.25rem; padding: 1.25rem; border: 1px solid var(--line, #dce5e1); border-radius: 18px; background: var(--surface, #fff); }
 .unit-drafts-panel h2 { margin: .2rem 0; }
