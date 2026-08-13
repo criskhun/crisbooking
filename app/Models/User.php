@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'email_verified_at', 'password', 'google_id', 'google_avatar', 'facebook_id', 'facebook_avatar', 'calendar_feed_token', 'is_admin', 'is_active', 'role', 'phone', 'date_of_birth', 'nationality', 'address', 'country', 'province', 'city', 'barangay', 'bio', 'emergency_contact_name', 'emergency_contact_phone', 'government_id_type', 'government_id_number', 'government_id_path', 'profile_completed_at'])]
+#[Fillable(['name', 'email', 'email_verified_at', 'password', 'google_id', 'google_avatar', 'facebook_id', 'facebook_avatar', 'calendar_feed_token', 'is_admin', 'is_active', 'role', 'phone', 'date_of_birth', 'nationality', 'address', 'country', 'province', 'city', 'barangay', 'bio', 'emergency_contact_name', 'emergency_contact_phone', 'government_id_type', 'government_id_number', 'government_id_path', 'profile_completed_at', 'last_seen_at'])]
 #[Hidden(['password', 'remember_token', 'calendar_feed_token', 'government_id_number', 'government_id_path'])]
 class User extends Authenticatable implements MustVerifyEmailContract
 {
@@ -35,6 +35,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
             'date_of_birth' => 'date',
             'government_id_number' => 'encrypted',
             'profile_completed_at' => 'datetime',
+            'last_seen_at' => 'datetime',
         ];
     }
 

@@ -2,11 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Mail\InactiveUserAlertMail;
 use App\Models\Booking;
 use App\Models\Inquiry;
 use App\Models\Unit;
 use App\Models\User;
+use App\Services\AppNotificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class NotificationTest extends TestCase
@@ -106,6 +109,47 @@ class NotificationTest extends TestCase
             ->assertOk()
             ->assertSee('data-notification-center', false)
             ->assertSee('Enable mobile notifications');
+    }
+
+    public function test_notification_is_emailed_when_recipient_has_been_inactive(): void
+    {
+        Mail::fake();
+        $user = User::factory()->create(['last_seen_at' => now()->subMinutes(6)]);
+
+        app(AppNotificationService::class)->send(
+            $user,
+            'chat_message',
+            'New message',
+            'A host replied to your inquiry.',
+            route('inquiries.index'),
+        );
+
+        Mail::assertSent(InactiveUserAlertMail::class, fn ($mail) => $mail->hasTo($user->email));
+    }
+
+    public function test_notification_is_not_emailed_while_recipient_is_active(): void
+    {
+        Mail::fake();
+        $user = User::factory()->create(['last_seen_at' => now()]);
+
+        app(AppNotificationService::class)->send(
+            $user,
+            'chat_message',
+            'New message',
+            'A host replied to your inquiry.',
+            route('inquiries.index'),
+        );
+
+        Mail::assertNothingSent();
+    }
+
+    public function test_authenticated_web_request_updates_user_activity(): void
+    {
+        $user = User::factory()->create(['last_seen_at' => now()->subHour()]);
+
+        $this->actingAs($user)->get(route('dashboard'))->assertOk();
+
+        $this->assertTrue($user->fresh()->last_seen_at->gt(now()->subMinute()));
     }
 
     private function unit(User $host): Unit

@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class AuthenticationTest extends TestCase
@@ -48,7 +50,39 @@ class AuthenticationTest extends TestCase
 
     public function test_login_page_can_be_rendered(): void
     {
-        $this->get('/login')->assertOk()->assertSee('Log in to your account');
+        $this->get('/login')
+            ->assertOk()
+            ->assertSee('Log in to your account')
+            ->assertSee(route('password.request'));
+    }
+
+    public function test_user_can_request_and_complete_a_password_reset_by_email(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['email' => 'recover@example.com']);
+        $token = null;
+
+        $this->post(route('password.email'), ['email' => $user->email])
+            ->assertSessionHas('status');
+
+        Notification::assertSentTo($user, ResetPassword::class, function (ResetPassword $notification) use (&$token): bool {
+            $token = $notification->token;
+
+            return true;
+        });
+
+        $this->get(route('password.reset', ['token' => $token, 'email' => $user->email]))
+            ->assertOk()
+            ->assertSee('Set a new password');
+
+        $this->post(route('password.store'), [
+            'token' => $token,
+            'email' => $user->email,
+            'password' => 'newbooking123',
+            'password_confirmation' => 'newbooking123',
+        ])->assertRedirect(route('login'));
+
+        $this->assertTrue(Hash::check('newbooking123', $user->fresh()->password));
     }
 
     public function test_an_existing_user_can_log_in(): void

@@ -42,6 +42,10 @@ return [
         'private_key' => env('VAPID_PRIVATE_KEY'),
     ],
 
+    'notifications' => [
+        'inactive_email_after_minutes' => (int) env('NOTIFICATION_EMAIL_INACTIVE_MINUTES', 5),
+    ],
+
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),
         'secret' => env('AWS_SECRET_ACCESS_KEY'),

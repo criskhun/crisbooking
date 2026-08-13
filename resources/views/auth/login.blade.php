@@ -60,7 +60,10 @@
                     </div>
 
                     <div class="field-group">
-                        <label for="password">Password</label>
+                        <div class="field-label-row">
+                            <label for="password">Password</label>
+                            <a href="{{ route('password.request') }}">Forgot email or password?</a>
+                        </div>
                         <input id="password" name="password" type="password" autocomplete="current-password" required placeholder="Enter your password" class="@error('password') field-error @enderror">
                         @error('password')<p class="error-text">{{ $message }}</p>@enderror
                     </div>

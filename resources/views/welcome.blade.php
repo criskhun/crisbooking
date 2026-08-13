@@ -46,22 +46,49 @@
                 </div>
             </div>
 
-            <div class="hero-visual" aria-hidden="true">
+            <div class="hero-visual">
                 <div class="calendar-card">
                     <div class="calendar-card-head">
-                        <div><small>Your schedule</small><strong>August 2026</strong></div>
-                        <span class="calendar-arrows">‹ &nbsp; ›</span>
+                        <div><small>Explore booked dates</small><strong>{{ $month->format('F Y') }}</strong></div>
+                        <nav class="calendar-arrows" aria-label="Calendar month navigation">
+                            <a href="{{ route('home', ['month' => $month->subMonth()->format('Y-m'), 'date' => $month->subMonth()->startOfMonth()->toDateString()]) }}" aria-label="Previous month">‹</a>
+                            <a href="{{ route('home', ['month' => $month->addMonth()->format('Y-m'), 'date' => $month->addMonth()->startOfMonth()->toDateString()]) }}" aria-label="Next month">›</a>
+                        </nav>
                     </div>
                     <div class="week-row"><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span><span>SUN</span></div>
                     <div class="calendar-grid">
-                        @foreach ([27,28,29,30,31,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30] as $day)
-                            <span class="{{ $day === 5 ? 'today' : '' }}">{{ $day }}</span>
+                        @foreach ($calendarDays as $day)
+                            @php($dateKey = $day->toDateString())
+                            <a
+                                href="{{ route('home', ['month' => $month->format('Y-m'), 'date' => $dateKey]) }}"
+                                class="{{ $day->isSameMonth($month) ? '' : 'outside-month' }} {{ $day->isSameDay($selectedDate) ? 'selected' : '' }} {{ isset($bookingCounts[$dateKey]) ? 'has-bookings' : '' }}"
+                                aria-label="{{ $day->format('F j, Y') }}{{ isset($bookingCounts[$dateKey]) ? ', '.$bookingCounts[$dateKey].' active bookings' : '' }}"
+                                @if($day->isSameDay($selectedDate)) aria-current="date" @endif
+                            >
+                                <span>{{ $day->day }}</span>
+                                @if(isset($bookingCounts[$dateKey]))<small>{{ $bookingCounts[$dateKey] }}</small>@endif
+                            </a>
                         @endforeach
                     </div>
-                    <div class="booking-chip chip-car"><i></i><div><small>Car rental</small><strong>Toyota Vios · 9:00 AM</strong></div></div>
-                    <div class="booking-chip chip-condo"><i></i><div><small>Condo check-in</small><strong>Unit 18B · 2:00 PM</strong></div></div>
+                    <div class="calendar-list-heading">
+                        <small>{{ $selectedDate->format('D, M j') }}</small>
+                        <strong>Top booked listings</strong>
+                    </div>
+                    @forelse($topBookedListings as $listing)
+                        @php($chipClass = $listing->category === 'car' ? 'chip-car' : ($listing->category === 'condo' ? 'chip-condo' : 'chip-service'))
+                        <a class="booking-chip {{ $chipClass }}" href="{{ route('listings.show', $listing) }}">
+                            <i></i>
+                            <div>
+                                <small>{{ Str::headline($listing->category) }}{{ $listing->selected_date_bookings_count ? ' · booked this date' : '' }}</small>
+                                <strong>{{ $listing->name }} · {{ $listing->confirmed_bookings_count }} confirmed</strong>
+                            </div>
+                            <span aria-hidden="true">→</span>
+                        </a>
+                    @empty
+                        <div class="calendar-list-empty">No approved listings are available yet.</div>
+                    @endforelse
                 </div>
-                <div class="floating-stat"><span>₱</span><div><small>This month</small><strong>Sales at a glance</strong></div></div>
+                <div class="floating-stat"><span>✓</span><div><small>{{ count($bookingCounts) }} booked days shown</small><strong>Select a date to explore</strong></div></div>
             </div>
         </section>
     </main>

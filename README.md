@@ -88,7 +88,35 @@ The script installs production dependencies, checks the PHP version and environm
 
 Do not run `php artisan db:seed` in production: the current development seeder creates `test@example.com`.
 
-### 4. Configure Google and Facebook login
+### 4. Configure the Hostinger business email
+
+In **hPanel -> Emails**, create or open the mailbox that will send Davao Rent Zone messages (for example, `bookings@davaorentzone.com`). Use the mailbox password—not your Hostinger account password—in the server's `.env`:
+
+```env
+MAIL_MAILER=smtp
+MAIL_SCHEME=smtps
+MAIL_HOST=smtp.hostinger.com
+MAIL_PORT=465
+MAIL_USERNAME=bookings@davaorentzone.com
+MAIL_PASSWORD=your_mailbox_password
+MAIL_FROM_ADDRESS=bookings@davaorentzone.com
+MAIL_FROM_NAME="${APP_NAME}"
+NOTIFICATION_EMAIL_INACTIVE_MINUTES=5
+```
+
+This mailbox sends email verification and password-reset links. It also receives a copy of each in-app alert when its recipient has not used the site for the configured number of minutes. Never commit the mailbox password.
+
+After changing these values, rebuild Laravel's configuration cache with the same PHP 8.4 binary used for deployment:
+
+```bash
+PHP_BIN=/opt/alt/php84/usr/bin/php
+$PHP_BIN artisan optimize:clear
+$PHP_BIN artisan config:cache
+```
+
+Then open `/forgot-password`, enter a real account email, and confirm that the reset email arrives. If it does not, check `storage/logs/laravel.log`, verify the mailbox credentials in hPanel, and make sure `APP_URL` uses the live HTTPS domain so links in the email point to the public site.
+
+### 5. Configure Google and Facebook login
 
 Because the public site uses HTTPS, register these exact callback URLs with the providers:
 
@@ -106,12 +134,13 @@ php artisan optimize:clear
 php artisan config:cache
 ```
 
-### 5. Verify the deployment
+### 6. Verify the deployment
 
 Open these URLs:
 
 - `https://davaorentzone.com/up` should return HTTP 200.
 - `https://davaorentzone.com/register` should show registration.
+- `https://davaorentzone.com/forgot-password` should send a reset link through the Hostinger mailbox.
 - Google and Facebook login should return to the HTTPS domain, not localhost.
 - Upload a listing photo to confirm `public/storage` is available.
 
