@@ -724,6 +724,54 @@
             });
         }
 
+        const calendarBookingDialog = document.querySelector('[data-calendar-booking-dialog]');
+
+        if (calendarBookingDialog) {
+            const setDialogText = (selector, value) => {
+                const element = calendarBookingDialog.querySelector(selector);
+                if (element) element.textContent = value || '—';
+            };
+
+            document.querySelectorAll('[data-calendar-booking-open]').forEach((bookingLink) => {
+                bookingLink.addEventListener('click', (event) => {
+                    if (typeof calendarBookingDialog.showModal !== 'function') return;
+                    event.preventDefault();
+
+                    setDialogText('[data-calendar-dialog-icon]', bookingLink.dataset.categoryIcon);
+                    setDialogText('[data-calendar-dialog-category]', bookingLink.dataset.category);
+                    setDialogText('[data-calendar-dialog-unit]', bookingLink.dataset.unit);
+                    setDialogText('[data-calendar-dialog-client]', bookingLink.dataset.client);
+                    setDialogText('[data-calendar-dialog-start]', bookingLink.dataset.start);
+                    setDialogText('[data-calendar-dialog-end]', bookingLink.dataset.end);
+                    setDialogText('[data-calendar-dialog-party]', bookingLink.dataset.partySize);
+                    setDialogText('[data-calendar-dialog-total]', bookingLink.dataset.total);
+
+                    const status = calendarBookingDialog.querySelector('[data-calendar-dialog-status]');
+                    if (status) {
+                        status.textContent = bookingLink.dataset.status || 'Pending';
+                        status.classList.remove('status-pending', 'status-confirmed', 'status-cancelled');
+                        status.classList.add(`status-${(bookingLink.dataset.status || 'pending').toLowerCase()}`);
+                    }
+
+                    const notesWrap = calendarBookingDialog.querySelector('[data-calendar-dialog-notes-wrap]');
+                    const notes = bookingLink.dataset.notes?.trim() || '';
+                    if (notesWrap) notesWrap.hidden = notes.length === 0;
+                    setDialogText('[data-calendar-dialog-notes]', notes);
+
+                    const fullBookingLink = calendarBookingDialog.querySelector('[data-calendar-dialog-link]');
+                    if (fullBookingLink) fullBookingLink.href = bookingLink.dataset.bookingUrl || bookingLink.href;
+                    calendarBookingDialog.showModal();
+                });
+            });
+
+            calendarBookingDialog.querySelectorAll('[data-calendar-dialog-close]').forEach((button) => {
+                button.addEventListener('click', () => calendarBookingDialog.close());
+            });
+            calendarBookingDialog.addEventListener('click', (event) => {
+                if (event.target === calendarBookingDialog) calendarBookingDialog.close();
+            });
+        }
+
         const realtimeChat = document.querySelector('[data-realtime-chat]');
 
         if (realtimeChat) {

@@ -24,16 +24,60 @@
                     @endif
                     @include('calendar.client-booking')
                 @else
+                @php
+                    $calendarCategoryMeta = [
+                        'condo' => ['theme' => 'condo', 'icon' => '🏠', 'label' => 'Condo / residence'],
+                        'car' => ['theme' => 'car', 'icon' => '🚗', 'label' => 'Car rental'],
+                        'cleaning' => ['theme' => 'cleaning', 'icon' => '🧹', 'label' => 'Cleaning'],
+                        'driving' => ['theme' => 'driving', 'icon' => '🛞', 'label' => 'Driving'],
+                        'massage' => ['theme' => 'massage', 'icon' => '💆', 'label' => 'Massage'],
+                        'consultancy' => ['theme' => 'consultancy', 'icon' => '💼', 'label' => 'Consultancy'],
+                        'pet_transport' => ['theme' => 'pet-transport', 'icon' => '🐾', 'label' => 'Pet transport'],
+                    ];
+                    $calendarFilterQuery = array_filter([
+                        'mode' => 'manage',
+                        'schedule_category' => $scheduleCategory,
+                        'schedule_unit' => $scheduleUnitId ?: null,
+                    ]);
+                @endphp
                 <div class="calendar-toolbar">
                     <div>
                         <span class="eyebrow">{{ $month->format('Y') }}</span>
                         <h2>{{ $month->format('F') }}</h2>
                     </div>
                     <div class="calendar-navigation">
-                        <a aria-label="Previous month" href="{{ route('calendar.index', ['month' => $month->copy()->subMonth()->format('Y-m')]) }}">←</a>
-                        <a class="calendar-today-link" href="{{ route('calendar.index', ['month' => now()->format('Y-m'), 'date' => now()->format('Y-m-d')]) }}">Today</a>
-                        <a aria-label="Next month" href="{{ route('calendar.index', ['month' => $month->copy()->addMonth()->format('Y-m')]) }}">→</a>
+                        <a aria-label="Previous month" href="{{ route('calendar.index', array_merge($calendarFilterQuery, ['month' => $month->copy()->subMonth()->format('Y-m')])) }}">←</a>
+                        <a class="calendar-today-link" href="{{ route('calendar.index', array_merge($calendarFilterQuery, ['month' => now()->format('Y-m'), 'date' => now()->format('Y-m-d')])) }}">Today</a>
+                        <a aria-label="Next month" href="{{ route('calendar.index', array_merge($calendarFilterQuery, ['month' => $month->copy()->addMonth()->format('Y-m')])) }}">→</a>
                     </div>
+                </div>
+
+                <form class="calendar-filter-bar" method="GET" action="{{ route('calendar.index') }}">
+                    <input type="hidden" name="mode" value="manage">
+                    <input type="hidden" name="month" value="{{ $month->format('Y-m') }}">
+                    <input type="hidden" name="date" value="{{ $selectedDate->format('Y-m-d') }}">
+                    <label><span>Category</span><select name="schedule_category">
+                        <option value="">All categories</option>
+                        @foreach ($scheduleCategories as $filterCategory)
+                            @php $filterMeta = $calendarCategoryMeta[$filterCategory] ?? ['icon' => '✦', 'label' => str($filterCategory)->replace('_', ' ')->title()]; @endphp
+                            <option value="{{ $filterCategory }}" @selected($scheduleCategory === $filterCategory)>{{ $filterMeta['icon'] }} {{ $filterMeta['label'] }}</option>
+                        @endforeach
+                    </select></label>
+                    <label><span>Listing / unit</span><select name="schedule_unit">
+                        <option value="">All listings</option>
+                        @foreach ($scheduleUnits as $filterUnit)
+                            <option value="{{ $filterUnit->id }}" @selected($scheduleUnitId === $filterUnit->id)>{{ $filterUnit->name }} · {{ str($filterUnit->category)->replace('_', ' ')->title() }}</option>
+                        @endforeach
+                    </select></label>
+                    <button class="button button-primary button-small" type="submit">Apply filters</button>
+                    <a class="calendar-filter-reset" href="{{ route('calendar.index', ['mode' => 'manage', 'month' => $month->format('Y-m'), 'date' => $selectedDate->format('Y-m-d')]) }}">Clear</a>
+                </form>
+
+                <div class="calendar-category-legend" aria-label="Calendar category colors">
+                    @foreach ($scheduleCategories as $legendCategory)
+                        @php $legendMeta = $calendarCategoryMeta[$legendCategory] ?? ['theme' => 'other', 'icon' => '✦', 'label' => str($legendCategory)->replace('_', ' ')->title()]; @endphp
+                        <span class="category-{{ $legendMeta['theme'] }}"><b aria-hidden="true">{{ $legendMeta['icon'] }}</b>{{ $legendMeta['label'] }}</span>
+                    @endforeach
                 </div>
 
                 <div class="calendar-layout">
@@ -48,19 +92,29 @@
                                     $calendarRow = intdiv($calendarCell, 7) + 1;
                                     $calendarColumn = ($calendarCell % 7) + 1;
                                 @endphp
-                                <a @class(['calendar-day', 'outside-month' => ! $day->isSameMonth($month), 'is-today' => $day->isToday(), 'selected' => $day->isSameDay($selectedDate)]) style="grid-column: {{ $calendarColumn }}; grid-row: {{ $calendarRow }};" data-calendar-date="{{ $day->format('Y-m-d') }}" href="{{ route('calendar.index', ['month' => $month->format('Y-m'), 'date' => $day->format('Y-m-d')]) }}">
+                                <a @class(['calendar-day', 'outside-month' => ! $day->isSameMonth($month), 'is-today' => $day->isToday(), 'selected' => $day->isSameDay($selectedDate)]) style="grid-column: {{ $calendarColumn }}; grid-row: {{ $calendarRow }};" data-calendar-date="{{ $day->format('Y-m-d') }}" href="{{ route('calendar.index', array_merge($calendarFilterQuery, ['month' => $month->format('Y-m'), 'date' => $day->format('Y-m-d')])) }}">
                                     <span class="calendar-day-number">{{ $day->day }}</span>
                                 </a>
                             @endforeach
                             @foreach ($calendarSegments as $segment)
-                                @php $calendarBooking = $segment['booking']; @endphp
-                                <a @class(['calendar-booking-span', 'status-'.$calendarBooking->status, 'starts-booking' => $segment['starts_booking'], 'ends-booking' => $segment['ends_booking'], 'continues-before' => $segment['continues_before'], 'continues-after' => $segment['continues_after']])
+                                @php
+                                    $calendarBooking = $segment['booking'];
+                                    $eventMeta = $calendarCategoryMeta[$calendarBooking->unit->category] ?? ['theme' => 'other', 'icon' => '✦', 'label' => str($calendarBooking->unit->category)->replace('_', ' ')->title()];
+                                @endphp
+                                <a @class(['calendar-booking-span', 'category-'.$eventMeta['theme'], 'status-'.$calendarBooking->status, 'starts-booking' => $segment['starts_booking'], 'ends-booking' => $segment['ends_booking'], 'continues-before' => $segment['continues_before'], 'continues-after' => $segment['continues_after']])
                                    style="grid-column: {{ $segment['start_column'] }} / {{ $segment['end_column'] }}; grid-row: {{ $segment['week'] }}; --calendar-lane: {{ $segment['lane'] }};"
                                    data-booking-id="{{ $calendarBooking->id }}" data-segment-start="{{ $segment['start_date'] }}" data-segment-end="{{ $segment['end_date'] }}"
+                                   data-calendar-booking-open
+                                   data-unit="{{ $calendarBooking->unit->name }}" data-category="{{ $eventMeta['label'] }}" data-category-icon="{{ $eventMeta['icon'] }}"
+                                   data-client="{{ $calendarBooking->client->name }}" data-status="{{ ucfirst($calendarBooking->status) }}"
+                                   data-start="{{ $calendarBooking->start_at->format('M j, Y · g:i A') }}" data-end="{{ $calendarBooking->end_at->format('M j, Y · g:i A') }}"
+                                   data-party-size="{{ number_format($calendarBooking->party_size) }}" data-total="₱{{ number_format($calendarBooking->total_amount, 2) }}"
+                                   data-notes="{{ $calendarBooking->notes }}" data-booking-url="{{ route('bookings.show', $calendarBooking) }}"
                                    href="{{ route('bookings.show', $calendarBooking) }}"
                                    title="{{ $calendarBooking->unit->name }}: {{ $calendarBooking->start_at->format('M j, g:i A') }} to {{ $calendarBooking->end_at->format('M j, g:i A') }}">
                                     @if ($segment['continues_before'])<span class="calendar-span-continuation">‹</span>@endif
                                     @if ($segment['starts_booking'])<time>{{ $calendarBooking->start_at->format('g:i A') }}</time>@endif
+                                    <span class="calendar-event-icon" aria-hidden="true">{{ $eventMeta['icon'] }}</span>
                                     <strong>{{ $calendarBooking->unit->name }}</strong>
                                     @if ($segment['ends_booking'])<time>→ {{ $calendarBooking->end_at->format('g:i A') }}</time>@elseif ($segment['continues_after'])<span class="calendar-span-continuation">›</span>@endif
                                 </a>
@@ -143,6 +197,26 @@
                         </div>
                     </section>
                 </div>
+
+                <dialog class="calendar-booking-dialog" data-calendar-booking-dialog aria-labelledby="calendar-booking-dialog-title">
+                    <div class="calendar-booking-dialog-panel">
+                        <header>
+                            <span class="calendar-dialog-icon" data-calendar-dialog-icon aria-hidden="true">✦</span>
+                            <div><span class="eyebrow" data-calendar-dialog-category>Booking</span><h2 id="calendar-booking-dialog-title" data-calendar-dialog-unit>Booking details</h2></div>
+                            <button type="button" data-calendar-dialog-close aria-label="Close booking details">×</button>
+                        </header>
+                        <div class="calendar-dialog-status-row"><span class="booking-status" data-calendar-dialog-status>Pending</span></div>
+                        <dl>
+                            <div><dt>Client</dt><dd data-calendar-dialog-client></dd></div>
+                            <div><dt>Starts</dt><dd data-calendar-dialog-start></dd></div>
+                            <div><dt>Ends</dt><dd data-calendar-dialog-end></dd></div>
+                            <div><dt>Guests / quantity</dt><dd data-calendar-dialog-party></dd></div>
+                            <div><dt>Total</dt><dd data-calendar-dialog-total></dd></div>
+                        </dl>
+                        <div class="calendar-dialog-notes" data-calendar-dialog-notes-wrap><small>Booking notes</small><p data-calendar-dialog-notes></p></div>
+                        <footer><button class="button button-ghost" type="button" data-calendar-dialog-close>Close</button><a class="button button-primary" href="#" data-calendar-dialog-link>Open full booking</a></footer>
+                    </div>
+                </dialog>
                 @endif
             </section>
         </main>

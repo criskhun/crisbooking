@@ -29,6 +29,8 @@ class CalendarController extends Controller
             'search' => ['nullable', 'boolean'],
             'selected_unit' => ['nullable', 'integer'],
             'mode' => ['nullable', Rule::in(['book', 'manage'])],
+            'schedule_category' => ['nullable', 'string', 'max:30', 'regex:/^[a-z0-9]+(?:_[a-z0-9]+)*$/'],
+            'schedule_unit' => ['nullable', 'integer'],
         ]);
 
         $month = $request->filled('month')
@@ -42,6 +44,16 @@ class CalendarController extends Controller
         $user = $request->user();
         $canManageListings = $user->isHost() || $user->is_admin;
         $bookingMode = ! $canManageListings || ($validated['mode'] ?? null) === 'book';
+        $scheduleCategory = $bookingMode ? null : ($validated['schedule_category'] ?? null);
+        $scheduleUnitId = $bookingMode ? null : (int) ($validated['schedule_unit'] ?? 0);
+        $scheduleUnits = $bookingMode
+            ? collect()
+            : Unit::query()
+                ->select(['id', 'host_id', 'name', 'category'])
+                ->when(! $user->is_admin, fn ($query) => $query->where('host_id', $user->id))
+                ->orderBy('name')
+                ->get();
+        $scheduleCategories = $scheduleUnits->pluck('category')->filter()->unique()->sort()->values();
 
         $units = Unit::query()
             ->with(['host:id,name', 'rates', 'images'])
@@ -56,6 +68,8 @@ class CalendarController extends Controller
                     }),
                 fn ($query) => $query->when(! $user->is_admin, fn ($owned) => $owned->where('host_id', $user->id))
             )
+            ->when(! $bookingMode && $scheduleCategory, fn ($query) => $query->where('category', $scheduleCategory))
+            ->when(! $bookingMode && $scheduleUnitId, fn ($query) => $query->whereKey($scheduleUnitId))
             ->orderBy('name')
             ->get();
 
@@ -66,7 +80,7 @@ class CalendarController extends Controller
             ->when(
                 $bookingMode,
                 fn ($query) => $query->where('client_id', $user->id),
-                fn ($query) => $query->whereHas('unit', fn ($owned) => $owned->when(! $user->is_admin, fn ($hostUnits) => $hostUnits->where('host_id', $user->id)))
+                fn ($query) => $query->whereIn('unit_id', $units->pluck('id'))
             )
             ->orderBy('start_at')
             ->get();
@@ -195,6 +209,10 @@ class CalendarController extends Controller
             'calendarLaneCount' => $calendarLaneCount,
             'bookingMode' => $bookingMode,
             'canManageListings' => $canManageListings,
+            'scheduleUnits' => $scheduleUnits,
+            'scheduleCategories' => $scheduleCategories,
+            'scheduleCategory' => $scheduleCategory,
+            'scheduleUnitId' => $scheduleUnitId,
         ]);
     }
 
