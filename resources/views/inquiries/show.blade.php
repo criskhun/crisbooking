@@ -46,15 +46,15 @@
                 </div>
                 <aside class="inquiry-context-card">
                     @php $partner = auth()->id() === $inquiry->client_id ? $inquiry->host : $inquiry->client; @endphp
-                    <div class="context-partner"><span>{{ strtoupper(substr($partner->name, 0, 1)) }}</span><div><small>{{ auth()->user()->isClient() ? 'Host' : 'Client' }}</small><strong>{{ $partner->name }}</strong><em>✓ Profile complete</em></div></div>
+                    <div class="context-partner"><span>{{ strtoupper(substr($partner->name, 0, 1)) }}</span><div><small>{{ auth()->id() === $inquiry->client_id ? 'Host' : 'Booking customer' }}</small><strong>{{ $partner->name }}</strong><em>✓ Profile complete</em></div></div>
                     <a class="button button-ghost" href="{{ route('profiles.show', $partner) }}">View validation profile</a>
                     <div class="context-details"><span><small>Listing</small><strong>{{ $inquiry->unit->name }}</strong></span><span><small>Desired schedule</small><strong>{{ $inquiry->desired_start_at->format('M j') }} – {{ $inquiry->desired_end_at->format('M j, Y') }}</strong></span><span><small>Party</small><strong>{{ $inquiry->party_size }} {{ Str::plural('person', $inquiry->party_size) }}</strong></span></div>
                     @if ($inquiry->booking)
                         <div class="inquiry-booking-state"><small>Booking request</small><strong>{{ ucfirst($inquiry->booking->status) }}</strong><span>₱{{ number_format($inquiry->booking->total_amount, 2) }}</span></div>
                         <a class="button button-primary button-full booking-detail-return" href="{{ route('bookings.show', $inquiry->booking) }}">View booking details</a>
                         @if ($canAttachImages)<small class="context-note">✓ Booking approved — private image attachments are now enabled in chat.</small>@endif
-                    @elseif (auth()->user()->isClient())
-                        <a class="button button-primary button-full" href="{{ route('calendar.index', ['category' => $inquiry->unit->category, 'search' => 1, 'search_start' => $inquiry->desired_start_at->format('Y-m-d\TH:i'), 'search_end' => $inquiry->desired_end_at->format('Y-m-d\TH:i'), 'party_size' => $inquiry->party_size, 'selected_unit' => $inquiry->unit_id]) }}#booking-selection">Continue to booking</a>
+                    @elseif (auth()->id() === $inquiry->client_id)
+                        <a class="button button-primary button-full" href="{{ route('calendar.index', ['mode' => 'book', 'category' => $inquiry->unit->category, 'search' => 1, 'search_start' => $inquiry->desired_start_at->format('Y-m-d\TH:i'), 'search_end' => $inquiry->desired_end_at->format('Y-m-d\TH:i'), 'party_size' => $inquiry->party_size, 'selected_unit' => $inquiry->unit_id]) }}#booking-selection">Continue to booking</a>
                         <small class="context-note">You have completed the required inquiry and may now request the booking.</small>
                     @endif
                 </aside>

@@ -15,7 +15,7 @@
         <nav>
             @auth
                 <a href="{{ route('dashboard') }}">Dashboard</a>
-                <a class="button button-primary button-small" href="{{ route('calendar.index') }}">Book now</a>
+                <a class="button button-primary button-small" href="{{ route('calendar.index', ['mode' => 'book']) }}">Book now</a>
             @else
                 <a href="{{ route('login') }}">Log in</a>
                 <a class="button button-primary button-small" href="{{ route('register') }}">Create account</a>
@@ -74,7 +74,7 @@
                 @guest
                     <a class="button button-primary public-inquiry-action" href="{{ route('listings.inquire', array_filter(['unit' => $unit, 'ref' => $referralCode])) }}">Log in to inquire or book</a>
                     <small>New here? You can create an account from the login page.</small>
-                @elseif(auth()->user()->isClient())
+                @elseif(auth()->id() !== $unit->host_id)
                     <form method="POST" action="{{ route('inquiries.store') }}" class="public-inquiry-form">
                         @csrf
                         <input type="hidden" name="unit_id" value="{{ $unit->id }}">
@@ -86,7 +86,7 @@
                         <button class="button button-primary public-inquiry-action" type="submit">Start inquiry</button>
                     </form>
                 @else
-                    <p class="account-alert">Host accounts cannot make booking inquiries. Share this page with a client so they can create an account and inquire.</p>
+                    <p class="account-alert">You own this listing, so you cannot inquire about or book it. Other active accounts can book it.</p>
                 @endguest
             </aside>
         </div>

@@ -24,7 +24,9 @@ class InquiryController extends Controller
         $inquiries = Inquiry::query()
             ->with(['unit:id,name,category,photo_path', 'client:id,name,profile_completed_at', 'host:id,name,profile_completed_at', 'messages' => fn ($query) => $query->latest()->limit(1)])
             ->withCount(['messages as unread_messages_count' => fn ($query) => $query->where('sender_id', '!=', $user->id)->whereNull('read_at')])
-            ->when(! $user->is_admin, fn ($query) => $query->where($user->isClient() ? 'client_id' : 'host_id', $user->id))
+            ->when(! $user->is_admin, fn ($query) => $query->where(function ($participants) use ($user) {
+                $participants->where('client_id', $user->id)->orWhere('host_id', $user->id);
+            }))
             ->latest('updated_at')
             ->get();
 
@@ -33,8 +35,6 @@ class InquiryController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        abort_unless($request->user()->isClient(), 403);
-
         if (! $request->user()->hasCompleteProfile()) {
             return redirect()->route('profile.edit')->withErrors(['profile' => 'Complete your identity and contact profile before starting an inquiry.']);
         }
@@ -49,6 +49,10 @@ class InquiryController extends Controller
         ]);
 
         $unit = Unit::query()->where('is_active', true)->with('host')->findOrFail($validated['unit_id']);
+
+        if ($unit->host_id === $request->user()->id) {
+            throw ValidationException::withMessages(['unit_id' => 'You cannot inquire about or book your own listing.']);
+        }
 
         if (! $unit->host->hasCompleteProfile()) {
             throw ValidationException::withMessages(['unit_id' => 'This host must complete verification before receiving inquiries.']);

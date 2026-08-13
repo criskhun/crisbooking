@@ -598,6 +598,9 @@ html[data-color-mode="dark"] .identity-missing-warning { border-color: #76504b; 
 
 /* Calendar and bookings */
 .calendar-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.1rem 1.25rem; border: 1px solid var(--card-line); border-radius: 16px 16px 0 0; background: var(--surface); }
+.calendar-mode-switch { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .8rem 1rem; margin-bottom: 1rem; border: 1px solid var(--card-line); border-radius: 12px; background: var(--surface-tint); }
+.calendar-mode-switch span { color: var(--muted); font-size: .7rem; line-height: 1.45; }
+.calendar-mode-switch .button { flex: 0 0 auto; }
 .calendar-toolbar h2 { margin: .25rem 0 0; font: 800 1.55rem Manrope; }
 .calendar-navigation { display: flex; align-items: center; gap: .4rem; }
 .calendar-navigation a { display: grid; place-items: center; min-width: 2.4rem; height: 2.4rem; padding: 0 .7rem; border: 1px solid var(--card-line); border-radius: 9px; background: var(--surface-soft); color: var(--ink); font-weight: 800; text-decoration: none; }
@@ -693,7 +696,7 @@ html[data-color-mode="dark"] .calendar-day.outside-month { color: #65736e; }
 @media (max-width: 740px) {
     .header-actions .button { display: none; }
     .listing-grid { grid-template-columns: 1fr; }
-    .booking-calendar-section { margin-top: 1.2rem; }
+.booking-calendar-section { margin-top: 1.2rem; }
     .calendar-day { min-height: 82px; padding: .35rem; }
     .calendar-booking-dot { padding: .18rem .25rem; font-size: .52rem; }
     .calendar-booking-span { margin-top: calc(2.15rem + var(--calendar-lane) * 1.18rem); }

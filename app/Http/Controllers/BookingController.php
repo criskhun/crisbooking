@@ -29,8 +29,6 @@ class BookingController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        abort_unless($request->user()->isClient(), 403, 'Only client accounts can create bookings.');
-
         $validated = $request->validate([
             'unit_id' => ['required', 'integer', Rule::exists('units', 'id')->where('is_active', true)],
             'inquiry_id' => ['required', 'integer', 'exists:inquiries,id'],
@@ -58,6 +56,10 @@ class BookingController extends Controller
 
             if (! $request->user()->hasCompleteProfile()) {
                 throw ValidationException::withMessages(['profile' => 'Complete your verification profile before booking.']);
+            }
+
+            if ($unit->host_id === $request->user()->id) {
+                throw ValidationException::withMessages(['unit_id' => 'You cannot book your own listing.']);
             }
 
             if ($inquiry->client_id !== $request->user()->id || $inquiry->unit_id !== $unit->id) {
@@ -164,6 +166,7 @@ class BookingController extends Controller
         ]);
 
         return redirect()->route('calendar.index', [
+            'mode' => 'book',
             'month' => $booking->start_at->format('Y-m'),
             'date' => $booking->start_at->format('Y-m-d'),
         ])->with('status', 'Booking request submitted. The host can now confirm it.');

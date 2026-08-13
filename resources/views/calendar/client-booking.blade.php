@@ -37,7 +37,7 @@
         <div class="step-heading"><span>Step 1</span><div><h3>Choose what you want to book</h3><p>You can change this anytime.</p></div></div>
         <div class="booking-category-grid">
             @foreach ($categories as $key => $item)
-                <a @class(['booking-category-card', 'selected' => $category === $key]) href="{{ route('calendar.index', ['category' => $key]) }}">
+                <a @class(['booking-category-card', 'selected' => $category === $key]) href="{{ route('calendar.index', ['category' => $key, 'mode' => $canManageListings ? 'book' : null]) }}">
                     <span>{{ $item['icon'] }}</span><strong>{{ $item['label'] }}</strong><small>{{ $item['copy'] }}</small>
                 </a>
             @endforeach
@@ -50,6 +50,7 @@
             <form method="GET" action="{{ route('calendar.index') }}" class="discovery-form">
                 <input type="hidden" name="category" value="{{ $category }}">
                 <input type="hidden" name="search" value="1">
+                @if ($canManageListings)<input type="hidden" name="mode" value="book">@endif
                 <div class="field-group"><label for="search_start">Start date & time</label><input id="search_start" name="search_start" type="datetime-local" min="{{ $minimumStart->format('Y-m-d\TH:i') }}" value="{{ old('search_start', $searchStart?->format('Y-m-d\TH:i') ?? $defaultStart->format('Y-m-d\TH:i')) }}" required><small class="field-help">Today is available when the selected time is still ahead.</small></div>
                 <div class="field-group"><label for="search_end">End or return date & time</label><input id="search_end" name="search_end" type="datetime-local" min="{{ old('search_start', $searchStart?->format('Y-m-d\TH:i') ?? $defaultStart->format('Y-m-d\TH:i')) }}" value="{{ old('search_end', $searchEnd?->format('Y-m-d\TH:i') ?? $defaultEnd->format('Y-m-d\TH:i')) }}" required></div>
                 <div class="field-group"><label for="party_size">Number of people</label><input id="party_size" name="party_size" type="number" min="1" max="10000" value="{{ old('party_size', $partySize) }}" required></div>

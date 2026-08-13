@@ -1415,6 +1415,83 @@ class BookingCalendarTest extends TestCase
         $this->assertDatabaseHas('inquiries', ['unit_id' => $unit->id]);
     }
 
+    public function test_host_can_inquire_and_book_another_hosts_listing_but_not_their_own(): void
+    {
+        $bookingHost = User::factory()->host()->create(['name' => 'Booking Host']);
+        $otherHost = User::factory()->host()->create(['name' => 'Other Host']);
+        $ownUnit = $this->createUnit($bookingHost, ['name' => 'My Own Service']);
+        $otherUnit = $this->createUnit($otherHost, ['name' => 'Another Host Service']);
+        $start = now()->addDays(3)->startOfHour();
+        $end = $start->copy()->addHours(2);
+
+        $this->actingAs($bookingHost)->get(route('calendar.index', [
+            'mode' => 'book',
+            'category' => 'driving',
+            'search' => 1,
+            'search_start' => $start->format('Y-m-d\TH:i'),
+            'search_end' => $end->format('Y-m-d\TH:i'),
+            'party_size' => 1,
+        ]))
+            ->assertOk()
+            ->assertSee('Another Host Service')
+            ->assertDontSee('My Own Service')
+            ->assertSee('Your own listings are excluded.');
+
+        $this->actingAs($bookingHost)->post(route('inquiries.store'), [
+            'unit_id' => $otherUnit->id,
+            'desired_start_at' => $start->toDateTimeString(),
+            'desired_end_at' => $end->toDateTimeString(),
+            'party_size' => 1,
+            'initial_message' => 'I would like to book your service for this schedule.',
+        ])->assertRedirect();
+
+        $inquiry = Inquiry::query()->where('unit_id', $otherUnit->id)->where('client_id', $bookingHost->id)->firstOrFail();
+
+        $this->actingAs($bookingHost)->post(route('bookings.store'), [
+            'unit_id' => $otherUnit->id,
+            'inquiry_id' => $inquiry->id,
+            'start_at' => $start->toDateTimeString(),
+            'end_at' => $end->toDateTimeString(),
+            'party_size' => 1,
+        ])->assertRedirect(route('calendar.index', [
+            'mode' => 'book',
+            'month' => $start->format('Y-m'),
+            'date' => $start->format('Y-m-d'),
+        ]));
+
+        $this->assertDatabaseHas('bookings', [
+            'unit_id' => $otherUnit->id,
+            'client_id' => $bookingHost->id,
+            'status' => 'pending',
+        ]);
+
+        $this->actingAs($bookingHost)->post(route('inquiries.store'), [
+            'unit_id' => $ownUnit->id,
+            'desired_start_at' => $start->toDateTimeString(),
+            'desired_end_at' => $end->toDateTimeString(),
+            'party_size' => 1,
+            'initial_message' => 'This self inquiry must not be accepted by the server.',
+        ])->assertSessionHasErrors('unit_id');
+
+        $forgedOwnInquiry = $this->createInquiry($ownUnit, $bookingHost, $start, $end);
+        $this->actingAs($bookingHost)->post(route('bookings.store'), [
+            'unit_id' => $ownUnit->id,
+            'inquiry_id' => $forgedOwnInquiry->id,
+            'start_at' => $start->toDateTimeString(),
+            'end_at' => $end->toDateTimeString(),
+            'party_size' => 1,
+        ])->assertSessionHasErrors('unit_id');
+
+        $this->assertDatabaseMissing('bookings', [
+            'unit_id' => $ownUnit->id,
+            'client_id' => $bookingHost->id,
+        ]);
+
+        $this->actingAs($bookingHost)->get(route('listings.show', $ownUnit))
+            ->assertOk()
+            ->assertSee('You own this listing, so you cannot inquire about or book it.');
+    }
+
     private function createUnit(User $host, array $attributes = []): Unit
     {
         return Unit::create(array_merge([

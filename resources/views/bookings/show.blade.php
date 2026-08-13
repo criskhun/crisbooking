@@ -29,7 +29,7 @@
     <div class="dashboard-shell">
         @include('partials.dashboard-sidebar')
         <main class="dashboard-main">
-            <header class="dashboard-header"><div><a class="back-link" href="{{ route('calendar.index') }}">← Back to {{ $isClient ? 'my bookings' : 'calendar' }}</a><h1>Booking details</h1></div>@include('partials.user-badge')</header>
+            <header class="dashboard-header"><div><a class="back-link" href="{{ route('calendar.index', $isClient ? ['mode' => 'book'] : ['mode' => 'manage']) }}">← Back to {{ $isClient ? 'my bookings' : 'calendar' }}</a><h1>Booking details</h1></div>@include('partials.user-badge')</header>
 
             <section class="booking-detail-shell">
                 @if (session('status'))<div class="flash-message account-alert">{{ session('status') }}</div>@endif

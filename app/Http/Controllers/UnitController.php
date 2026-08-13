@@ -333,7 +333,7 @@ class UnitController extends Controller
     {
         $user = $request->user();
         $canManage = $user->is_admin || $unit->host_id === $user->id;
-        $hasConfirmedBooking = $user->isClient() && $unit->bookings()
+        $hasConfirmedBooking = $unit->bookings()
             ->where('client_id', $user->id)
             ->where('status', 'confirmed')
             ->where('end_at', '>', now())

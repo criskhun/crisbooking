@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', auth()->user()->isClient() ? 'Book now — Davao Rent Zone' : 'Booking calendar — Davao Rent Zone')
+@section('title', $bookingMode ? 'Book now — Davao Rent Zone' : 'Booking calendar — Davao Rent Zone')
 @section('body-class', 'dashboard-body')
 
 @section('content')
@@ -8,7 +8,7 @@
         @include('partials.dashboard-sidebar')
         <main class="dashboard-main">
             <header class="dashboard-header">
-                <div><span class="form-kicker">{{ auth()->user()->isClient() ? 'Discover' : 'Schedule' }}</span><h1>{{ auth()->user()->isClient() ? 'Book what you need' : 'Booking calendar' }}</h1></div>
+                <div><span class="form-kicker">{{ $bookingMode ? 'Discover' : 'Schedule' }}</span><h1>{{ $bookingMode ? 'Book what you need' : 'Booking calendar' }}</h1></div>
                 @include('partials.user-badge')
             </header>
 
@@ -18,7 +18,10 @@
                     <div class="oauth-error account-alert" role="alert"><strong>The booking could not be saved.</strong><br>{{ $errors->first() }}</div>
                 @endif
 
-                @if (auth()->user()->isClient())
+                @if ($bookingMode)
+                    @if ($canManageListings)
+                        <div class="calendar-mode-switch"><span>You are booking as {{ auth()->user()->name }}. Your own listings are excluded.</span><a class="button button-ghost button-small" href="{{ route('calendar.index', ['mode' => 'manage']) }}">Open host calendar</a></div>
+                    @endif
                     @include('calendar.client-booking')
                 @else
                 <div class="calendar-toolbar">
@@ -72,7 +75,7 @@
                         </div>
 
                         <div class="availability-list">
-                            <div class="side-panel-title"><h3>{{ auth()->user()->isClient() ? 'Units & services' : 'Your availability' }}</h3><span>{{ $units->count() }}</span></div>
+                            <div class="side-panel-title"><h3>Your availability</h3><span>{{ $units->count() }}</span></div>
                             @forelse ($units as $unit)
                                 @php
                                     $booked = $bookedUnitIds->contains($unit->id);
@@ -93,7 +96,7 @@
 
                 <div class="booking-workspace">
                     <section class="day-bookings-card">
-                        <div class="side-panel-title"><div><span class="eyebrow">Schedule</span><h2>{{ auth()->user()->isClient() ? 'My bookings' : 'Booking requests' }}</h2></div></div>
+                        <div class="side-panel-title"><div><span class="eyebrow">Schedule</span><h2>Booking requests</h2></div></div>
                         @php
                             $selectedStart = $selectedDate->copy()->startOfDay();
                             $selectedEnd = $selectedDate->copy()->addDay()->startOfDay();
@@ -105,12 +108,12 @@
                                     <span class="booking-time">{{ $booking->start_at->format('g:i A') }}<small>to {{ $booking->end_at->format($booking->end_at->isSameDay($booking->start_at) ? 'g:i A' : 'M j, g:i A') }}</small></span>
                                     <div class="booking-details">
                                         <strong>{{ $booking->unit->name }}</strong>
-                                        <small>{{ auth()->user()->isClient() ? 'Hosted by '.$booking->unit->host->name : 'Client: '.$booking->client->name }}{{ $booking->rate_period ? ' · '.(['12_hours' => '12 hours', 'day' => '1 day', 'week' => '1 week', 'month' => '1 month'][$booking->rate_period] ?? $booking->rate_period) : '' }} · ₱{{ number_format($booking->total_amount, 2) }}</small>
+                                        <small>Client: {{ $booking->client->name }}{{ $booking->rate_period ? ' · '.(['12_hours' => '12 hours', 'day' => '1 day', 'week' => '1 week', 'month' => '1 month'][$booking->rate_period] ?? $booking->rate_period) : '' }} · ₱{{ number_format($booking->total_amount, 2) }}</small>
                                         @if (auth()->user()->isHost() || auth()->user()->is_admin)
                                             <div class="booking-trust-links"><a href="{{ route('profiles.show', $booking->client) }}">View client profile</a>@if ($booking->inquiry)<a href="{{ route('inquiries.show', $booking->inquiry) }}">Open inquiry chat</a>@endif</div>
                                         @endif
                                         @if ($booking->notes)<p>{{ $booking->notes }}</p>@endif
-                                        @if (auth()->user()->isClient() && $booking->unit->category === 'condo' && in_array('wifi', $booking->unit->property_details['amenities'] ?? [], true))
+                                        @if ($booking->client_id === auth()->id() && $booking->unit->category === 'condo' && in_array('wifi', $booking->unit->property_details['amenities'] ?? [], true))
                                             @if ($booking->status === 'confirmed' && $booking->unit->wifi_details)
                                                 <div class="confirmed-wifi-access">
                                                     <strong>Wi-Fi access</strong>
@@ -129,7 +132,7 @@
                                         @if ((auth()->user()->isHost() || auth()->user()->is_admin) && $booking->status === 'pending')
                                             <form method="POST" action="{{ route('bookings.status', $booking) }}">@csrf @method('PATCH')<input type="hidden" name="status" value="confirmed"><button type="submit">Confirm</button></form>
                                             <form method="POST" action="{{ route('bookings.status', $booking) }}">@csrf @method('PATCH')<input type="hidden" name="status" value="cancelled"><button class="danger-action" type="submit">Decline</button></form>
-                                        @elseif (auth()->user()->isClient() && $booking->status !== 'cancelled' && $booking->end_at->isFuture())
+                                        @elseif ($booking->client_id === auth()->id() && $booking->status !== 'cancelled' && $booking->end_at->isFuture())
                                             <form method="POST" action="{{ route('bookings.cancel', $booking) }}" onsubmit="return confirm('Cancel this booking?')">@csrf @method('PATCH')<button class="danger-action" type="submit">Cancel</button></form>
                                         @endif
                                     </div>

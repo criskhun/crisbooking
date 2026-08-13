@@ -28,6 +28,7 @@ class CalendarController extends Controller
             'sort' => ['nullable', Rule::in(['recommended', 'price_low', 'capacity_high'])],
             'search' => ['nullable', 'boolean'],
             'selected_unit' => ['nullable', 'integer'],
+            'mode' => ['nullable', Rule::in(['book', 'manage'])],
         ]);
 
         $month = $request->filled('month')
@@ -39,16 +40,21 @@ class CalendarController extends Controller
         $gridStart = $month->copy()->startOfWeek(Carbon::SUNDAY);
         $gridEnd = $month->copy()->endOfMonth()->endOfWeek(Carbon::SATURDAY);
         $user = $request->user();
+        $canManageListings = $user->isHost() || $user->is_admin;
+        $bookingMode = ! $canManageListings || ($validated['mode'] ?? null) === 'book';
 
         $units = Unit::query()
             ->with(['host:id,name', 'rates', 'images'])
             ->when(
-                $user->isHost() || $user->is_admin,
-                fn ($query) => $query->when(! $user->is_admin, fn ($owned) => $owned->where('host_id', $user->id)),
-                fn ($query) => $query->where('is_active', true)->whereHas('host', fn ($hosts) => $hosts->whereNotNull('profile_completed_at'))->where(function ($bookable) {
+                $bookingMode,
+                fn ($query) => $query->where('host_id', '!=', $user->id)
+                    ->where('is_active', true)
+                    ->whereHas('host', fn ($hosts) => $hosts->whereNotNull('profile_completed_at'))
+                    ->where(function ($bookable) {
                     $bookable->whereNotIn('category', ['car', 'condo'])
                         ->orWhereHas('rates');
-                })
+                    }),
+                fn ($query) => $query->when(! $user->is_admin, fn ($owned) => $owned->where('host_id', $user->id))
             )
             ->orderBy('name')
             ->get();
@@ -58,9 +64,9 @@ class CalendarController extends Controller
             ->where('start_at', '<', $gridEnd->copy()->addDay())
             ->where('end_at', '>', $gridStart)
             ->when(
-                $user->isHost() || $user->is_admin,
-                fn ($query) => $query->whereHas('unit', fn ($owned) => $owned->when(! $user->is_admin, fn ($hostUnits) => $hostUnits->where('host_id', $user->id))),
-                fn ($query) => $query->where('client_id', $user->id)
+                $bookingMode,
+                fn ($query) => $query->where('client_id', $user->id),
+                fn ($query) => $query->whereHas('unit', fn ($owned) => $owned->when(! $user->is_admin, fn ($hostUnits) => $hostUnits->where('host_id', $user->id)))
             )
             ->orderBy('start_at')
             ->get();
@@ -88,13 +94,14 @@ class CalendarController extends Controller
         $searchLongitude = isset($validated['search_longitude']) ? (float) $validated['search_longitude'] : null;
         $radiusKm = (float) ($validated['radius_km'] ?? 500);
         $hasRadiusSearch = $searchLatitude !== null && $searchLongitude !== null;
-        $searchSubmitted = $user->isClient() && (bool) ($validated['search'] ?? false);
+        $searchSubmitted = $bookingMode && (bool) ($validated['search'] ?? false);
         $matchingUnits = collect();
 
         if ($searchSubmitted && $category && $searchStart && $searchEnd) {
             $matchingUnitsQuery = Unit::query()
                 ->with(['host:id,name', 'rates', 'images'])
                 ->where('is_active', true)
+                ->where('host_id', '!=', $user->id)
                 ->whereHas('host', fn ($hosts) => $hosts->whereNotNull('profile_completed_at'))
                 ->where('category', $category)
                 ->where(function ($query) use ($partySize) {
@@ -130,10 +137,10 @@ class CalendarController extends Controller
         }
 
         $selectedUnit = $matchingUnits->firstWhere('id', (int) ($validated['selected_unit'] ?? 0));
-        $selectedInquiry = $selectedUnit && $user->isClient()
+        $selectedInquiry = $selectedUnit && $bookingMode
             ? $user->clientInquiries()->where('unit_id', $selectedUnit->id)->whereDoesntHave('booking')->where('status', 'open')->latest()->first()
             : null;
-        $clientBookings = $user->isClient()
+        $clientBookings = $bookingMode
             ? Booking::query()
                 ->with(['unit:id,host_id,name,category,property_details,wifi_details,wifi_qr_path', 'unit.host:id,name'])
                 ->where('client_id', $user->id)
@@ -141,8 +148,9 @@ class CalendarController extends Controller
                 ->orderBy('start_at')
                 ->get()
             : collect();
-        $locations = $user->isClient()
+        $locations = $bookingMode
             ? Unit::query()->where('is_active', true)
+                ->where('host_id', '!=', $user->id)
                 ->when($category, fn ($query) => $query->where('category', $category))
                 ->whereNotNull('location')->where('location', '!=', '')
                 ->distinct()->orderBy('location')->pluck('location')
@@ -185,6 +193,8 @@ class CalendarController extends Controller
             'calendarSegments' => $calendarSegments,
             'calendarWeekCount' => $calendarWeekCount,
             'calendarLaneCount' => $calendarLaneCount,
+            'bookingMode' => $bookingMode,
+            'canManageListings' => $canManageListings,
         ]);
     }
 

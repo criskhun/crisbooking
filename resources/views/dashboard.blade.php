@@ -71,7 +71,7 @@
                 </section>
             @else
                 <section class="host-overview">
-                    <div class="host-control-hero"><div><span class="eyebrow">Rental control center</span><h2>Manage rentals, requests, and live availability.</h2><p>Your operational overview shows what is occupied now, what starts next, and which requests need attention.</p></div><div><a class="button button-primary" href="{{ route('units.create') }}">＋ Add listing</a><a class="button button-ghost" href="{{ route('calendar.index') }}">Open availability calendar</a></div></div>
+                    <div class="host-control-hero"><div><span class="eyebrow">Rental control center</span><h2>Manage rentals, requests, and live availability.</h2><p>Your operational overview shows what is occupied now, what starts next, and which requests need attention. You can also book listings offered by other hosts.</p></div><div><a class="button button-primary" href="{{ route('units.create') }}">＋ Add listing</a><a class="button button-ghost" href="{{ route('calendar.index', ['mode' => 'manage']) }}">Open availability calendar</a><a class="button button-ghost" href="{{ route('calendar.index', ['mode' => 'book']) }}">Book another host</a></div></div>
 
                     <div class="stat-grid host-stat-grid">
                         <article><span class="stat-icon car">●</span><small>Today's rentals</small><strong>{{ $todayCount }}</strong><p>{{ $todayCount ? 'Active on today’s schedule' : 'No rental scheduled today' }}</p></article>

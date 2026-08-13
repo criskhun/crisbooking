@@ -18,7 +18,10 @@
     </a>
     <nav class="sidebar-nav" id="dashboard-navigation">
         <a @class(['active' => request()->routeIs('dashboard')]) href="{{ route('dashboard') }}"><span>⌂</span> Overview</a>
-        <a @class(['active' => request()->routeIs('calendar.*')]) href="{{ route('calendar.index') }}"><span>□</span> {{ auth()->user()->isClient() ? 'Book now' : 'Calendar' }}</a>
+        <a @class(['active' => request()->routeIs('calendar.*') && (request('mode') === 'book' || auth()->user()->isClient())]) href="{{ route('calendar.index', ['mode' => 'book']) }}"><span>⌕</span> Book now</a>
+        @if (auth()->user()->isHost() || auth()->user()->is_admin)
+            <a @class(['active' => request()->routeIs('calendar.*') && request('mode') !== 'book']) href="{{ route('calendar.index', ['mode' => 'manage']) }}"><span>□</span> Host calendar</a>
+        @endif
         <a @class(['active' => request()->routeIs('inquiries.*')]) href="{{ route('inquiries.index') }}"><span>✦</span> Inquiries</a>
         <a @class(['active' => request()->routeIs('affiliates.*')]) href="{{ route('affiliates.index') }}"><span>％</span> Affiliates & sales</a>
         <a @class(['active' => request()->routeIs('profile.*') || request()->routeIs('profiles.*')]) href="{{ route('profile.edit') }}"><span>♙</span> Verification profile @unless(auth()->user()->hasCompleteProfile())<b class="sidebar-notification-badge attention" title="Your verification profile needs attention">!</b>@endunless</a>
