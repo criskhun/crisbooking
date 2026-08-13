@@ -79,6 +79,42 @@ class CalendarPresentationTest extends TestCase
             ->assertDontSee('data-booking-id="'.$otherBooking->id.'"', false);
     }
 
+    public function test_every_service_category_and_custom_other_service_appears_as_a_calendar_booking(): void
+    {
+        $host = User::factory()->host()->create();
+        $client = User::factory()->create();
+        $start = now()->addMonth()->startOfMonth()->addDays(10)->setTime(9, 0);
+        $serviceCategories = [
+            'cleaning' => 'Home Cleaning',
+            'driving' => 'Professional Driver',
+            'massage' => 'Home Massage',
+            'consultancy' => 'Business Consultancy',
+            'event_planning' => 'Custom Event Planning',
+        ];
+        $bookings = collect();
+
+        foreach ($serviceCategories as $index => $name) {
+            $unit = $this->createUnit($host, $name, $index, 'service');
+            $bookings->push($this->createBooking($unit, $client, $start->copy()->addDays($bookings->count()), $name.' booking.'));
+        }
+
+        $response = $this->actingAs($host)->get(route('calendar.index', [
+            'mode' => 'manage',
+            'month' => $start->format('Y-m'),
+        ]));
+
+        $response->assertOk()
+            ->assertSee('category-cleaning', false)
+            ->assertSee('category-driving', false)
+            ->assertSee('category-massage', false)
+            ->assertSee('category-consultancy', false)
+            ->assertSee('category-other', false);
+
+        foreach ($bookings as $booking) {
+            $response->assertSee('data-booking-id="'.$booking->id.'"', false);
+        }
+    }
+
     private function createUnit(User $host, string $name, string $category, string $kind): Unit
     {
         return Unit::create([
