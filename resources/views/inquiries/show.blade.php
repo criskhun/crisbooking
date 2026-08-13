@@ -12,6 +12,7 @@
                 @php $canAttachImages = $inquiry->booking?->status === 'confirmed'; @endphp
                 <div class="chat-card" data-realtime-chat data-messages-url="{{ route('inquiries.messages.index', $inquiry) }}" data-typing-url="{{ route('inquiries.typing', $inquiry) }}">
                     @if (session('status'))<div class="flash-message account-alert">{{ session('status') }}</div>@endif
+                    @if ($errors->any())<div class="oauth-error account-alert" role="alert">{{ $errors->first() }}</div>@endif
                     <div class="chat-heading"><div><span class="eyebrow">Inquiry #{{ $inquiry->id }}</span><h2>Live chat</h2><p>{{ $inquiry->desired_start_at->format('M j, g:i A') }} – {{ $inquiry->desired_end_at->format('M j, g:i A') }} · {{ $inquiry->party_size }} {{ Str::plural('person', $inquiry->party_size) }}</p></div><div class="chat-heading-status"><span class="live-chat-status"><i></i> Live</span><span class="inquiry-status status-{{ $inquiry->status }}">{{ str($inquiry->status)->replace('_', ' ')->title() }}</span></div></div>
                     <div class="message-thread" data-message-thread>
                         @foreach ($inquiry->messages as $message)
@@ -56,6 +57,20 @@
                     <div class="context-partner"><span>{{ strtoupper(substr($partner->name, 0, 1)) }}</span><div><small>{{ auth()->id() === $inquiry->client_id ? 'Host' : 'Booking customer' }}</small><strong>{{ $partner->name }}</strong><em>✓ Profile complete</em></div></div>
                     <a class="button button-ghost" href="{{ route('profiles.show', $partner) }}">View validation profile</a>
                     <div class="context-details"><span><small>Listing</small><strong>{{ $inquiry->unit->name }}</strong></span><span><small>Desired schedule</small><strong>{{ $inquiry->desired_start_at->format('M j') }} – {{ $inquiry->desired_end_at->format('M j, Y') }}</strong></span><span><small>Party</small><strong>{{ $inquiry->party_size }} {{ Str::plural('person', $inquiry->party_size) }}</strong></span></div>
+                    @php($pendingPriceProposal = $inquiry->priceProposals->firstWhere('status', 'pending'))
+                    <section class="price-negotiation-panel">
+                        <div class="price-negotiation-heading"><span>₱</span><div><small>Negotiable price</small><strong>{{ $inquiry->agreed_price !== null ? 'Agreed at ₱'.number_format($inquiry->agreed_price, 2) : 'Propose a booking price' }}</strong></div></div>
+                        @if ($inquiry->agreed_price !== null)<p class="agreed-price-note">✓ This price is locked as the booking subtotal. Required listing charges, if any, are added separately.</p>@endif
+                        @if ($pendingPriceProposal)
+                            <article class="price-proposal-current"><small>{{ $pendingPriceProposal->proposed_by === auth()->id() ? 'Your proposal' : $pendingPriceProposal->proposer->name.' proposed' }}</small><strong>₱{{ number_format($pendingPriceProposal->amount, 2) }}</strong>@if($pendingPriceProposal->note)<p>{{ $pendingPriceProposal->note }}</p>@endif
+                                @if ($pendingPriceProposal->proposed_by !== auth()->id())<div><form method="POST" action="{{ route('price-proposals.review', $pendingPriceProposal) }}">@csrf @method('PATCH')<button class="button button-primary" name="decision" value="accept" type="submit">Accept price</button></form><form method="POST" action="{{ route('price-proposals.review', $pendingPriceProposal) }}">@csrf @method('PATCH')<button class="button button-ghost" name="decision" value="decline" type="submit">Decline</button></form></div>@else<em>Waiting for {{ auth()->id() === $inquiry->client_id ? 'host' : 'client' }} approval</em>@endif
+                            </article>
+                        @endif
+                        @unless($inquiry->booking)
+                            <details class="price-proposal-form" @if(!$pendingPriceProposal && $inquiry->agreed_price === null) open @endif><summary>{{ $pendingPriceProposal ? 'Send a counteroffer' : ($inquiry->agreed_price !== null ? 'Propose a different price' : 'Make an offer') }}</summary><form method="POST" action="{{ route('inquiries.price-proposals.store', $inquiry) }}">@csrf<div class="field-group"><label for="amount">Proposed booking subtotal</label><input id="amount" name="amount" type="number" min="1" max="99999999.99" step="0.01" required placeholder="0.00" value="{{ old('amount') }}"></div><div class="field-group"><label for="price_note">Message <span class="optional-label">Optional</span></label><textarea id="price_note" name="note" rows="2" maxlength="1000" placeholder="Explain your offer…">{{ old('note') }}</textarea></div><button class="button button-primary button-full" type="submit">Send price proposal</button></form></details>
+                        @endunless
+                        @if ($inquiry->priceProposals->where('status', '!=', 'pending')->isNotEmpty())<details class="price-proposal-history"><summary>Price history</summary>@foreach($inquiry->priceProposals->where('status', '!=', 'pending') as $proposal)<span><b>₱{{ number_format($proposal->amount, 2) }}</b><small>{{ ucfirst($proposal->status) }} · {{ $proposal->proposer->name }}</small></span>@endforeach</details>@endif
+                    </section>
                     @if ($inquiry->booking)
                         <div class="inquiry-booking-state"><small>Booking request</small><strong>{{ ucfirst($inquiry->booking->status) }}</strong><span>₱{{ number_format($inquiry->booking->total_amount, 2) }}</span></div>
                         <a class="button button-primary button-full booking-detail-return" href="{{ route('bookings.show', $inquiry->booking) }}">View booking details</a>

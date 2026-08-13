@@ -18,6 +18,8 @@
                     <div class="oauth-error account-alert" role="alert"><strong>The booking could not be saved.</strong><br>{{ $errors->first() }}</div>
                 @endif
 
+                @include('calendar._integration')
+
                 @if ($bookingMode)
                     @if ($canManageListings)
                         <div class="calendar-mode-switch"><span>You are booking as {{ auth()->user()->name }}. Your own listings are excluded.</span><a class="button button-ghost button-small" href="{{ route('calendar.index', ['mode' => 'manage']) }}">Open host calendar</a></div>

@@ -19,6 +19,8 @@
         $currentPackageSummary = $currentPackages->map(fn ($package, $period) => $package['quantity'].' × '.($rateLabels[$period] ?? str($period)->replace('_', ' ')->title()))->implode(' + ');
         $requestedPackageSummary = $requestedPackages->map(fn ($package, $period) => $package['quantity'].' × '.($rateLabels[$period] ?? str($period)->replace('_', ' ')->title()))->implode(' + ');
         $requestedPackageTotal = $requestedPackages->sum('subtotal');
+        $myBookingReview = $booking->reviews->firstWhere('reviewer_id', auth()->id());
+        $reviewPartner = $isClient ? $unit->host : $booking->client;
         $statusCopy = [
             'pending' => ['Waiting for host', 'Your request and inquiry are ready for the host to review.'],
             'confirmed' => ['Booking approved', 'Your booking is confirmed. Keep coordinating in chat.'],
@@ -88,6 +90,7 @@
                             <div><dt>Status</dt><dd><span class="booking-status status-{{ $booking->status }}">{{ ucfirst($booking->status) }}</span></dd></div>
                         </dl>
                         <div class="booking-total"><small>Total booking value</small><strong>₱{{ number_format($booking->total_amount, 2) }}</strong></div>
+                        <div class="booking-calendar-actions"><a href="{{ $googleCalendarUrl }}" target="_blank" rel="noopener">Google Calendar</a><a href="{{ route('bookings.calendar', $booking) }}">iPhone / Apple (.ics)</a></div>
                         @if ($booking->inquiry)
                             <a class="button button-primary button-full" href="{{ route('inquiries.show', $booking->inquiry) }}">Go to inquiry chat</a>
                             <small class="booking-chat-note">This opens the conversation for this exact booking.</small>
@@ -100,6 +103,17 @@
                         @endif
                     </aside>
                 </div>
+
+                @if ($booking->status === 'confirmed' && $booking->end_at->isPast())
+                    <section class="booking-review-card">
+                        <div class="booking-change-heading"><span>★</span><div><small>Completed booking</small><h2>Review {{ $reviewPartner->name }}</h2><p>Your rating and comment will appear on their {{ $isClient ? 'host' : 'client' }} profile.</p></div></div>
+                        @if ($myBookingReview)
+                            <div class="review-submitted"><strong>{{ str_repeat('★', $myBookingReview->rating) }}{{ str_repeat('☆', 5 - $myBookingReview->rating) }}</strong><p>{{ $myBookingReview->comment }}</p><small>Review published {{ $myBookingReview->created_at->format('M j, Y') }}</small></div>
+                        @else
+                            <form method="POST" action="{{ route('bookings.reviews.store', $booking) }}" class="review-form">@csrf<fieldset><legend>Your rating</legend><div class="review-star-options">@foreach(range(5, 1) as $star)<input id="booking-rating-{{ $star }}" name="rating" type="radio" value="{{ $star }}" required><label for="booking-rating-{{ $star }}" title="{{ $star }} stars">★</label>@endforeach</div></fieldset><div class="field-group"><label for="review_comment">Public comment</label><textarea id="review_comment" name="comment" rows="4" minlength="10" maxlength="1500" required placeholder="Describe your experience with this booking partner…">{{ old('comment') }}</textarea>@error('comment')<p class="error-text">{{ $message }}</p>@enderror</div><button class="button button-primary" type="submit">Publish review</button></form>
+                        @endif
+                    </section>
+                @endif
 
                 @if ($booking->change_request_status)
                     <section class="booking-change-state status-{{ $booking->change_request_status }}">

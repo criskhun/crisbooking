@@ -74,6 +74,7 @@ class AffiliateController extends Controller
             'marketer',
             'messages.sender',
             'bookings' => fn ($query) => $query->with(['unit:id,name', 'client:id,name'])->latest()->limit(25),
+            'reviews',
         ]);
 
         return view('affiliates.show', compact('affiliate'));

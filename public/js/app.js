@@ -772,6 +772,19 @@
             });
         }
 
+        document.querySelector('[data-copy-calendar-feed]')?.addEventListener('click', async (event) => {
+            const input = document.querySelector('[data-calendar-feed-url]');
+            if (!input) return;
+            try {
+                await navigator.clipboard.writeText(input.value);
+                event.currentTarget.textContent = 'Copied';
+            } catch (error) {
+                input.select();
+                document.execCommand('copy');
+                event.currentTarget.textContent = 'Copied';
+            }
+        });
+
         const realtimeChat = document.querySelector('[data-realtime-chat]');
 
         if (realtimeChat) {

@@ -150,6 +150,7 @@
                 <input id="start_at" name="start_at" type="hidden" value="{{ old('start_at', $searchStart->format('Y-m-d\TH:i')) }}">
                 <div data-booking-end-field hidden><input id="end_at" name="end_at" type="hidden" value="{{ old('end_at', $searchEnd->format('Y-m-d\TH:i')) }}"></div>
                 <input name="party_size" type="hidden" value="{{ $partySize }}">
+                @if ($selectedInquiry->agreed_price !== null)<div class="negotiated-booking-price"><span>✓</span><div><small>Accepted negotiated subtotal</small><strong>₱{{ number_format($selectedInquiry->agreed_price, 2) }}</strong><p>This replaces the standard rental or service subtotal. Required listing charges are added separately.</p></div></div>@endif
                 @if ($selectedUnit->isPackageRental())
                     @if ($selectedUnit->category === 'car')
                         <div class="field-group rental-coverage-choice">

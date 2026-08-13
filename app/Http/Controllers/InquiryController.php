@@ -106,7 +106,7 @@ class InquiryController extends Controller
     {
         abort_unless($inquiry->involves($request->user()), 403);
         $inquiry->messages()->where('sender_id', '!=', $request->user()->id)->whereNull('read_at')->update(['read_at' => now()]);
-        $inquiry->load(['unit.rates', 'unit.images', 'client', 'host', 'messages.sender', 'booking']);
+        $inquiry->load(['unit.rates', 'unit.images', 'client', 'host', 'messages.sender', 'booking', 'priceProposals.proposer']);
 
         return view('inquiries.show', compact('inquiry'));
     }

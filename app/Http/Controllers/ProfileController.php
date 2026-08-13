@@ -74,7 +74,13 @@ class ProfileController extends Controller
     {
         abort_unless($this->canView($request->user(), $profile), 403);
 
-        return view('profiles.show', ['profileUser' => $profile]);
+        $profile->load(['reviewsReceived' => fn ($query) => $query->with(['reviewer:id,name', 'booking.unit:id,name', 'affiliatePartnership:id'])->latest()]);
+        $reviewSummaries = $profile->reviewsReceived->groupBy('reviewee_context')->map(fn ($reviews) => [
+            'count' => $reviews->count(),
+            'average' => round((float) $reviews->avg('rating'), 1),
+        ]);
+
+        return view('profiles.show', compact('reviewSummaries') + ['profileUser' => $profile]);
     }
 
     public function document(Request $request, User $profile): StreamedResponse
@@ -128,6 +134,14 @@ class ProfileController extends Controller
         })->exists();
 
         if ($hasInquiry) {
+            return true;
+        }
+
+        if (\App\Models\AffiliatePartnership::query()->where(function ($query) use ($viewer, $profile) {
+            $query->where('marketer_id', $viewer->id)->where('host_id', $profile->id);
+        })->orWhere(function ($query) use ($viewer, $profile) {
+            $query->where('host_id', $viewer->id)->where('marketer_id', $profile->id);
+        })->exists()) {
             return true;
         }
 

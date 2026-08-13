@@ -9,14 +9,19 @@ use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CalendarController;
+use App\Http\Controllers\CalendarIntegrationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HostApplicationController;
 use App\Http\Controllers\InquiryController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProfileLocationController;
+use App\Http\Controllers\PriceProposalController;
 use App\Http\Controllers\PublicListingController;
+use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\SalesController;
 use App\Http\Controllers\UnitController;
+use App\Http\Controllers\WorkspaceController;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -26,6 +31,7 @@ Route::get('/', function () {
 })->name('home');
 
 Route::get('/listings/{unit}', [PublicListingController::class, 'show'])->name('listings.show');
+Route::get('/calendar/feed/{user}/{token}.ics', [CalendarIntegrationController::class, 'feed'])->name('calendar.feed');
 
 Route::middleware('guest')->group(function () {
     Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
@@ -74,6 +80,8 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     Route::get('/listings/{unit}/inquire', [PublicListingController::class, 'inquire'])->name('listings.inquire');
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
     Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar.index');
+    Route::post('/calendar/integration', [CalendarIntegrationController::class, 'refresh'])->name('calendar.integration.refresh');
+    Route::get('/bookings/{booking}/calendar.ics', [CalendarIntegrationController::class, 'booking'])->name('bookings.calendar');
     Route::get('/units/{unit}/wifi-qr', [UnitController::class, 'wifiQr'])->name('units.wifi-qr');
     Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('bookings.show');
     Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
@@ -95,6 +103,8 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     Route::get('/inquiries/{inquiry}/messages', [InquiryController::class, 'messages'])->name('inquiries.messages.index');
     Route::post('/inquiries/{inquiry}/messages', [InquiryController::class, 'message'])->name('inquiries.messages.store');
     Route::post('/inquiries/{inquiry}/typing', [InquiryController::class, 'typing'])->name('inquiries.typing');
+    Route::post('/inquiries/{inquiry}/price-proposals', [PriceProposalController::class, 'store'])->name('inquiries.price-proposals.store');
+    Route::patch('/price-proposals/{proposal}', [PriceProposalController::class, 'review'])->name('price-proposals.review');
     Route::get('/inquiry-attachments/{message}', [InquiryController::class, 'attachment'])->name('inquiries.attachments.show');
     Route::get('/host-application', [HostApplicationController::class, 'show'])->name('host-applications.show');
     Route::post('/host-application', [HostApplicationController::class, 'store'])->name('host-applications.store');
@@ -105,6 +115,10 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     Route::get('/affiliates/{affiliate}', [AffiliateController::class, 'show'])->name('affiliates.show');
     Route::patch('/affiliates/{affiliate}', [AffiliateController::class, 'review'])->name('affiliates.review');
     Route::post('/affiliates/{affiliate}/messages', [AffiliateController::class, 'message'])->name('affiliates.messages.store');
+    Route::post('/affiliates/{affiliate}/reviews', [ReviewController::class, 'affiliate'])->name('affiliates.reviews.store');
+    Route::post('/bookings/{booking}/reviews', [ReviewController::class, 'booking'])->name('bookings.reviews.store');
+    Route::get('/workspace/clients', [WorkspaceController::class, 'clients'])->name('workspace.clients');
+    Route::get('/sales', [SalesController::class, 'index'])->name('sales.index');
 });
 
 Route::middleware(['auth', 'active', 'verified', 'host'])->group(function () {

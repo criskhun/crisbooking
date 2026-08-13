@@ -23,9 +23,17 @@ class BookingController extends Controller
             || ($request->user()->isHost() && $booking->unit()->where('host_id', $request->user()->id)->exists());
 
         abort_unless($canView, 403);
-        $booking->load(['unit.host', 'unit.images', 'unit.rates', 'client', 'inquiry']);
+        $booking->load(['unit.host', 'unit.images', 'unit.rates', 'client', 'inquiry', 'reviews']);
 
-        return view('bookings.show', compact('booking'));
+        $googleCalendarUrl = 'https://calendar.google.com/calendar/render?'.http_build_query([
+            'action' => 'TEMPLATE',
+            'text' => $booking->unit->name.' booking',
+            'dates' => $booking->start_at->copy()->utc()->format('Ymd\THis\Z').'/'.$booking->end_at->copy()->utc()->format('Ymd\THis\Z'),
+            'details' => 'Davao Rent Zone booking #'.$booking->id.' · '.ucfirst($booking->status),
+            'location' => $booking->unit->location,
+        ]);
+
+        return view('bookings.show', compact('booking', 'googleCalendarUrl'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -127,9 +135,9 @@ class BookingController extends Controller
             }
 
             $additionalCharges = $this->carAdditionalCharges($unit);
-            $rentalTotal = $packageBreakdown
-                ? $this->packageTotal($packageBreakdown)
-                : $this->calculateTotal($unit, $start, $end);
+            $rentalTotal = $inquiry->agreed_price !== null
+                ? (float) $inquiry->agreed_price
+                : ($packageBreakdown ? $this->packageTotal($packageBreakdown) : $this->calculateTotal($unit, $start, $end));
             $bookingTotal = round($rentalTotal + $this->additionalChargeTotal($additionalCharges), 2);
             $commissionableTotal = max(0, $bookingTotal - (float) collect($additionalCharges)
                 ->filter(fn ($charge) => (bool) ($charge['refundable'] ?? false))

@@ -14,7 +14,7 @@ class Inquiry extends Model
 
     protected $fillable = [
         'unit_id', 'client_id', 'host_id', 'desired_start_at', 'desired_end_at',
-        'party_size', 'status', 'affiliate_partnership_id', 'affiliate_commission_percentage',
+        'party_size', 'agreed_price', 'price_agreed_at', 'status', 'affiliate_partnership_id', 'affiliate_commission_percentage',
     ];
 
     protected function casts(): array
@@ -23,6 +23,8 @@ class Inquiry extends Model
             'desired_start_at' => 'datetime',
             'desired_end_at' => 'datetime',
             'party_size' => 'integer',
+            'agreed_price' => 'decimal:2',
+            'price_agreed_at' => 'datetime',
             'affiliate_commission_percentage' => 'decimal:2',
         ];
     }
@@ -50,6 +52,11 @@ class Inquiry extends Model
     public function booking(): HasOne
     {
         return $this->hasOne(Booking::class);
+    }
+
+    public function priceProposals(): HasMany
+    {
+        return $this->hasMany(InquiryPriceProposal::class)->latest();
     }
 
     public function affiliatePartnership(): BelongsTo

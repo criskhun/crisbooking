@@ -49,6 +49,11 @@ class AffiliatePartnership extends Model
         return $this->hasMany(Booking::class);
     }
 
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(Review::class);
+    }
+
     public function involves(User $user): bool
     {
         return $user->is_admin || $this->marketer_id === $user->id || $this->host_id === $user->id;

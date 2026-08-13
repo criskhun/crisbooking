@@ -36,8 +36,10 @@
             <a @class(['active' => request()->routeIs('accounts.*')]) href="{{ route('accounts.index') }}"><span>♙</span> Users</a>
         @endif
         <span class="sidebar-label">Workspace</span>
-        <a class="disabled" href="#"><span>♙</span> {{ auth()->user()->isHost() ? 'Clients' : 'Hosts' }}</a>
-        <a class="disabled" href="#"><span>₱</span> Sales</a>
+        @if (auth()->user()->isHost() || auth()->user()->is_admin)
+            <a @class(['active' => request()->routeIs('workspace.clients')]) href="{{ route('workspace.clients') }}"><span>♙</span> Clients</a>
+            <a @class(['active' => request()->routeIs('sales.*')]) href="{{ route('sales.index') }}"><span>₱</span> Sales</a>
+        @endif
     </nav>
     <form method="POST" action="{{ route('logout') }}" class="sidebar-logout">
         @csrf
