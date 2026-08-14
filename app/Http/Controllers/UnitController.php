@@ -354,6 +354,16 @@ class UnitController extends Controller
         $isRental = in_array($request->input('category'), ['car', 'condo'], true);
         $isCar = $request->input('category') === 'car';
         $isProperty = $request->input('category') === 'condo';
+
+        if ($isProperty) {
+            $request->merge([
+                'property' => array_merge([
+                    'check_in_time' => '14:00',
+                    'check_out_time' => '12:00',
+                ], (array) $request->input('property', [])),
+            ]);
+        }
+
         $offeredRates = $request->input('offered_rates', []);
         $carRateAreas = $request->input('car_rate_areas', []);
         $carOfferedRates = $request->input('car_offered_rates', []);
@@ -440,6 +450,8 @@ class UnitController extends Controller
             'property.bathrooms' => [Rule::requiredIf($isProperty), 'nullable', 'integer', 'min:1', 'max:100'],
             'property.beds' => ['nullable', 'integer', 'min:0', 'max:200'],
             'property.floor_area_sqm' => ['nullable', 'numeric', 'min:1', 'max:100000'],
+            'property.check_in_time' => [Rule::requiredIf($isProperty), 'nullable', 'date_format:H:i'],
+            'property.check_out_time' => [Rule::requiredIf($isProperty), 'nullable', 'date_format:H:i'],
             'property_amenities' => ['nullable', 'array'],
             'property_amenities.*' => [Rule::in(['wifi', 'air_conditioning', 'kitchen', 'parking', 'pool', 'balcony', 'pet_friendly', 'furnished'])],
             'wifi.ssid' => [Rule::requiredIf($hasWifi), 'nullable', 'string', 'max:120'],
@@ -789,7 +801,7 @@ class UnitController extends Controller
             }
         }
 
-        foreach (['bedrooms', 'bathrooms', 'beds', 'floor_area_sqm'] as $field) {
+        foreach (['bedrooms', 'bathrooms', 'beds', 'floor_area_sqm', 'check_in_time', 'check_out_time'] as $field) {
             if ($filled(data_get($payload, "property.{$field}"))) {
                 return true;
             }

@@ -5,6 +5,7 @@
     $hostApplicationAttention = auth()->user()->isClient()
         ? auth()->user()->hostApplication()->whereIn('status', ['needs_changes', 'rejected'])->exists()
         : false;
+    $inquiryAttentionCount = auth()->user()->inquiryAttentionCount();
 @endphp
 <button class="sidebar-scrim" type="button" data-mobile-sidebar-close hidden aria-label="Close navigation menu"></button>
 <aside class="sidebar" data-mobile-sidebar>
@@ -22,7 +23,7 @@
         @if (auth()->user()->isHost() || auth()->user()->is_admin)
             <a @class(['active' => request()->routeIs('calendar.*') && request('mode') !== 'book']) href="{{ route('calendar.index', ['mode' => 'manage']) }}"><span>□</span> Host calendar</a>
         @endif
-        <a @class(['active' => request()->routeIs('inquiries.*')]) href="{{ route('inquiries.index') }}"><span>✦</span> Inquiries</a>
+        <a @class(['active' => request()->routeIs('inquiries.*')]) href="{{ route('inquiries.index') }}"><span>✦</span> Inquiries <b class="sidebar-notification-badge" data-inquiry-attention-count @if(!$inquiryAttentionCount) hidden @endif title="Inquiries need your attention">{{ $inquiryAttentionCount > 99 ? '99+' : $inquiryAttentionCount }}</b></a>
         <a @class(['active' => request()->routeIs('affiliates.*')]) href="{{ route('affiliates.index') }}"><span>％</span> Affiliates & sales</a>
         <a @class(['active' => request()->routeIs('profile.*') || request()->routeIs('profiles.*')]) href="{{ route('profile.edit') }}"><span>♙</span> Verification profile @unless(auth()->user()->hasCompleteProfile())<b class="sidebar-notification-badge attention" title="Your verification profile needs attention">!</b>@endunless</a>
         @if (auth()->user()->isClient())

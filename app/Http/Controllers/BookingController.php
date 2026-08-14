@@ -85,6 +85,17 @@ class BookingController extends Controller
                 ]);
             }
 
+            $requestedEnd = ! empty($validated['end_at']) ? Carbon::parse($validated['end_at']) : $start->copy();
+            [$start, $requestedEnd] = $unit->standardizeBookingPeriod($start, $requestedEnd);
+
+            if ($start->isPast()) {
+                throw ValidationException::withMessages(['start_at' => 'Choose a check-in date whose host-set arrival time is still in the future.']);
+            }
+
+            if (! empty($validated['end_at']) && $requestedEnd->lte($start)) {
+                throw ValidationException::withMessages(['end_at' => 'Check-out must be on a later date than check-in for this property.']);
+            }
+
             if ($unit->isPackageRental()) {
                 $rentalCoverage = $this->resolveRentalCoverage($unit, $validated['rental_coverage'] ?? null, 'rental_coverage');
                 if (! empty($validated['duration_pricing'])) {
@@ -94,7 +105,7 @@ class BookingController extends Controller
                         ]);
                     }
 
-                    $end = Carbon::parse($validated['end_at']);
+                    $end = $requestedEnd;
                     $packageBreakdown = $this->buildDurationPackageBreakdown($unit, $start, $end, 'package_quantities', $rentalCoverage);
                 } else {
                     $quantities = collect($validated['package_quantities'] ?? [])->map(fn ($quantity) => (int) $quantity)->filter()->all();
@@ -112,7 +123,7 @@ class BookingController extends Controller
                     }
 
                     $packageBreakdown = $this->buildPackageBreakdown($unit, $quantities, 'package_quantities', $rentalCoverage);
-                    $end = $this->packageEnd($start, $packageBreakdown);
+                    $end = $this->packageEnd($unit, $start, $packageBreakdown);
                 }
 
                 $rateQuantity = collect($packageBreakdown)->sum('quantity');
@@ -125,7 +136,7 @@ class BookingController extends Controller
                     ]);
                 }
 
-                $end = Carbon::parse($validated['end_at']);
+                $end = $requestedEnd;
             }
 
             if ($this->hasScheduleConflict($unit, $start, $end)) {
@@ -212,7 +223,14 @@ class BookingController extends Controller
 
             $start = Carbon::parse($validated['change_start_at']);
             $requestedEnd = Carbon::parse($validated['change_end_at']);
+            [$start, $requestedEnd] = $unit->standardizeBookingPeriod($start, $requestedEnd);
             $packageBreakdown = null;
+
+            if ($start->isPast() || $requestedEnd->lte($start)) {
+                throw ValidationException::withMessages([
+                    'change_start_at' => 'Choose valid future dates using this property’s standard check-in and check-out times.',
+                ]);
+            }
 
             if ($unit->isPackageRental()) {
                 $rentalCoverage = $this->resolveRentalCoverage(
@@ -231,7 +249,7 @@ class BookingController extends Controller
                     }
 
                     $packageBreakdown = $this->buildPackageBreakdown($unit, $quantities, 'change_package_quantities', $rentalCoverage);
-                    $end = $this->packageEnd($start, $packageBreakdown);
+                    $end = $this->packageEnd($unit, $start, $packageBreakdown);
                 }
             } else {
                 $end = $requestedEnd;
@@ -444,6 +462,48 @@ class BookingController extends Controller
     {
         $rates = $unit->rates()->where('coverage', $coverage)->get()->keyBy('period');
         $quantities = [];
+
+        if ($unit->category === 'condo') {
+            $cursor = $start->copy()->startOfDay();
+            $departureDate = $end->copy()->startOfDay();
+
+            if ($rates->has('month')) {
+                while ($cursor->copy()->addMonthNoOverflow()->lte($departureDate)) {
+                    $quantities['month'] = ($quantities['month'] ?? 0) + 1;
+                    $cursor->addMonthNoOverflow();
+                }
+            }
+
+            $remainingDays = max(0, (int) $cursor->diffInDays($departureDate));
+
+            if ($rates->has('week')) {
+                $weeks = intdiv($remainingDays, 7);
+                if ($weeks > 0) {
+                    $quantities['week'] = $weeks;
+                    $remainingDays -= $weeks * 7;
+                }
+            }
+
+            if ($remainingDays > 0) {
+                if ($rates->has('day')) {
+                    $quantities['day'] = $remainingDays;
+                } elseif ($rates->has('12_hours')) {
+                    $quantities['12_hours'] = $remainingDays * 2;
+                } elseif ($rates->has('week')) {
+                    $quantities['week'] = ($quantities['week'] ?? 0) + 1;
+                } elseif ($rates->has('month')) {
+                    $quantities['month'] = ($quantities['month'] ?? 0) + 1;
+                }
+            }
+
+            $orderedQuantities = $rates->keys()
+                ->filter(fn ($period) => ($quantities[$period] ?? 0) > 0)
+                ->mapWithKeys(fn ($period) => [$period => $quantities[$period]])
+                ->all();
+
+            return $this->buildPackageBreakdown($unit, $orderedQuantities, $errorKey, $coverage);
+        }
+
         $cursor = $start->copy();
 
         if ($rates->has('month')) {
@@ -519,13 +579,18 @@ class BookingController extends Controller
         throw ValidationException::withMessages([$errorKey => 'Choose within-city or out-of-town use before booking this car.']);
     }
 
-    private function packageEnd(Carbon $start, array $breakdown): Carbon
+    private function packageEnd(Unit $unit, Carbon $start, array $breakdown): Carbon
     {
         $end = $start->copy();
         $end->addMonthsNoOverflow((int) ($breakdown['month']['quantity'] ?? 0));
         $end->addWeeks((int) ($breakdown['week']['quantity'] ?? 0));
         $end->addDays((int) ($breakdown['day']['quantity'] ?? 0));
         $end->addHours(12 * (int) ($breakdown['12_hours']['quantity'] ?? 0));
+
+        if ($unit->category === 'condo') {
+            [$checkOutHour, $checkOutMinute] = array_map('intval', explode(':', $unit->condoCheckOutTime()));
+            $end->setTime($checkOutHour, $checkOutMinute);
+        }
 
         return $end;
     }

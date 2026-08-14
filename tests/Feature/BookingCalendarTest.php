@@ -240,6 +240,61 @@ class BookingCalendarTest extends TestCase
         $this->actingAs($client)->post(route('units.store'), $payload)->assertForbidden();
     }
 
+    public function test_condo_inquiries_and_bookings_use_the_hosts_fixed_check_in_and_check_out_times(): void
+    {
+        $host = User::factory()->host()->create();
+        $client = User::factory()->create();
+        $unit = $this->createUnit($host, [
+            'name' => 'Fixed Schedule Condo',
+            'kind' => 'unit',
+            'category' => 'condo',
+            'property_details' => [
+                'type' => 'condo',
+                'bedrooms' => 1,
+                'bathrooms' => 1,
+                'check_in_time' => '14:00',
+                'check_out_time' => '12:00',
+            ],
+            'price' => 2500,
+            'pricing_unit' => 'day',
+        ]);
+        $unit->rates()->create(['period' => 'day', 'price' => 2500]);
+        $requestedStart = now()->addDays(5)->setTime(9, 15)->startOfMinute();
+        $requestedEnd = $requestedStart->copy()->addDays(3)->setTime(18, 45);
+
+        $this->actingAs($client)->post(route('inquiries.store'), [
+            'unit_id' => $unit->id,
+            'desired_start_at' => $requestedStart->toDateTimeString(),
+            'desired_end_at' => $requestedEnd->toDateTimeString(),
+            'party_size' => 1,
+            'initial_message' => 'I would like to reserve this condo for three nights.',
+        ])->assertRedirect();
+
+        $inquiry = Inquiry::firstOrFail();
+        $this->assertSame('14:00', $inquiry->desired_start_at->format('H:i'));
+        $this->assertSame('12:00', $inquiry->desired_end_at->format('H:i'));
+
+        $this->actingAs($client)->post(route('bookings.store'), [
+            'unit_id' => $unit->id,
+            'inquiry_id' => $inquiry->id,
+            'start_at' => $requestedStart->toDateTimeString(),
+            'end_at' => $requestedEnd->toDateTimeString(),
+            'duration_pricing' => 1,
+            'party_size' => 1,
+        ])->assertRedirect();
+
+        $booking = Booking::firstOrFail();
+        $this->assertSame('14:00', $booking->start_at->format('H:i'));
+        $this->assertSame('12:00', $booking->end_at->format('H:i'));
+        $this->assertSame(3, $booking->rate_quantity);
+        $this->assertSame('7500.00', $booking->total_amount);
+
+        $this->actingAs($client)->get(route('bookings.show', $booking))
+            ->assertOk()
+            ->assertSee('Host-set check-in: 2:00 PM')
+            ->assertSee('Host-set check-out: 12:00 PM');
+    }
+
     public function test_service_listing_categories_change_and_other_can_add_a_custom_category(): void
     {
         Storage::fake('public');
@@ -647,7 +702,9 @@ class BookingCalendarTest extends TestCase
         ])->assertRedirect();
 
         $booking = Booking::firstOrFail();
-        $this->assertTrue($booking->end_at->equalTo($start->copy()->addMonthNoOverflow()->addWeeks(2)));
+        $this->assertSame('14:00', $booking->start_at->format('H:i'));
+        $this->assertSame('12:00', $booking->end_at->format('H:i'));
+        $this->assertTrue($booking->end_at->isSameDay($start->copy()->addMonthNoOverflow()->addWeeks(2)));
         $this->assertSame('mixed', $booking->rate_period);
         $this->assertSame(3, $booking->rate_quantity);
         $this->assertSame('73000.00', $booking->total_amount);
@@ -1090,8 +1147,10 @@ class BookingCalendarTest extends TestCase
         $booking->refresh();
         $this->assertSame(4, $booking->rate_quantity);
         $this->assertSame('10000.00', $booking->total_amount);
-        $this->assertTrue($booking->start_at->equalTo($requestedStart));
-        $this->assertTrue($booking->end_at->equalTo($requestedEnd));
+        $this->assertTrue($booking->start_at->isSameDay($requestedStart));
+        $this->assertSame('14:00', $booking->start_at->format('H:i'));
+        $this->assertTrue($booking->end_at->isSameDay($requestedEnd));
+        $this->assertSame('12:00', $booking->end_at->format('H:i'));
         $this->actingAs($client)->get(route('bookings.show', $booking))
             ->assertOk()
             ->assertSee('4 × 1 day')

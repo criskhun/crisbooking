@@ -58,6 +58,7 @@
                         <div><dt>Type</dt><dd>{{ str($unit->kind)->title() }}</dd></div>
                         <div><dt>Capacity</dt><dd>{{ $unit->capacity ? $unit->capacity.' '.Str::plural('person', $unit->capacity) : 'Ask the host' }}</dd></div>
                         <div><dt>Status</dt><dd>Accepting inquiries</dd></div>
+                        @if($unit->category === 'condo')<div><dt>Check-in</dt><dd>{{ \Carbon\Carbon::createFromFormat('H:i', $unit->condoCheckInTime())->format('g:i A') }}</dd></div><div><dt>Check-out</dt><dd>{{ \Carbon\Carbon::createFromFormat('H:i', $unit->condoCheckOutTime())->format('g:i A') }}</dd></div>@endif
                     </dl>
                 </section>
 
@@ -79,8 +80,8 @@
                         @csrf
                         <input type="hidden" name="unit_id" value="{{ $unit->id }}">
                         @if($referralCode)<input type="hidden" name="referral_code" value="{{ $referralCode }}">@endif
-                        <div class="field-group"><label for="desired_start_at">Start</label><input id="desired_start_at" name="desired_start_at" type="datetime-local" min="{{ now()->addMinute()->format('Y-m-d\TH:i') }}" value="{{ old('desired_start_at') }}" required></div>
-                        <div class="field-group"><label for="desired_end_at">End or return</label><input id="desired_end_at" name="desired_end_at" type="datetime-local" min="{{ now()->addMinutes(2)->format('Y-m-d\TH:i') }}" value="{{ old('desired_end_at') }}" required></div>
+                        <div class="field-group"><label for="desired_start_at">{{ $unit->category === 'condo' ? 'Check-in date' : 'Start' }}</label><input id="desired_start_at" name="desired_start_at" type="datetime-local" min="{{ now()->addMinute()->format('Y-m-d\TH:i') }}" value="{{ old('desired_start_at') }}" @if($unit->category === 'condo') data-fixed-booking-time="{{ $unit->condoCheckInTime() }}" @endif required>@if($unit->category === 'condo')<small class="field-help">Fixed check-in time: {{ \Carbon\Carbon::createFromFormat('H:i', $unit->condoCheckInTime())->format('g:i A') }}</small>@endif</div>
+                        <div class="field-group"><label for="desired_end_at">{{ $unit->category === 'condo' ? 'Check-out date' : 'End or return' }}</label><input id="desired_end_at" name="desired_end_at" type="datetime-local" min="{{ now()->addMinutes(2)->format('Y-m-d\TH:i') }}" value="{{ old('desired_end_at') }}" @if($unit->category === 'condo') data-fixed-booking-time="{{ $unit->condoCheckOutTime() }}" @endif required>@if($unit->category === 'condo')<small class="field-help">Fixed check-out time: {{ \Carbon\Carbon::createFromFormat('H:i', $unit->condoCheckOutTime())->format('g:i A') }}</small>@endif</div>
                         <div class="field-group"><label for="party_size">People</label><input id="party_size" name="party_size" type="number" min="1" max="{{ $unit->capacity ?: 10000 }}" value="{{ old('party_size', 1) }}" required></div>
                         <div class="field-group"><label for="initial_message">Message to {{ $unit->host->name }}</label><textarea id="initial_message" name="initial_message" rows="4" minlength="10" maxlength="2000" required>{{ old('initial_message', 'Hi! I am interested in this listing. Is it available for my selected schedule?') }}</textarea></div>
                         <button class="button button-primary public-inquiry-action" type="submit">Start inquiry</button>

@@ -14,6 +14,7 @@ class NotificationController extends Controller
 
         return response()->json([
             'unread_count' => $request->user()->appNotifications()->whereNull('read_at')->count(),
+            'inquiry_attention_count' => $request->user()->inquiryAttentionCount(),
             'notifications' => $notifications->map(fn (UserNotification $notification) => $this->payload($notification)),
         ]);
     }

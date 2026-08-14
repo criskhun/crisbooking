@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -104,6 +105,40 @@ class Unit extends Model
     public function primaryImagePath(): ?string
     {
         return $this->images->first()?->path ?? $this->photo_path;
+    }
+
+    public function condoCheckInTime(): string
+    {
+        $time = (string) ($this->property_details['check_in_time'] ?? '14:00');
+
+        return preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $time) ? $time : '14:00';
+    }
+
+    public function condoCheckOutTime(): string
+    {
+        $time = (string) ($this->property_details['check_out_time'] ?? '12:00');
+
+        return preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $time) ? $time : '12:00';
+    }
+
+    /**
+     * Apply the host's fixed property arrival and departure times.
+     *
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    public function standardizeBookingPeriod(Carbon $start, Carbon $end): array
+    {
+        if ($this->category !== 'condo') {
+            return [$start, $end];
+        }
+
+        [$checkInHour, $checkInMinute] = array_map('intval', explode(':', $this->condoCheckInTime()));
+        [$checkOutHour, $checkOutMinute] = array_map('intval', explode(':', $this->condoCheckOutTime()));
+
+        return [
+            $start->copy()->setTime($checkInHour, $checkInMinute),
+            $end->copy()->setTime($checkOutHour, $checkOutMinute),
+        ];
     }
 
     public function scopeAvailableBetween(Builder $query, mixed $start, mixed $end): Builder

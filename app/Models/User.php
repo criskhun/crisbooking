@@ -119,4 +119,16 @@ class User extends Authenticatable implements MustVerifyEmailContract
     {
         return $this->role === 'client';
     }
+
+    public function inquiryAttentionCount(): int
+    {
+        return Inquiry::query()
+            ->when(! $this->is_admin, fn ($query) => $query->where(function ($participants) {
+                $participants->where('client_id', $this->id)->orWhere('host_id', $this->id);
+            }))
+            ->whereHas('messages', fn ($messages) => $messages
+                ->where('sender_id', '!=', $this->id)
+                ->whereNull('read_at'))
+            ->count();
+    }
 }

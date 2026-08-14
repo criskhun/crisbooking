@@ -48,6 +48,12 @@ class WorkspaceIntegrationTest extends TestCase
         $start = now()->addDays(4)->startOfHour();
         $inquiry = $this->inquiry($unit, $client, $start);
 
+        $this->actingAs($client)->get(route('inquiries.show', $inquiry))
+            ->assertOk()
+            ->assertSeeInOrder(['Standard listing price', '₱1,000.00 / session', 'Request price negotiation'])
+            ->assertSee('data-live-inquiry-context', false)
+            ->assertDontSee('<details class="price-proposal-form" open', false);
+
         $this->actingAs($client)->post(route('inquiries.price-proposals.store', $inquiry), [
             'amount' => 750,
             'note' => 'Would you accept this price for the complete session?',

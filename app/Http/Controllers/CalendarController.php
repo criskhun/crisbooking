@@ -63,8 +63,8 @@ class CalendarController extends Controller
                     ->where('is_active', true)
                     ->whereHas('host', fn ($hosts) => $hosts->whereNotNull('profile_completed_at'))
                     ->where(function ($bookable) {
-                    $bookable->whereNotIn('category', ['car', 'condo'])
-                        ->orWhereHas('rates');
+                        $bookable->whereNotIn('category', ['car', 'condo'])
+                            ->orWhereHas('rates');
                     }),
                 fn ($query) => $query->when(! $user->is_admin, fn ($owned) => $owned->where('host_id', $user->id))
             )
@@ -121,7 +121,7 @@ class CalendarController extends Controller
                 ->where(function ($query) use ($partySize) {
                     $query->whereNull('capacity')->orWhere('capacity', '>=', $partySize);
                 })
-                ->availableBetween($searchStart, $searchEnd)
+                ->when($category !== 'condo', fn ($query) => $query->availableBetween($searchStart, $searchEnd))
                 ->when(($validated['location'] ?? null) && ! $hasRadiusSearch, fn ($query) => $query->where('location', 'like', '%'.$validated['location'].'%'))
                 ->when($validated['amenity'] ?? null, fn ($query, $amenity) => $query->whereJsonContains('property_details->amenities', $amenity));
 
@@ -132,6 +132,18 @@ class CalendarController extends Controller
             };
 
             $matchingUnits = $matchingUnitsQuery->get();
+
+            if ($category === 'condo') {
+                $matchingUnits = $matchingUnits->filter(function (Unit $unit) use ($searchStart, $searchEnd) {
+                    [$arrival, $departure] = $unit->standardizeBookingPeriod($searchStart, $searchEnd);
+
+                    return $departure->gt($arrival)
+                        && $unit->bookings()->blocking()
+                            ->where('start_at', '<', $departure)
+                            ->where('end_at', '>', $arrival)
+                            ->doesntExist();
+                })->values();
+            }
 
             if ($hasRadiusSearch) {
                 $matchingUnits = $matchingUnits
@@ -151,6 +163,9 @@ class CalendarController extends Controller
         }
 
         $selectedUnit = $matchingUnits->firstWhere('id', (int) ($validated['selected_unit'] ?? 0));
+        [$selectedBookingStart, $selectedBookingEnd] = $selectedUnit && $searchStart && $searchEnd
+            ? $selectedUnit->standardizeBookingPeriod($searchStart, $searchEnd)
+            : [$searchStart, $searchEnd];
         $selectedInquiry = $selectedUnit && $bookingMode
             ? $user->clientInquiries()->where('unit_id', $selectedUnit->id)->whereDoesntHave('booking')->where('status', 'open')->latest()->first()
             : null;
@@ -201,6 +216,8 @@ class CalendarController extends Controller
             'matchingUnits' => $matchingUnits,
             'matchingMapUnits' => $matchingMapUnits,
             'selectedUnit' => $selectedUnit,
+            'selectedBookingStart' => $selectedBookingStart,
+            'selectedBookingEnd' => $selectedBookingEnd,
             'selectedInquiry' => $selectedInquiry,
             'clientBookings' => $clientBookings,
             'locations' => $locations,

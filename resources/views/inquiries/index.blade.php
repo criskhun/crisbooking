@@ -10,8 +10,8 @@
             <header class="dashboard-header"><div><span class="form-kicker">Conversations</span><h1>Inquiries & messages</h1></div>@include('partials.user-badge')</header>
             <section class="inquiry-list-section">
                 @if (session('status'))<div class="flash-message account-alert">{{ session('status') }}</div>@endif
-                <div class="inquiry-list-heading"><div><span class="eyebrow">Before booking</span><h2>Talk through the details first</h2><p>Every booking starts with an inquiry so clients and hosts can validate each other and agree on the plan.</p></div><span>{{ $inquiries->count() }}</span></div>
-                <div class="inquiry-list">
+                <div class="inquiry-list-heading"><div><span class="eyebrow">Before booking</span><h2>Talk through the details first</h2><p>Every booking starts with an inquiry so clients and hosts can validate each other and agree on the plan.</p></div><span data-inquiry-list-count>{{ $inquiries->count() }}</span></div>
+                <div class="inquiry-list" data-live-inquiry-list>
                     @forelse ($inquiries as $inquiry)
                         @php $partner = auth()->id() === $inquiry->client_id ? $inquiry->host : $inquiry->client; $latest = $inquiry->messages->first(); @endphp
                         <a href="{{ route('inquiries.show', $inquiry) }}" class="inquiry-row">

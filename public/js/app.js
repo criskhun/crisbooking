@@ -785,6 +785,15 @@
             }
         });
 
+        document.querySelectorAll('[data-fixed-booking-time]').forEach((input) => {
+            const applyFixedTime = () => {
+                const date = input.value.slice(0, 10);
+                if (date && input.dataset.fixedBookingTime) input.value = `${date}T${input.dataset.fixedBookingTime}`;
+            };
+            input.addEventListener('change', applyFixedTime);
+            applyFixedTime();
+        });
+
         const realtimeChat = document.querySelector('[data-realtime-chat]');
 
         if (realtimeChat) {
@@ -1010,6 +1019,11 @@
             };
 
             const render = (data) => {
+                document.querySelectorAll('[data-inquiry-attention-count]').forEach((badge) => {
+                    const inquiryCount = Number(data.inquiry_attention_count) || 0;
+                    badge.textContent = inquiryCount > 99 ? '99+' : String(inquiryCount);
+                    badge.hidden = inquiryCount < 1;
+                });
                 if (!list || !empty || !count) return;
                 list.replaceChildren();
                 const notifications = data.notifications || [];
@@ -1125,6 +1139,52 @@
             refresh();
             syncPushState().catch(() => {});
             setInterval(refresh, 8000);
+        }
+
+        const liveInquiryList = document.querySelector('[data-live-inquiry-list]');
+
+        if (liveInquiryList) {
+            let refreshingInquiries = false;
+            const refreshInquiryList = async () => {
+                if (refreshingInquiries || document.hidden) return;
+                refreshingInquiries = true;
+                try {
+                    const response = await fetch(window.location.href, {headers: {'Accept': 'text/html', 'X-Requested-With': 'XMLHttpRequest'}});
+                    if (!response.ok) return;
+                    const parsed = new DOMParser().parseFromString(await response.text(), 'text/html');
+                    const nextList = parsed.querySelector('[data-live-inquiry-list]');
+                    const nextCount = parsed.querySelector('[data-inquiry-list-count]');
+                    if (nextList) liveInquiryList.replaceChildren(...Array.from(nextList.childNodes));
+                    if (nextCount) document.querySelector('[data-inquiry-list-count]').textContent = nextCount.textContent;
+                } catch (error) {
+                } finally {
+                    refreshingInquiries = false;
+                }
+            };
+            setInterval(refreshInquiryList, 5000);
+            document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshInquiryList(); });
+        }
+
+        const liveInquiryContext = document.querySelector('[data-live-inquiry-context]');
+
+        if (liveInquiryContext) {
+            let refreshingInquiryContext = false;
+            const refreshInquiryContext = async () => {
+                if (refreshingInquiryContext || document.hidden || liveInquiryContext.contains(document.activeElement)) return;
+                refreshingInquiryContext = true;
+                try {
+                    const response = await fetch(window.location.href, {headers: {'Accept': 'text/html', 'X-Requested-With': 'XMLHttpRequest'}});
+                    if (!response.ok) return;
+                    const parsed = new DOMParser().parseFromString(await response.text(), 'text/html');
+                    const nextContext = parsed.querySelector('[data-live-inquiry-context]');
+                    if (nextContext) liveInquiryContext.innerHTML = nextContext.innerHTML;
+                } catch (error) {
+                } finally {
+                    refreshingInquiryContext = false;
+                }
+            };
+            setInterval(refreshInquiryContext, 5000);
+            document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshInquiryContext(); });
         }
 
         const verificationForm = document.querySelector('[data-verification-form]');

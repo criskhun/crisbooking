@@ -88,6 +88,34 @@ class NotificationTest extends TestCase
         $this->assertNotNull($notification->fresh()->read_at);
     }
 
+    public function test_unread_inquiry_messages_appear_in_the_sidebar_and_live_notification_payload(): void
+    {
+        $host = User::factory()->host()->create();
+        $customer = User::factory()->create();
+        $inquiry = $this->inquiry($this->unit($host), $customer, now()->addDays(2));
+
+        $this->actingAs($host)->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('data-inquiry-attention-count', false)
+            ->assertSee('Inquiries need your attention');
+
+        $this->actingAs($host)->getJson(route('notifications.index'))
+            ->assertOk()
+            ->assertJsonPath('inquiry_attention_count', 1);
+
+        $this->actingAs($host)->get(route('inquiries.index'))
+            ->assertOk()
+            ->assertSee('data-live-inquiry-list', false);
+
+        $this->actingAs($host)->get(route('inquiries.show', $inquiry))
+            ->assertOk()
+            ->assertSee('data-live-inquiry-context', false);
+
+        $this->actingAs($host)->getJson(route('notifications.index'))
+            ->assertOk()
+            ->assertJsonPath('inquiry_attention_count', 0);
+    }
+
     public function test_user_can_register_a_device_push_subscription_and_header_has_bell(): void
     {
         config()->set('services.webpush.public_key', 'test-public-key');

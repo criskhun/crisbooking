@@ -123,7 +123,8 @@
         <section class="booking-selection-card" id="booking-selection">
             <div class="selection-summary">
                 <span class="eyebrow">Your selection</span><h3>{{ $selectedUnit->name }}</h3><p>{{ $selectedUnit->description ?: 'Review the booking details and send your request to the host.' }}</p>
-                <div class="selection-facts"><span>⌖ {{ $selectedUnit->location ?: 'Location arranged with host' }}</span><span>♙ {{ $partySize }} {{ Str::plural('person', $partySize) }}</span><span>◷ {{ $searchStart->format('M j, g:i A') }}</span></div>
+                <div class="selection-facts"><span>⌖ {{ $selectedUnit->location ?: 'Location arranged with host' }}</span><span>♙ {{ $partySize }} {{ Str::plural('person', $partySize) }}</span><span>◷ {{ $selectedBookingStart->format('M j, g:i A') }}</span></div>
+                @if($selectedUnit->category === 'condo')<p class="fixed-property-schedule">Standard stay: check in {{ $selectedBookingStart->format('g:i A') }} · check out {{ $selectedBookingEnd->format('g:i A') }}. These host-set times apply automatically.</p>@endif
                 <details class="client-unit-rules"><summary>{{ $selectedUnit->category === 'car' ? 'Car rules' : ($selectedUnit->category === 'condo' ? 'House rules' : 'Service rules') }} <span>Expand</span></summary><p>{{ $selectedUnit->rules ?: 'No additional rules were provided for this listing.' }}</p><small>By submitting a request, you agree to follow the host’s rules.</small></details>
                 @if ($additionalFees)<details class="client-unit-rules"><summary>{{ $selectedUnit->category === 'car' ? 'Required car charges' : 'Amenity access & fees' }} <span>Expand</span></summary><p>{{ $additionalFees }}</p></details>@endif
             </div>
@@ -133,8 +134,8 @@
                 <form method="POST" action="{{ route('inquiries.store') }}" class="booking-form selection-booking-form inquiry-start-form">
                     @csrf
                     <input type="hidden" name="unit_id" value="{{ $selectedUnit->id }}">
-                    <input type="hidden" name="desired_start_at" value="{{ $searchStart->format('Y-m-d\TH:i') }}">
-                    <input type="hidden" name="desired_end_at" value="{{ $searchEnd->format('Y-m-d\TH:i') }}">
+                    <input type="hidden" name="desired_start_at" value="{{ $selectedBookingStart->format('Y-m-d\TH:i') }}">
+                    <input type="hidden" name="desired_end_at" value="{{ $selectedBookingEnd->format('Y-m-d\TH:i') }}">
                     <input type="hidden" name="party_size" value="{{ $partySize }}">
                     <div class="inquiry-required-heading"><span>Required first</span><h3>Inquire with the host</h3><p>Introduce yourself, confirm availability, and ask any questions before requesting a booking.</p></div>
                     <div class="field-group"><label for="initial_message">Message to {{ $selectedUnit->host->name }}</label><textarea id="initial_message" name="initial_message" rows="5" minlength="10" maxlength="2000" placeholder="Hi! I’m interested in this listing for the selected dates. Is it available, and is there anything I should know?" required>{{ old('initial_message') }}</textarea>@error('initial_message')<p class="error-text">{{ $message }}</p>@enderror</div>
@@ -147,8 +148,8 @@
                 <input type="hidden" name="inquiry_id" value="{{ $selectedInquiry->id }}">
                 <input type="hidden" name="duration_pricing" value="1">
                 <select id="unit_id" name="unit_id" hidden required><option value="{{ $selectedUnit->id }}" data-package-rental="{{ $selectedUnit->isPackageRental() ? '1' : '0' }}" selected>{{ $selectedUnit->name }}</option></select>
-                <input id="start_at" name="start_at" type="hidden" value="{{ old('start_at', $searchStart->format('Y-m-d\TH:i')) }}">
-                <div data-booking-end-field hidden><input id="end_at" name="end_at" type="hidden" value="{{ old('end_at', $searchEnd->format('Y-m-d\TH:i')) }}"></div>
+                <input id="start_at" name="start_at" type="hidden" value="{{ old('start_at', $selectedBookingStart->format('Y-m-d\TH:i')) }}">
+                <div data-booking-end-field hidden><input id="end_at" name="end_at" type="hidden" value="{{ old('end_at', $selectedBookingEnd->format('Y-m-d\TH:i')) }}"></div>
                 <input name="party_size" type="hidden" value="{{ $partySize }}">
                 @if ($selectedInquiry->agreed_price !== null)<div class="negotiated-booking-price"><span>✓</span><div><small>Accepted negotiated subtotal</small><strong>₱{{ number_format($selectedInquiry->agreed_price, 2) }}</strong><p>This replaces the standard rental or service subtotal. Required listing charges are added separately.</p></div></div>@endif
                 @if ($selectedUnit->isPackageRental())

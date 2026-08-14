@@ -7,6 +7,7 @@ use App\Models\Inquiry;
 use App\Models\InquiryMessage;
 use App\Models\Unit;
 use App\Services\AppNotificationService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -63,6 +64,19 @@ class InquiryController extends Controller
             throw ValidationException::withMessages(['party_size' => "This listing can accommodate up to {$unit->capacity} people."]);
         }
 
+        [$desiredStart, $desiredEnd] = $unit->standardizeBookingPeriod(
+            Carbon::parse($validated['desired_start_at']),
+            Carbon::parse($validated['desired_end_at']),
+        );
+
+        if ($desiredStart->isPast()) {
+            throw ValidationException::withMessages(['desired_start_at' => 'Choose a check-in date whose host-set arrival time is still in the future.']);
+        }
+
+        if ($desiredEnd->lte($desiredStart)) {
+            throw ValidationException::withMessages(['desired_end_at' => 'Check-out must be on a later date than check-in for this property.']);
+        }
+
         $affiliate = filled($validated['referral_code'] ?? null)
             ? AffiliatePartnership::query()
                 ->where('referral_code', $validated['referral_code'])
@@ -71,13 +85,13 @@ class InquiryController extends Controller
                 ->first()
             : null;
 
-        $inquiry = DB::transaction(function () use ($request, $validated, $unit, $affiliate) {
+        $inquiry = DB::transaction(function () use ($request, $validated, $unit, $affiliate, $desiredStart, $desiredEnd) {
             $inquiry = Inquiry::create([
                 'unit_id' => $unit->id,
                 'client_id' => $request->user()->id,
                 'host_id' => $unit->host_id,
-                'desired_start_at' => $validated['desired_start_at'],
-                'desired_end_at' => $validated['desired_end_at'],
+                'desired_start_at' => $desiredStart,
+                'desired_end_at' => $desiredEnd,
                 'party_size' => $validated['party_size'],
                 'status' => 'open',
                 'affiliate_partnership_id' => $affiliate?->id,
