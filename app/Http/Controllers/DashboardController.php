@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Booking;
 use App\Models\Unit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -47,7 +48,7 @@ class DashboardController extends Controller
 
         $marketingUnits = $user->isClient()
             ? Unit::query()
-                ->with(['host:id,name', 'rates', 'images'])
+                ->with(['host.hostApplication', 'rates', 'images'])
                 ->where('is_active', true)
                 ->whereHas('host', fn ($hosts) => $hosts->whereNotNull('profile_completed_at'))
                 ->where(function ($bookable) {
@@ -68,7 +69,15 @@ class DashboardController extends Controller
                 'longitude' => (float) $unit->longitude,
                 'location' => $unit->location,
                 'category' => $unit->category,
-                'url' => route('calendar.index', ['category' => $unit->category]),
+                'capacity' => $unit->capacity,
+                'bedrooms' => $unit->property_details['bedrooms'] ?? null,
+                'starting_price' => (float) ($unit->isPackageRental() ? $unit->rates->min('price') : $unit->price),
+                'host_name' => $unit->host->name,
+                'business_name' => $unit->host->publicHostName(),
+                'host_avatar_url' => $unit->host->avatarUrl(),
+                'image_url' => $unit->primaryImagePath() ? Storage::disk('public')->url($unit->primaryImagePath()) : null,
+                'url' => route('listings.show', $unit),
+                'host_url' => route('hosts.show', $unit->host),
             ])
             ->values();
 

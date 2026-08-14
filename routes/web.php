@@ -14,9 +14,11 @@ use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\CalendarIntegrationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HostApplicationController;
+use App\Http\Controllers\HostStorefrontController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\InquiryController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ListingSearchController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProfileLocationController;
 use App\Http\Controllers\PriceProposalController;
@@ -32,6 +34,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', HomeController::class)->name('home');
 
 Route::get('/listings/{unit}', [PublicListingController::class, 'show'])->name('listings.show');
+Route::get('/hosts/{host}', HostStorefrontController::class)->name('hosts.show');
 Route::get('/calendar/feed/{user}/{token}.ics', [CalendarIntegrationController::class, 'feed'])->name('calendar.feed');
 
 Route::middleware('guest')->group(function () {
@@ -75,6 +78,7 @@ Route::middleware(['auth', 'active'])->group(function () {
 
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('/search/listings', ListingSearchController::class)->name('listing-search.index');
     Route::patch('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'read'])->name('notifications.read');
     Route::post('/push-subscriptions', [NotificationController::class, 'subscribe'])->name('push-subscriptions.store');
@@ -96,6 +100,9 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     Route::patch('/bookings/{booking}/cancel', [BookingController::class, 'cancel'])->name('bookings.cancel');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::post('/profile/images', [ProfileController::class, 'storeImage'])->name('profile-images.store');
+    Route::patch('/profile/images/{profileImage}', [ProfileController::class, 'selectImage'])->name('profile-images.select');
+    Route::delete('/profile/images/{profileImage}', [ProfileController::class, 'destroyImage'])->name('profile-images.destroy');
     Route::get('/profile/locations/provinces', [ProfileLocationController::class, 'provinces'])->name('profile.locations.provinces');
     Route::get('/profile/locations/cities', [ProfileLocationController::class, 'cities'])->name('profile.locations.cities');
     Route::get('/profile/locations/barangays', [ProfileLocationController::class, 'barangays'])->name('profile.locations.barangays');

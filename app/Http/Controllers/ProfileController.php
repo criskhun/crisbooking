@@ -2,13 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AffiliatePartnership;
 use App\Models\Booking;
 use App\Models\Inquiry;
+use App\Models\ProfileImage;
 use App\Models\User;
 use App\Support\PhoneNumber;
 use App\Support\ProfileOptions;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -18,11 +21,71 @@ class ProfileController extends Controller
 {
     public function edit(Request $request): View
     {
+        $request->user()->load('profileImages');
+
         return view('profiles.edit', [
             'profileUser' => $request->user(),
             'countries' => ProfileOptions::countries(),
             'nationalities' => ProfileOptions::nationalities(),
         ]);
+    }
+
+    public function storeImage(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        if ($user->profileImages()->count() >= 20) {
+            return back()->withErrors(['profile_image' => 'You can keep up to 20 profile photos. Delete one of your old photos before uploading another.']);
+        }
+
+        $validated = $request->validate([
+            'profile_image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+        ]);
+        $path = $validated['profile_image']->store('profile-images/'.$user->id, 'public');
+
+        try {
+            DB::transaction(function () use ($user, $path) {
+                $user->profileImages()->create(['path' => $path]);
+                $user->update(['profile_image_path' => $path]);
+            });
+        } catch (\Throwable $exception) {
+            Storage::disk('public')->delete($path);
+            throw $exception;
+        }
+
+        return back()->with('status', 'Your new profile photo is now used throughout Davao Rent Zone.');
+    }
+
+    public function selectImage(Request $request, ProfileImage $profileImage): RedirectResponse
+    {
+        abort_unless($profileImage->user_id === $request->user()->id, 403);
+        abort_unless(Storage::disk('public')->exists($profileImage->path), 404);
+
+        $request->user()->update(['profile_image_path' => $profileImage->path]);
+
+        return back()->with('status', 'Your selected profile photo is now active.');
+    }
+
+    public function destroyImage(Request $request, ProfileImage $profileImage): RedirectResponse
+    {
+        abort_unless($profileImage->user_id === $request->user()->id, 403);
+        $user = $request->user();
+        $wasCurrent = $user->profile_image_path === $profileImage->path;
+        $replacement = $wasCurrent
+            ? $user->profileImages()->whereKeyNot($profileImage->id)->first()
+            : null;
+
+        DB::transaction(function () use ($user, $profileImage, $wasCurrent, $replacement) {
+            if ($wasCurrent) {
+                $user->update(['profile_image_path' => $replacement?->path]);
+            }
+            $profileImage->delete();
+        });
+        Storage::disk('public')->delete($profileImage->path);
+
+        return back()->with('status', $wasCurrent
+            ? 'The photo was deleted and your next saved photo is now active.'
+            : 'The old profile photo was deleted.');
     }
 
     public function update(Request $request): RedirectResponse
@@ -74,7 +137,7 @@ class ProfileController extends Controller
     {
         abort_unless($this->canView($request->user(), $profile), 403);
 
-        $profile->load(['reviewsReceived' => fn ($query) => $query->with(['reviewer:id,name', 'booking.unit:id,name', 'affiliatePartnership:id'])->latest()]);
+        $profile->load(['reviewsReceived' => fn ($query) => $query->with(['reviewer:id,name,profile_image_path,google_avatar,facebook_avatar', 'booking.unit:id,name', 'affiliatePartnership:id'])->latest()]);
         $reviewSummaries = $profile->reviewsReceived->groupBy('reviewee_context')->map(fn ($reviews) => [
             'count' => $reviews->count(),
             'average' => round((float) $reviews->avg('rating'), 1),
@@ -137,7 +200,7 @@ class ProfileController extends Controller
             return true;
         }
 
-        if (\App\Models\AffiliatePartnership::query()->where(function ($query) use ($viewer, $profile) {
+        if (AffiliatePartnership::query()->where(function ($query) use ($viewer, $profile) {
             $query->where('marketer_id', $viewer->id)->where('host_id', $profile->id);
         })->orWhere(function ($query) use ($viewer, $profile) {
             $query->where('host_id', $viewer->id)->where('marketer_id', $profile->id);

@@ -57,17 +57,12 @@
                         <tbody>
                             @forelse ($accounts as $account)
                                 @php
-                                    $avatar = $account->google_avatar ?: $account->facebook_avatar;
                                     $method = $account->google_id ? 'Google' : ($account->facebook_id ? 'Facebook' : 'Email');
                                 @endphp
                                 <tr>
                                     <td>
                                         <div class="account-identity">
-                                            @if ($avatar)
-                                                <img src="{{ $avatar }}" alt="" referrerpolicy="no-referrer">
-                                            @else
-                                                <span>{{ strtoupper(substr($account->name, 0, 1)) }}</span>
-                                            @endif
+                                            @include('partials.avatar', ['avatarUser' => $account, 'avatarClass' => 'account-avatar'])
                                             <div>
                                                 <strong>{{ $account->name }}</strong>
                                                 <small>{{ $account->email }}</small>

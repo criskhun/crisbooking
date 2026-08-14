@@ -44,6 +44,14 @@
         </div>
     </section>
 
+    <section class="booking-step-card booking-map-explorer" data-overview-nearby-map data-default-radius-km="500" data-map-id="{{ config('services.google.maps_map_id') }}" data-guide-feature="booking-map">
+        <div class="step-heading"><span>⌖</span><div><h3>Explore bookable listings on the map</h3><p>Click a pin to see the listing photo, host or business name, capacity, starting price, and links to their storefront.</p></div><button class="map-action-button" type="button" data-map-use-location>Show near me</button></div>
+        <div class="google-map-canvas booking-discovery-map" data-map-canvas aria-label="Map of available rentals and services"></div>
+        @unless(config('services.google.maps_api_key'))<div class="map-setup-note"><strong>Google Map preview is not configured yet</strong><span>Add <code>GOOGLE_MAPS_API_KEY</code>. Search and listing cards remain available.</span></div>@endunless
+        <small class="map-status" data-map-status aria-live="polite"></small>
+        <script type="application/json" data-map-units>@json($matchingMapUnits)</script>
+    </section>
+
     @if ($category)
         <section class="booking-step-card" id="booking-details">
             <div class="step-heading"><span>Step 2</span><div><h3>Add your booking details</h3><p>We’ll check capacity and availability for your dates.</p></div></div>

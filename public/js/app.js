@@ -1702,6 +1702,171 @@
             cameraRequirementError?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         });
 
+        const profilePhotoInput = document.querySelector('[data-profile-photo-input]');
+        const profilePhotoPreview = document.querySelector('[data-profile-photo-preview]');
+        let profilePhotoPreviewUrl = null;
+        profilePhotoInput?.addEventListener('change', () => {
+            if (profilePhotoPreviewUrl) URL.revokeObjectURL(profilePhotoPreviewUrl);
+            const file = profilePhotoInput.files?.[0];
+            if (!file || !profilePhotoPreview) {
+                if (profilePhotoPreview) profilePhotoPreview.hidden = true;
+                return;
+            }
+            profilePhotoPreviewUrl = URL.createObjectURL(file);
+            profilePhotoPreview.src = profilePhotoPreviewUrl;
+            profilePhotoPreview.hidden = false;
+        });
+
+        const globalSearch = document.querySelector('[data-global-listing-search]');
+        if (globalSearch) {
+            const toggle = globalSearch.querySelector('[data-global-search-toggle]');
+            const panel = globalSearch.querySelector('[data-global-search-panel]');
+            const input = globalSearch.querySelector('[data-global-search-input]');
+            const results = globalSearch.querySelector('[data-global-search-results]');
+            const empty = globalSearch.querySelector('[data-global-search-empty]');
+            let searchTimer = null;
+            let searchSequence = 0;
+
+            const setSearchOpen = (open) => {
+                panel.hidden = !open;
+                toggle.setAttribute('aria-expanded', String(open));
+                if (open) setTimeout(() => input.focus(), 0);
+            };
+            const renderSearchResults = (items, query) => {
+                results.replaceChildren();
+                items.forEach((item) => {
+                    const result = document.createElement('article');
+                    result.className = 'global-search-result';
+                    const photoLink = document.createElement('a');
+                    photoLink.className = 'global-search-result-photo';
+                    photoLink.href = item.url;
+                    if (item.image_url) {
+                        const image = document.createElement('img');
+                        image.src = item.image_url;
+                        image.alt = item.name;
+                        photoLink.append(image);
+                    } else {
+                        const icon = document.createElement('span');
+                        icon.textContent = item.category === 'Car' ? '🚗' : (item.category === 'Condo' ? '🏢' : '◇');
+                        photoLink.append(icon);
+                    }
+                    const copy = document.createElement('div');
+                    const listingLink = document.createElement('a');
+                    listingLink.href = item.url;
+                    listingLink.className = 'global-search-result-name';
+                    listingLink.textContent = item.name;
+                    const meta = document.createElement('small');
+                    meta.textContent = `${item.category} · ${item.location}`;
+                    const hostLink = document.createElement('a');
+                    hostLink.href = item.host_url;
+                    hostLink.className = 'global-search-result-host';
+                    hostLink.textContent = `Host: ${item.business_name || item.host_name}`;
+                    copy.append(listingLink, meta, hostLink);
+                    const price = document.createElement('strong');
+                    price.textContent = `₱${Number(item.price).toLocaleString('en-PH', {minimumFractionDigits: 2})}`;
+                    result.append(photoLink, copy, price);
+                    results.append(result);
+                });
+                empty.hidden = items.length > 0;
+                empty.textContent = items.length ? '' : `No listings found for “${query}”.`;
+            };
+            const search = async () => {
+                const query = input.value.trim();
+                const sequence = ++searchSequence;
+                if (query.length < 2) {
+                    results.replaceChildren();
+                    empty.hidden = false;
+                    empty.textContent = 'Type at least 2 characters to begin.';
+                    return;
+                }
+                empty.hidden = false;
+                empty.textContent = 'Searching listings…';
+                try {
+                    const url = new URL(globalSearch.dataset.searchUrl, window.location.origin);
+                    url.searchParams.set('q', query);
+                    const response = await fetch(url, {headers: {'Accept': 'application/json'}});
+                    if (!response.ok) throw new Error('Search is unavailable.');
+                    const data = await response.json();
+                    if (sequence === searchSequence) renderSearchResults(data.results || [], query);
+                } catch (error) {
+                    if (sequence === searchSequence) {
+                        results.replaceChildren();
+                        empty.hidden = false;
+                        empty.textContent = 'Search could not load. Please try again.';
+                    }
+                }
+            };
+
+            toggle.addEventListener('click', () => setSearchOpen(panel.hidden));
+            input.addEventListener('input', () => {
+                clearTimeout(searchTimer);
+                searchTimer = setTimeout(search, 250);
+            });
+            input.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') setSearchOpen(false);
+            });
+            document.addEventListener('click', (event) => {
+                if (!panel.hidden && !globalSearch.contains(event.target)) setSearchOpen(false);
+            });
+        }
+
+        const pageGuide = document.querySelector('[data-page-guide]');
+        if (pageGuide) {
+            const dialog = pageGuide.querySelector('[data-page-guide-dialog]');
+            const hint = pageGuide.querySelector('[data-guide-demo-hint]');
+            const count = pageGuide.querySelector('[data-guide-demo-count]');
+            const title = pageGuide.querySelector('[data-guide-demo-title]');
+            const copy = pageGuide.querySelector('[data-guide-demo-copy]');
+            let guideSteps = [];
+            let guideIndex = -1;
+            let highlightedGuideTarget = null;
+            try { guideSteps = JSON.parse(pageGuide.querySelector('[data-guide-steps]')?.textContent || '[]'); } catch (error) {}
+
+            const stopGuide = () => {
+                highlightedGuideTarget?.classList.remove('guide-demo-highlight');
+                highlightedGuideTarget = null;
+                guideIndex = -1;
+                hint.hidden = true;
+            };
+            const showGuideStep = (index) => {
+                highlightedGuideTarget?.classList.remove('guide-demo-highlight');
+                let nextIndex = index;
+                let target = null;
+                while (nextIndex < guideSteps.length && !target) {
+                    target = document.querySelector(guideSteps[nextIndex].selector);
+                    if (!target) nextIndex += 1;
+                }
+                if (!target || nextIndex >= guideSteps.length) {
+                    stopGuide();
+                    return;
+                }
+                guideIndex = nextIndex;
+                highlightedGuideTarget = target;
+                target.classList.add('guide-demo-highlight');
+                target.scrollIntoView({behavior: 'smooth', block: 'center'});
+                count.textContent = `Step ${guideIndex + 1} of ${guideSteps.length}`;
+                title.textContent = guideSteps[guideIndex].title;
+                copy.textContent = guideSteps[guideIndex].copy;
+                hint.hidden = false;
+                hint.querySelector('[data-guide-demo-next]').textContent = guideIndex === guideSteps.length - 1 ? 'Done ✓' : 'Next →';
+            };
+
+            pageGuide.querySelector('[data-page-guide-open]')?.addEventListener('click', () => dialog.showModal());
+            pageGuide.querySelectorAll('[data-page-guide-close]').forEach((button) => button.addEventListener('click', () => dialog.close()));
+            pageGuide.querySelectorAll('[data-guide-focus]').forEach((button) => button.addEventListener('click', () => {
+                dialog.close();
+                const index = guideSteps.findIndex((step) => step.selector === button.dataset.guideFocus);
+                showGuideStep(Math.max(0, index));
+            }));
+            pageGuide.querySelector('[data-guide-start]')?.addEventListener('click', () => {
+                dialog.close();
+                showGuideStep(0);
+            });
+            pageGuide.querySelector('[data-guide-demo-next]')?.addEventListener('click', () => showGuideStep(guideIndex + 1));
+            pageGuide.querySelector('[data-guide-demo-stop]')?.addEventListener('click', stopGuide);
+            dialog.addEventListener('cancel', stopGuide);
+        }
+
         const accountType = document.querySelector('[data-host-account-type]');
         const businessFields = document.querySelector('[data-host-business-fields]');
         if (! accountType || ! businessFields) return;

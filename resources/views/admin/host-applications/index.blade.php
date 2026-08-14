@@ -28,7 +28,7 @@
                         <tbody>
                             @forelse($applications as $application)
                                 <tr>
-                                    <td><div class="account-identity"><span>{{ strtoupper(substr($application->user->name, 0, 1)) }}</span><div><strong>{{ $application->user->name }}</strong><small>{{ $application->user->email }}</small></div></div></td>
+                                    <td><div class="account-identity">@include('partials.avatar', ['avatarUser' => $application->user, 'avatarClass' => 'account-avatar'])<div><strong>{{ $application->user->name }}</strong><small>{{ $application->user->email }}</small></div></div></td>
                                     <td><strong>{{ $application->submitted_at?->format('M j, Y') }}</strong><small class="table-subcopy">{{ $application->submitted_at?->diffForHumans() }}</small></td>
                                     <td><strong>{{ str($application->account_type)->title() }}</strong><small class="table-subcopy">{{ str($application->payout_method)->replace('_', ' ')->title() }}</small></td>
                                     <td><span class="verification-badge">{{ $application->user->hasCompleteProfile() ? 'Complete' : 'Incomplete' }}</span><small class="table-subcopy">{{ $application->needsIdentityImages() ? 'Selfies missing' : 'Selfies ready' }}</small></td>

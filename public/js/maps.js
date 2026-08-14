@@ -132,22 +132,60 @@
             marker.addListener('click', () => {
                 const content = document.createElement('div');
                 content.className = 'map-info-card';
+                if (unit.image_url) {
+                    const image = document.createElement('img');
+                    image.src = unit.image_url;
+                    image.alt = `${unit.name} listing photo`;
+                    content.append(image);
+                }
+                const host = document.createElement('div');
+                host.className = 'map-info-host';
+                if (unit.host_avatar_url) {
+                    const avatar = document.createElement('img');
+                    avatar.src = unit.host_avatar_url;
+                    avatar.alt = unit.business_name || unit.host_name || 'Host';
+                    host.append(avatar);
+                }
+                const hostCopy = document.createElement('span');
+                const hostLabel = document.createElement('small');
+                hostLabel.textContent = 'Hosted by';
+                const hostName = document.createElement('b');
+                hostName.textContent = unit.business_name || unit.host_name || 'Verified host';
+                hostCopy.append(hostLabel, hostName);
+                host.append(hostCopy);
+                content.append(host);
                 const name = document.createElement('strong');
                 name.textContent = unit.name;
                 const location = document.createElement('span');
                 location.textContent = unit.location || 'Location pinned by host';
                 content.append(name, location);
+                const facts = document.createElement('small');
+                const factParts = [];
+                if (unit.bedrooms) factParts.push(`${unit.bedrooms} BR`);
+                if (unit.capacity) factParts.push(`Up to ${unit.capacity}`);
+                if (unit.starting_price !== null && unit.starting_price !== undefined) factParts.push(`From ₱${Number(unit.starting_price).toLocaleString('en-PH', {minimumFractionDigits: 2})}`);
+                facts.textContent = factParts.join(' · ');
+                if (factParts.length) content.append(facts);
                 if (unit.distance_km !== null && unit.distance_km !== undefined) {
                     const distance = document.createElement('small');
                     distance.textContent = `${Number(unit.distance_km).toFixed(1)} km from your search center`;
                     content.append(distance);
                 }
+                const actions = document.createElement('div');
+                actions.className = 'map-info-actions';
                 if (unit.url) {
                     const link = document.createElement('a');
                     link.href = unit.url;
-                    link.textContent = 'Check available dates →';
-                    content.append(link);
+                    link.textContent = 'View listing';
+                    actions.append(link);
                 }
+                if (unit.host_url) {
+                    const hostLink = document.createElement('a');
+                    hostLink.href = unit.host_url;
+                    hostLink.textContent = 'All host listings';
+                    actions.append(hostLink);
+                }
+                if (actions.childElementCount) content.append(actions);
                 info.setContent(content);
                 info.open({map, anchor: marker});
             });

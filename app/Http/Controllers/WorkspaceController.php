@@ -12,7 +12,7 @@ class WorkspaceController extends Controller
     {
         abort_unless($request->user()->isHost() || $request->user()->is_admin, 403);
         $bookings = Booking::query()
-            ->with(['client:id,name,email,phone,city,nationality,profile_completed_at', 'unit:id,host_id,name,category'])
+            ->with(['client:id,name,email,phone,city,nationality,profile_completed_at,profile_image_path,google_avatar,facebook_avatar', 'unit:id,host_id,name,category'])
             ->where('status', 'confirmed')
             ->when(! $request->user()->is_admin, fn ($query) => $query->whereHas('unit', fn ($units) => $units->where('host_id', $request->user()->id)))
             ->latest('end_at')

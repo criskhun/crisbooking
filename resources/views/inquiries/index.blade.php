@@ -15,7 +15,7 @@
                     @forelse ($inquiries as $inquiry)
                         @php $partner = auth()->id() === $inquiry->client_id ? $inquiry->host : $inquiry->client; $latest = $inquiry->messages->first(); @endphp
                         <a href="{{ route('inquiries.show', $inquiry) }}" class="inquiry-row">
-                            <span class="inquiry-avatar">{{ strtoupper(substr($partner->name, 0, 1)) }}</span>
+                            @include('partials.avatar', ['avatarUser' => $partner, 'avatarClass' => 'inquiry-avatar'])
                             <div class="inquiry-row-main"><div><strong>{{ $unitName = $inquiry->unit->name }}</strong><span class="inquiry-status status-{{ $inquiry->status }}">{{ str($inquiry->status)->replace('_', ' ')->title() }}</span></div><small>{{ $partner->name }} · {{ $inquiry->desired_start_at->format('M j, Y g:i A') }}</small><p>{{ Str::limit($latest?->body ?: 'No messages yet.', 100) }}</p></div>
                             <div class="inquiry-row-meta">@if ($inquiry->unread_messages_count)<span>{{ $inquiry->unread_messages_count }}</span>@endif<small>{{ $inquiry->updated_at->diffForHumans() }}</small><b>→</b></div>
                         </a>

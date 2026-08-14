@@ -54,7 +54,7 @@
                 <section>
                     <span class="eyebrow">Listing details</span><h2>What this listing offers</h2>
                     <dl class="public-listing-facts">
-                        <div><dt>Hosted by</dt><dd>{{ $unit->host->name }}</dd></div>
+                        <div><dt>Hosted by</dt><dd><a class="public-host-link" href="{{ route('hosts.show', $unit->host) }}">{{ $unit->host->publicHostName() }}</a></dd></div>
                         <div><dt>Type</dt><dd>{{ str($unit->kind)->title() }}</dd></div>
                         <div><dt>Capacity</dt><dd>{{ $unit->capacity ? $unit->capacity.' '.Str::plural('person', $unit->capacity) : 'Ask the host' }}</dd></div>
                         <div><dt>Status</dt><dd>Accepting inquiries</dd></div>
@@ -67,7 +67,7 @@
                 @endif
 
                 @if($unit->rules)<section><span class="eyebrow">Before you book</span><h2>{{ $unit->category === 'condo' ? 'House rules' : ($unit->category === 'car' ? 'Rental rules' : 'Service rules') }}</h2><p>{!! nl2br(e($unit->rules)) !!}</p></section>@endif
-                @if($unit->host->bio)<section><span class="eyebrow">Your host</span><h2>Meet {{ $unit->host->name }}</h2><p>{{ $unit->host->bio }}</p></section>@endif
+                <section class="public-host-preview"><div>@include('partials.avatar', ['avatarUser' => $unit->host, 'avatarClass' => 'public-host-avatar'])<div><span class="eyebrow">Your host</span><h2>{{ $unit->host->publicHostName() }}</h2>@if($unit->host->publicHostName() !== $unit->host->name)<small>Managed by {{ $unit->host->name }}</small>@endif</div></div><p>{{ $unit->host->bio ?: 'View this host’s storefront to see all available rentals and services.' }}</p><a class="button button-ghost" href="{{ route('hosts.show', $unit->host) }}">View all host listings →</a></section>
             </div>
 
             <aside class="public-inquiry-card" id="listing-inquiry">

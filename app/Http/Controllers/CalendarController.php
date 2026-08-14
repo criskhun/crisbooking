@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\Unit;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -56,7 +57,7 @@ class CalendarController extends Controller
         $scheduleCategories = $scheduleUnits->pluck('category')->filter()->unique()->sort()->values();
 
         $units = Unit::query()
-            ->with(['host:id,name', 'rates', 'images'])
+            ->with(['host.hostApplication', 'rates', 'images'])
             ->when(
                 $bookingMode,
                 fn ($query) => $query->where('host_id', '!=', $user->id)
@@ -113,7 +114,7 @@ class CalendarController extends Controller
 
         if ($searchSubmitted && $category && $searchStart && $searchEnd) {
             $matchingUnitsQuery = Unit::query()
-                ->with(['host:id,name', 'rates', 'images'])
+                ->with(['host.hostApplication', 'rates', 'images'])
                 ->where('is_active', true)
                 ->where('host_id', '!=', $user->id)
                 ->whereHas('host', fn ($hosts) => $hosts->whereNotNull('profile_completed_at'))
@@ -184,7 +185,10 @@ class CalendarController extends Controller
                 ->whereNotNull('location')->where('location', '!=', '')
                 ->distinct()->orderBy('location')->pluck('location')
             : collect();
-        $matchingMapUnits = $matchingUnits
+        $mapSourceUnits = $searchSubmitted
+            ? $matchingUnits
+            : $units->when($category, fn ($availableUnits) => $availableUnits->where('category', $category))->values();
+        $matchingMapUnits = $mapSourceUnits
             ->filter(fn (Unit $unit) => $unit->latitude !== null && $unit->longitude !== null)
             ->map(fn (Unit $unit) => [
                 'id' => $unit->id,
@@ -192,6 +196,16 @@ class CalendarController extends Controller
                 'latitude' => (float) $unit->latitude,
                 'longitude' => (float) $unit->longitude,
                 'location' => $unit->location,
+                'category' => $unit->category,
+                'capacity' => $unit->capacity,
+                'bedrooms' => $unit->property_details['bedrooms'] ?? null,
+                'starting_price' => (float) ($unit->isPackageRental() ? $unit->rates->min('price') : $unit->price),
+                'host_name' => $unit->host->name,
+                'business_name' => $unit->host->publicHostName(),
+                'host_avatar_url' => $unit->host->avatarUrl(),
+                'image_url' => $unit->primaryImagePath() ? Storage::disk('public')->url($unit->primaryImagePath()) : null,
+                'url' => route('listings.show', $unit),
+                'host_url' => route('hosts.show', $unit->host),
                 'distance_km' => isset($unit->distance_km) ? round((float) $unit->distance_km, 1) : null,
             ])
             ->values();

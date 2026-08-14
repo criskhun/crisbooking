@@ -13,7 +13,7 @@ class PublicListingController extends Controller
     public function show(Request $request, Unit $unit): View
     {
         abort_unless($unit->is_active && $unit->host()->whereNotNull('profile_completed_at')->exists(), 404);
-        $unit->load(['host:id,name,city,bio', 'rates', 'images']);
+        $unit->load(['host.hostApplication', 'rates', 'images']);
         $affiliate = $this->affiliateFor($request->query('ref'), $unit);
 
         return view('listings.show', compact('unit', 'affiliate'));

@@ -54,7 +54,7 @@
                 </div>
                 <aside class="inquiry-context-card" data-live-inquiry-context>
                     @php $partner = auth()->id() === $inquiry->client_id ? $inquiry->host : $inquiry->client; @endphp
-                    <div class="context-partner"><span>{{ strtoupper(substr($partner->name, 0, 1)) }}</span><div><small>{{ auth()->id() === $inquiry->client_id ? 'Host' : 'Booking customer' }}</small><strong>{{ $partner->name }}</strong><em>✓ Profile complete</em></div></div>
+                    <div class="context-partner">@include('partials.avatar', ['avatarUser' => $partner, 'avatarClass' => 'context-partner-avatar'])<div><small>{{ auth()->id() === $inquiry->client_id ? 'Host' : 'Booking customer' }}</small><strong>{{ $partner->name }}</strong><em>✓ Profile complete</em></div></div>
                     <a class="button button-ghost" href="{{ route('profiles.show', $partner) }}">View validation profile</a>
                     <div class="context-details"><span><small>Listing</small><strong>{{ $inquiry->unit->name }}</strong></span><span><small>Desired schedule</small><strong>{{ $inquiry->desired_start_at->format('M j') }} – {{ $inquiry->desired_end_at->format('M j, Y') }}</strong></span><span><small>Party</small><strong>{{ $inquiry->party_size }} {{ Str::plural('person', $inquiry->party_size) }}</strong></span></div>
                     @php

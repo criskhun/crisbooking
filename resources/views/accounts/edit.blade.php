@@ -18,14 +18,7 @@
 
             <section class="account-edit-card">
                 <div class="edit-account-heading">
-                    @php
-                        $avatar = $account->google_avatar ?: $account->facebook_avatar;
-                    @endphp
-                    @if ($avatar)
-                        <img src="{{ $avatar }}" alt="" referrerpolicy="no-referrer">
-                    @else
-                        <span>{{ strtoupper(substr($account->name, 0, 1)) }}</span>
-                    @endif
+                    @include('partials.avatar', ['avatarUser' => $account, 'avatarClass' => 'account-edit-avatar'])
                     <div>
                         <span class="eyebrow">Account #{{ $account->id }}</span>
                         <h2>{{ $account->name }}</h2>

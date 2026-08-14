@@ -16,6 +16,38 @@
                 @if (session('status'))<div class="flash-message account-alert" role="status">{{ session('status') }}</div>@endif
                 @error('profile')<div class="oauth-error account-alert" role="alert">{{ $message }}</div>@enderror
 
+                <section class="profile-photo-manager" data-guide-feature="profile-photos">
+                    <div class="profile-photo-manager-heading">
+                        @include('partials.avatar', ['avatarUser' => $profileUser, 'avatarClass' => 'profile-photo-current', 'avatarAlt' => 'Current profile photo for '.$profileUser->name])
+                        <div><span class="eyebrow">Profile photo</span><h2>Choose how people recognize you</h2><p>Your active photo appears in chats, inquiries, bookings, reviews, client lists, and host pages. Old photos stay here until you delete them.</p></div>
+                    </div>
+                    <form method="POST" action="{{ route('profile-images.store') }}" enctype="multipart/form-data" class="profile-photo-upload" data-profile-photo-upload>
+                        @csrf
+                        <label for="profile_image"><span>Upload a new photo</span><small>JPG, PNG, or WebP · up to 5 MB · {{ $profileUser->profileImages->count() }}/20 saved</small></label>
+                        <input id="profile_image" name="profile_image" type="file" accept="image/jpeg,image/png,image/webp" required data-profile-photo-input>
+                        <img src="" alt="New profile photo preview" data-profile-photo-preview hidden>
+                        <button class="button button-primary" type="submit">Upload and use photo</button>
+                        @error('profile_image')<p class="error-text">{{ $message }}</p>@enderror
+                    </form>
+                    @if ($profileUser->profileImages->isNotEmpty())
+                        <div class="profile-photo-history" aria-label="Saved profile photos">
+                            @foreach ($profileUser->profileImages as $profileImage)
+                                @php($isCurrentPhoto = $profileUser->profile_image_path === $profileImage->path)
+                                <article @class(['active' => $isCurrentPhoto])>
+                                    <img src="{{ Storage::disk('public')->url($profileImage->path) }}" alt="Saved profile photo from {{ $profileImage->created_at->format('M j, Y') }}">
+                                    <div><strong>{{ $isCurrentPhoto ? 'Currently in use' : 'Saved photo' }}</strong><small>{{ $profileImage->created_at->format('M j, Y · g:i A') }}</small></div>
+                                    <div class="profile-photo-actions">
+                                        @unless($isCurrentPhoto)<form method="POST" action="{{ route('profile-images.select', $profileImage) }}">@csrf @method('PATCH')<button type="submit">Use this</button></form>@endunless
+                                        <form method="POST" action="{{ route('profile-images.destroy', $profileImage) }}" onsubmit="return confirm('Delete this saved profile photo?')">@csrf @method('DELETE')<button class="danger" type="submit">Delete</button></form>
+                                    </div>
+                                </article>
+                            @endforeach
+                        </div>
+                    @else
+                        <p class="profile-photo-empty">No uploaded photos yet. Your social account image or name initial is used as a fallback.</p>
+                    @endif
+                </section>
+
                 <div @class(['verification-status-card', 'complete' => $profileUser->hasCompleteProfile()])>
                     <span>{{ $profileUser->hasCompleteProfile() ? '✓' : '!' }}</span>
                     <div><small>{{ $profileUser->hasCompleteProfile() ? 'Profile complete' : 'Action required' }}</small><h2>{{ $profileUser->hasCompleteProfile() ? 'You can inquire, chat, and transact.' : 'Complete this profile before you continue.' }}</h2><p>Your contact details and ID are shared only with your booking partner and administrators for validation.</p></div>

@@ -80,6 +80,7 @@ class AccountController extends Controller
         $name = $account->name;
         $photoPaths = UnitImage::query()->whereHas('unit', fn ($query) => $query->where('host_id', $account->id))->pluck('path')
             ->merge($account->units()->whereNotNull('photo_path')->pluck('photo_path'))->unique();
+        $profileImagePaths = $account->profileImages()->pluck('path');
         $wifiQrPaths = $account->units()->whereNotNull('wifi_qr_path')->pluck('wifi_qr_path');
         $governmentIdPath = $account->government_id_path;
         $hostApplicationDocumentPath = $account->hostApplication?->business_document_path;
@@ -90,6 +91,7 @@ class AccountController extends Controller
         $inquiryAttachmentPaths = InquiryMessage::query()->whereNotNull('attachment_path')->whereHas('inquiry', fn ($query) => $query->where('client_id', $account->id)->orWhere('host_id', $account->id))->pluck('attachment_path');
         $account->delete();
         Storage::disk('public')->delete($photoPaths->all());
+        Storage::disk('public')->delete($profileImagePaths->all());
         Storage::disk('local')->delete($wifiQrPaths->all());
         if ($governmentIdPath) {
             Storage::disk('local')->delete($governmentIdPath);

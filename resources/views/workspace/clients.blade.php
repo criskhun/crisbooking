@@ -14,7 +14,7 @@
                     @forelse ($clients as $client)
                         @php($lastBooking = $client->successfulBookings->first())
                         <article class="workspace-client-card">
-                            <div class="workspace-client-person"><span>{{ strtoupper(substr($client->name, 0, 1)) }}</span><div><small>Verified booking client</small><h2>{{ $client->name }}</h2><p>{{ collect([$client->city, $client->nationality])->filter()->join(' · ') }}</p></div></div>
+                            <div class="workspace-client-person">@include('partials.avatar', ['avatarUser' => $client, 'avatarClass' => 'workspace-client-avatar'])<div><small>Verified booking client</small><h2>{{ $client->name }}</h2><p>{{ collect([$client->city, $client->nationality])->filter()->join(' · ') }}</p></div></div>
                             <dl><div><dt>Confirmed bookings</dt><dd>{{ $client->successful_bookings_count }}</dd></div><div><dt>Completed</dt><dd>{{ $client->completed_bookings_count }}</dd></div><div><dt>Sales value</dt><dd>₱{{ number_format($client->confirmed_sales_total, 2) }}</dd></div></dl>
                             <div class="workspace-client-latest"><small>Most recent booking</small><strong>{{ $lastBooking->unit->name }}</strong><span>{{ $lastBooking->start_at->format('M j, Y') }} · {{ str($lastBooking->unit->category)->replace('_', ' ')->title() }}</span></div>
                             <div class="workspace-client-actions"><a class="button button-ghost" href="{{ route('profiles.show', $client) }}">View client profile</a><a href="{{ route('bookings.show', $lastBooking) }}">Latest booking →</a></div>

@@ -24,7 +24,7 @@ class InquiryController extends Controller
     {
         $user = $request->user();
         $inquiries = Inquiry::query()
-            ->with(['unit:id,name,category,photo_path', 'client:id,name,profile_completed_at', 'host:id,name,profile_completed_at', 'messages' => fn ($query) => $query->latest()->limit(1)])
+            ->with(['unit:id,name,category,photo_path', 'client:id,name,profile_completed_at,profile_image_path,google_avatar,facebook_avatar', 'host:id,name,profile_completed_at,profile_image_path,google_avatar,facebook_avatar', 'messages' => fn ($query) => $query->latest()->limit(1)])
             ->withCount(['messages as unread_messages_count' => fn ($query) => $query->where('sender_id', '!=', $user->id)->whereNull('read_at')])
             ->when(! $user->is_admin, fn ($query) => $query->where(function ($participants) use ($user) {
                 $participants->where('client_id', $user->id)->orWhere('host_id', $user->id);

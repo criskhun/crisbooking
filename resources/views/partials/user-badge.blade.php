@@ -1,11 +1,10 @@
+<div class="header-user-tools">
+@include('partials.listing-search')
+@include('partials.page-guide')
 @include('partials.notification-center')
 <details class="profile-menu">
     <summary class="user-badge" aria-label="Open profile and appearance settings">
-        @if (auth()->user()->google_avatar || auth()->user()->facebook_avatar)
-            <img src="{{ auth()->user()->google_avatar ?: auth()->user()->facebook_avatar }}" alt="" referrerpolicy="no-referrer">
-        @else
-            <span>{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</span>
-        @endif
+        @include('partials.avatar', ['avatarUser' => auth()->user(), 'avatarClass' => 'header-user-avatar', 'avatarAlt' => auth()->user()->name])
         <div class="user-badge-copy">
             <strong>{{ auth()->user()->name }}</strong>
             <small>{{ ucfirst(auth()->user()->role) }}{{ auth()->user()->is_admin ? ' · Administrator' : '' }}</small>
@@ -81,3 +80,4 @@
         </section>
     </div>
 </details>
+</div>
