@@ -87,7 +87,11 @@ class ProfilePhotoDiscoveryTest extends TestCase
 
     public function test_book_now_map_and_host_storefront_expose_rich_clickable_listing_details(): void
     {
-        $host = User::factory()->host()->create(['name' => 'Maria Host', 'bio' => 'Local rental host with carefully maintained vehicles and stays.']);
+        $host = User::factory()->host()->create([
+            'name' => 'Maria Host',
+            'bio' => 'Local rental host with carefully maintained vehicles and stays.',
+            'profile_image_path' => 'profiles/maria-host.jpg',
+        ]);
         $client = User::factory()->create();
         $this->approvedBusiness($host, 'Maria Davao Rentals');
         $active = $this->unit($host, [
@@ -96,6 +100,7 @@ class ProfilePhotoDiscoveryTest extends TestCase
             'capacity' => 5,
             'latitude' => 7.0731,
             'longitude' => 125.6128,
+            'photo_path' => 'listings/five-seat-city-car.jpg',
         ]);
         $active->rates()->create(['coverage' => 'within_city', 'period' => 'day', 'price' => 3200]);
         $inactive = $this->unit($host, ['name' => 'Hidden Old Listing', 'is_active' => false]);
@@ -105,7 +110,15 @@ class ProfilePhotoDiscoveryTest extends TestCase
             ->assertSee('Explore bookable listings on the map')
             ->assertSee('Maria Davao Rentals')
             ->assertSee('"url":'.json_encode(route('listings.show', $active)), false)
+            ->assertSee('"inquiry_url":'.json_encode(route('listings.inquire', $active)), false)
+            ->assertSee('"marker_image_url":'.json_encode(Storage::disk('public')->url('profiles/maria-host.jpg')), false)
+            ->assertSee('"navigation_url":"https:\/\/www.google.com\/maps\/dir\/?api=1\u0026destination=7.0731000,125.6128000"', false)
             ->assertSee('"host_url":'.json_encode(route('hosts.show', $host)), false)
+            ->assertSee('class="catalog-photo"', false)
+            ->assertSee(Storage::disk('public')->url('listings/five-seat-city-car.jpg'))
+            ->assertSee('View details')
+            ->assertSee('Inquire now')
+            ->assertSee('Navigate ↗')
             ->assertSee('data-page-guide', false)
             ->assertSee('data-global-listing-search', false);
 

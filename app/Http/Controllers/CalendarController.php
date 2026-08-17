@@ -203,9 +203,12 @@ class CalendarController extends Controller
                 'host_name' => $unit->host->name,
                 'business_name' => $unit->host->publicHostName(),
                 'host_avatar_url' => $unit->host->avatarUrl(),
+                'marker_image_url' => $unit->host->avatarUrl() ?: ($unit->primaryImagePath() ? Storage::disk('public')->url($unit->primaryImagePath()) : null),
                 'image_url' => $unit->primaryImagePath() ? Storage::disk('public')->url($unit->primaryImagePath()) : null,
                 'url' => route('listings.show', $unit),
+                'inquiry_url' => route('listings.inquire', $unit),
                 'host_url' => route('hosts.show', $unit->host),
+                'navigation_url' => 'https://www.google.com/maps/dir/?api=1&destination='.$unit->latitude.','.$unit->longitude,
                 'distance_km' => isset($unit->distance_km) ? round((float) $unit->distance_km, 1) : null,
             ])
             ->values();

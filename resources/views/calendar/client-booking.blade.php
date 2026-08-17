@@ -45,7 +45,7 @@
     </section>
 
     <section class="booking-step-card booking-map-explorer" data-overview-nearby-map data-default-radius-km="500" data-map-id="{{ config('services.google.maps_map_id') }}" data-guide-feature="booking-map">
-        <div class="step-heading"><span>⌖</span><div><h3>Explore bookable listings on the map</h3><p>Click a pin to see the listing photo, host or business name, capacity, starting price, and links to their storefront.</p></div><button class="map-action-button" type="button" data-map-use-location>Show near me</button></div>
+        <div class="step-heading"><span>⌖</span><div><h3>Explore bookable listings on the map</h3><p>Host photos mark each listing. Numbered circles group nearby options—tap one to zoom in, then choose a host to view, inquire, or navigate.</p></div><button class="map-action-button" type="button" data-map-use-location>Show near me</button></div>
         <div class="google-map-canvas booking-discovery-map" data-map-canvas aria-label="Map of available rentals and services"></div>
         @unless(config('services.google.maps_api_key'))<div class="map-setup-note"><strong>Google Map preview is not configured yet</strong><span>Add <code>GOOGLE_MAPS_API_KEY</code>. Search and listing cards remain available.</span></div>@endunless
         <small class="map-status" data-map-status aria-live="polite"></small>
@@ -210,11 +210,12 @@
     @endif
 
     @unless ($searchSubmitted)
-    <details class="client-catalog">
-        <summary>Browse all listings <span>{{ $units->count() }}</span></summary>
+    <section class="client-catalog">
+        <div class="catalog-heading"><div><span class="eyebrow">More options</span><h3>Browse all listings</h3><p>Compare photos and details, then view or inquire with the host.</p></div><span>{{ $units->count() }}</span></div>
         <div class="catalog-list">
             @foreach ($units as $unit)
                 @php
+                    $startingPrice = $unit->isPackageRental() ? $unit->rates->min('price') : $unit->price;
                     $fees = $unit->category === 'car'
                         ? collect($unit->car_details['charges'] ?? [])->map(fn ($charge) => $charge['label'].': ₱'.number_format($charge['amount'] ?? 0, 2).(!empty($charge['refundable']) ? ' refundable' : ''))
                         : collect(['parking' => 'Parking', 'pool' => 'Swimming pool'])->map(function ($label, $key) use ($unit) {
@@ -223,22 +224,37 @@
                             return ($details['payment_type'] ?? 'included') === 'separate' ? $label.': ₱'.number_format($details['rate'] ?? 0, 2).' / '.($details['rate_unit'] ?? 'booking') : $label.': Included';
                         })->filter();
                 @endphp
-                <article>
-                    <strong>{{ $unit->name }}</strong>
-                    <small>{{ $unit->location ?: 'Location arranged with host' }} · Hosted by {{ $unit->host->name }}</small>
-                    @foreach ($fees as $fee)
-                        <small>{{ $fee }}</small>
-                    @endforeach
-                    @if ($unit->rules)
-                        <details class="client-unit-rules">
-                            <summary>{{ $unit->category === 'car' ? 'Car rules' : ($unit->category === 'condo' ? 'House rules' : 'Service rules') }} <span>Expand</span></summary>
-                            <p>{{ $unit->rules }}</p>
-                        </details>
-                    @endif
+                <article class="catalog-card">
+                    <a class="catalog-photo" href="{{ route('listings.show', $unit) }}" aria-label="View {{ $unit->name }}">
+                        @if ($unit->primaryImagePath())
+                            <img src="{{ Storage::disk('public')->url($unit->primaryImagePath()) }}" alt="{{ $unit->name }}">
+                        @else
+                            <span aria-hidden="true">{{ $categories[$unit->category]['icon'] ?? '◇' }}</span>
+                        @endif
+                    </a>
+                    <div class="catalog-card-body">
+                        <div class="catalog-card-category"><span>{{ $categories[$unit->category]['label'] ?? str($unit->category)->replace('_', ' ')->title() }}</span><small>Available</small></div>
+                        <h4><a href="{{ route('listings.show', $unit) }}">{{ $unit->name }}</a></h4>
+                        <p class="catalog-location">⌖ {{ $unit->location ?: 'Location arranged with host' }}</p>
+                        <p class="catalog-host">Hosted by <a href="{{ route('hosts.show', $unit->host) }}">{{ $unit->host->publicHostName() }}</a></p>
+                        @if ($fees->isNotEmpty())<small class="catalog-fees">{{ $fees->join(' · ') }}</small>@endif
+                        @if ($unit->rules)
+                            <details class="client-unit-rules catalog-rules">
+                                <summary>{{ $unit->category === 'car' ? 'Car rules' : ($unit->category === 'condo' ? 'House rules' : 'Service rules') }} <span>Expand</span></summary>
+                                <p>{{ $unit->rules }}</p>
+                            </details>
+                        @endif
+                        <div class="catalog-price"><span><small>From</small><strong>₱{{ number_format($startingPrice, 2) }}</strong></span>@if($unit->capacity)<small>Up to {{ $unit->capacity }} {{ Str::plural('person', $unit->capacity) }}</small>@endif</div>
+                        <div class="catalog-actions">
+                            <a class="button button-ghost" href="{{ route('listings.show', $unit) }}">View details</a>
+                            <a class="button button-primary" href="{{ route('listings.inquire', $unit) }}">Inquire now</a>
+                            @if($unit->latitude !== null && $unit->longitude !== null)<a class="catalog-navigate-link" href="https://www.google.com/maps/dir/?api=1&amp;destination={{ $unit->latitude }},{{ $unit->longitude }}" target="_blank" rel="noopener">Navigate ↗</a>@endif
+                        </div>
+                    </div>
                 </article>
             @endforeach
         </div>
-    </details>
+    </section>
     @endunless
 
     <section class="client-bookings-card">

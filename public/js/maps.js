@@ -123,73 +123,203 @@
     const addUnitMarkers = (map, units) => {
         const bounds = new google.maps.LatLngBounds();
         const info = new google.maps.InfoWindow();
+        const mappedUnits = units.map((unit) => ({
+            ...unit,
+            position: {lat: Number(unit.latitude), lng: Number(unit.longitude)},
+        })).filter((unit) => Number.isFinite(unit.position.lat) && Number.isFinite(unit.position.lng));
+        mappedUnits.forEach((unit) => bounds.extend(unit.position));
 
-        units.forEach((unit) => {
-            const position = {lat: Number(unit.latitude), lng: Number(unit.longitude)};
-            if (!Number.isFinite(position.lat) || !Number.isFinite(position.lng)) return;
-            const marker = new google.maps.Marker({map, position, title: unit.name});
-            bounds.extend(position);
-            marker.addListener('click', () => {
-                const content = document.createElement('div');
-                content.className = 'map-info-card';
-                if (unit.image_url) {
-                    const image = document.createElement('img');
-                    image.src = unit.image_url;
-                    image.alt = `${unit.name} listing photo`;
-                    content.append(image);
+        class MapBadgeOverlay extends google.maps.OverlayView {
+            constructor(position, element, offset = {x: 0, y: 0}) {
+                super();
+                this.position = position;
+                this.element = element;
+                this.offset = offset;
+            }
+
+            onAdd() {
+                this.getPanes().overlayMouseTarget.append(this.element);
+            }
+
+            draw() {
+                const pixel = this.getProjection().fromLatLngToDivPixel(this.position);
+                if (!pixel) return;
+                this.element.style.left = `${pixel.x + this.offset.x}px`;
+                this.element.style.top = `${pixel.y + this.offset.y}px`;
+            }
+
+            onRemove() {
+                this.element.remove();
+            }
+        }
+
+        const initialsFor = (unit) => (unit.business_name || unit.host_name || 'Host')
+            .split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
+        const actionLink = (href, label, className = '') => {
+            const link = document.createElement('a');
+            link.href = href;
+            link.textContent = label;
+            if (className) link.className = className;
+            return link;
+        };
+        const showUnit = (unit) => {
+            const content = document.createElement('div');
+            content.className = 'map-info-card';
+            if (unit.image_url) {
+                const image = document.createElement('img');
+                image.src = unit.image_url;
+                image.alt = `${unit.name} listing photo`;
+                content.append(image);
+            }
+            const host = document.createElement('div');
+            host.className = 'map-info-host';
+            if (unit.host_avatar_url) {
+                const avatar = document.createElement('img');
+                avatar.src = unit.host_avatar_url;
+                avatar.alt = unit.business_name || unit.host_name || 'Host';
+                host.append(avatar);
+            }
+            const hostCopy = document.createElement('span');
+            const hostLabel = document.createElement('small');
+            hostLabel.textContent = 'Hosted by';
+            const hostName = document.createElement('b');
+            hostName.textContent = unit.business_name || unit.host_name || 'Verified host';
+            hostCopy.append(hostLabel, hostName);
+            host.append(hostCopy);
+            content.append(host);
+            const name = document.createElement('strong');
+            name.textContent = unit.name;
+            const location = document.createElement('span');
+            location.textContent = unit.location || 'Location pinned by host';
+            content.append(name, location);
+            const facts = document.createElement('small');
+            const factParts = [];
+            if (unit.bedrooms) factParts.push(`${unit.bedrooms} BR`);
+            if (unit.capacity) factParts.push(`Up to ${unit.capacity}`);
+            if (unit.starting_price !== null && unit.starting_price !== undefined) factParts.push(`From ₱${Number(unit.starting_price).toLocaleString('en-PH', {minimumFractionDigits: 2})}`);
+            facts.textContent = factParts.join(' · ');
+            if (factParts.length) content.append(facts);
+            if (unit.distance_km !== null && unit.distance_km !== undefined) {
+                const distance = document.createElement('small');
+                distance.textContent = `${Number(unit.distance_km).toFixed(1)} km from your search center`;
+                content.append(distance);
+            }
+            const actions = document.createElement('div');
+            actions.className = 'map-info-actions';
+            if (unit.url) actions.append(actionLink(unit.url, 'View listing'));
+            if (unit.inquiry_url) actions.append(actionLink(unit.inquiry_url, 'Inquire now'));
+            if (unit.navigation_url) {
+                const navigationLink = actionLink(unit.navigation_url, 'Navigate ↗', 'map-info-navigate');
+                navigationLink.target = '_blank';
+                navigationLink.rel = 'noopener';
+                actions.append(navigationLink);
+            }
+            if (unit.host_url) actions.append(actionLink(unit.host_url, 'Host profile', 'map-info-host-link'));
+            if (actions.childElementCount) content.append(actions);
+            info.setContent(content);
+            info.setPosition(unit.position);
+            info.open({map});
+        };
+
+        const profileMarker = (unit) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'map-profile-marker';
+            button.title = `${unit.name} — ${unit.business_name || unit.host_name || 'Host'}`;
+            button.setAttribute('aria-label', `View ${unit.name} hosted by ${unit.business_name || unit.host_name || 'host'}`);
+            const initials = document.createElement('span');
+            initials.textContent = initialsFor(unit);
+            button.append(initials);
+            if (unit.marker_image_url) {
+                const image = document.createElement('img');
+                image.src = unit.marker_image_url;
+                image.alt = '';
+                image.addEventListener('error', () => image.remove());
+                button.append(image);
+            }
+            button.addEventListener('click', () => showUnit(unit));
+            return button;
+        };
+        const clusterMarker = (cluster) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'map-cluster-marker';
+            button.textContent = String(cluster.units.length);
+            button.title = `Zoom in to see ${cluster.units.length} listings`;
+            button.setAttribute('aria-label', `Zoom in to see ${cluster.units.length} listings`);
+            button.addEventListener('click', () => {
+                const clusterBounds = new google.maps.LatLngBounds();
+                cluster.units.forEach((unit) => clusterBounds.extend(unit.position));
+                const currentZoom = map.getZoom() || 6;
+                if (clusterBounds.getNorthEast().equals(clusterBounds.getSouthWest())) {
+                    map.setCenter(cluster.position);
+                    map.setZoom(Math.min(18, currentZoom + 2));
+                } else {
+                    map.fitBounds(clusterBounds, 70);
+                    google.maps.event.addListenerOnce(map, 'idle', () => {
+                        if ((map.getZoom() || 0) <= currentZoom) map.setZoom(Math.min(18, currentZoom + 2));
+                    });
                 }
-                const host = document.createElement('div');
-                host.className = 'map-info-host';
-                if (unit.host_avatar_url) {
-                    const avatar = document.createElement('img');
-                    avatar.src = unit.host_avatar_url;
-                    avatar.alt = unit.business_name || unit.host_name || 'Host';
-                    host.append(avatar);
-                }
-                const hostCopy = document.createElement('span');
-                const hostLabel = document.createElement('small');
-                hostLabel.textContent = 'Hosted by';
-                const hostName = document.createElement('b');
-                hostName.textContent = unit.business_name || unit.host_name || 'Verified host';
-                hostCopy.append(hostLabel, hostName);
-                host.append(hostCopy);
-                content.append(host);
-                const name = document.createElement('strong');
-                name.textContent = unit.name;
-                const location = document.createElement('span');
-                location.textContent = unit.location || 'Location pinned by host';
-                content.append(name, location);
-                const facts = document.createElement('small');
-                const factParts = [];
-                if (unit.bedrooms) factParts.push(`${unit.bedrooms} BR`);
-                if (unit.capacity) factParts.push(`Up to ${unit.capacity}`);
-                if (unit.starting_price !== null && unit.starting_price !== undefined) factParts.push(`From ₱${Number(unit.starting_price).toLocaleString('en-PH', {minimumFractionDigits: 2})}`);
-                facts.textContent = factParts.join(' · ');
-                if (factParts.length) content.append(facts);
-                if (unit.distance_km !== null && unit.distance_km !== undefined) {
-                    const distance = document.createElement('small');
-                    distance.textContent = `${Number(unit.distance_km).toFixed(1)} km from your search center`;
-                    content.append(distance);
-                }
-                const actions = document.createElement('div');
-                actions.className = 'map-info-actions';
-                if (unit.url) {
-                    const link = document.createElement('a');
-                    link.href = unit.url;
-                    link.textContent = 'View listing';
-                    actions.append(link);
-                }
-                if (unit.host_url) {
-                    const hostLink = document.createElement('a');
-                    hostLink.href = unit.host_url;
-                    hostLink.textContent = 'All host listings';
-                    actions.append(hostLink);
-                }
-                if (actions.childElementCount) content.append(actions);
-                info.setContent(content);
-                info.open({map, anchor: marker});
             });
-        });
+            return button;
+        };
+
+        const renderedOverlays = [];
+        const manager = new google.maps.OverlayView();
+        const clearRendered = () => {
+            renderedOverlays.splice(0).forEach((overlay) => overlay.setMap(null));
+        };
+        const render = () => {
+            const projection = manager.getProjection();
+            if (!projection) return;
+            clearRendered();
+            const shouldCluster = (map.getZoom() || 0) < 17;
+            const clusters = [];
+            mappedUnits.forEach((unit) => {
+                const pixel = projection.fromLatLngToDivPixel(unit.position);
+                const cluster = shouldCluster ? clusters.find((item) => Math.hypot(item.x - pixel.x, item.y - pixel.y) < 64) : null;
+                if (cluster) {
+                    cluster.units.push(unit);
+                    cluster.x = cluster.units.reduce((sum, item) => sum + projection.fromLatLngToDivPixel(item.position).x, 0) / cluster.units.length;
+                    cluster.y = cluster.units.reduce((sum, item) => sum + projection.fromLatLngToDivPixel(item.position).y, 0) / cluster.units.length;
+                    cluster.position = {lat: cluster.units.reduce((sum, item) => sum + item.position.lat, 0) / cluster.units.length, lng: cluster.units.reduce((sum, item) => sum + item.position.lng, 0) / cluster.units.length};
+                } else {
+                    clusters.push({units: [unit], x: pixel.x, y: pixel.y, position: unit.position});
+                }
+            });
+            const duplicateTotals = new Map();
+            const duplicateIndexes = new Map();
+            if (!shouldCluster) mappedUnits.forEach((unit) => {
+                const key = `${unit.position.lat.toFixed(6)},${unit.position.lng.toFixed(6)}`;
+                duplicateTotals.set(key, (duplicateTotals.get(key) || 0) + 1);
+            });
+            clusters.forEach((cluster) => {
+                let element;
+                let offset = {x: 0, y: 0};
+                if (cluster.units.length > 1) {
+                    element = clusterMarker(cluster);
+                } else {
+                    const unit = cluster.units[0];
+                    element = profileMarker(unit);
+                    const key = `${unit.position.lat.toFixed(6)},${unit.position.lng.toFixed(6)}`;
+                    const total = duplicateTotals.get(key) || 1;
+                    const index = duplicateIndexes.get(key) || 0;
+                    duplicateIndexes.set(key, index + 1);
+                    if (total > 1) {
+                        const angle = (Math.PI * 2 * index / total) - Math.PI / 2;
+                        offset = {x: Math.cos(angle) * 34, y: Math.sin(angle) * 34};
+                    }
+                }
+                const overlay = new MapBadgeOverlay(cluster.position, element, offset);
+                overlay.setMap(map);
+                renderedOverlays.push(overlay);
+            });
+        };
+        manager.onAdd = render;
+        manager.draw = () => {};
+        manager.onRemove = clearRendered;
+        manager.setMap(map);
+        map.addListener('idle', render);
 
         return bounds;
     };
