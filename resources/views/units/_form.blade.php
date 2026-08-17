@@ -48,14 +48,22 @@
     $hasStoredPhotos = ($editing && $unit->images->isNotEmpty()) || count($draftPhotoPaths) > 0;
     $assetCategories = ['car' => 'Car rental', 'condo' => 'Condo rental'];
     $serviceCategories = ['cleaning' => 'Cleaning', 'driving' => 'Driving', 'massage' => 'Massage', 'consultancy' => 'Consultancy', 'other' => 'Other'];
-    $selectedKind = old('kind', $unit->kind ?? 'unit');
+    $selectedKind = old('kind', $unit->kind ?? 'unit') === 'service' ? 'service' : 'unit';
     $storedCategory = old('category', $unit->category ?? 'car');
-    $selectedCategory = $selectedKind === 'service' && ! array_key_exists($storedCategory, $serviceCategories)
-        ? 'other'
-        : $storedCategory;
-    $customCategory = old('custom_category', $editing && $unit->kind === 'service' && ! array_key_exists($unit->category, $serviceCategories)
-        ? str($unit->category)->replace('_', ' ')->title()
-        : '');
+    if ($selectedKind === 'unit') {
+        $selectedCategory = array_key_exists($storedCategory, $assetCategories) ? $storedCategory : 'car';
+        $customCategoryDefault = '';
+    } elseif (array_key_exists($storedCategory, $serviceCategories)) {
+        $selectedCategory = $storedCategory;
+        $customCategoryDefault = '';
+    } elseif (! array_key_exists($storedCategory, $assetCategories) && filled($storedCategory)) {
+        $selectedCategory = 'other';
+        $customCategoryDefault = str($storedCategory)->replace('_', ' ')->title();
+    } else {
+        $selectedCategory = 'cleaning';
+        $customCategoryDefault = '';
+    }
+    $customCategory = old('custom_category', $customCategoryDefault);
 @endphp
 
 <div class="listing-form-grid">

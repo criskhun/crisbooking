@@ -185,6 +185,94 @@ class BookingCalendarTest extends TestCase
         Storage::disk('public')->assertMissing($discardPath);
     }
 
+    public function test_other_service_draft_can_change_category_and_complete_registration(): void
+    {
+        Storage::fake('public');
+        $host = User::factory()->host()->create();
+
+        $response = $this->actingAs($host)->post(route('unit-drafts.store'), [
+            'name' => 'Home Care Service',
+            'kind' => 'service',
+            'category' => 'other',
+            'custom_category' => 'Home Care',
+            'photos' => [UploadedFile::fake()->image('home-care.jpg')],
+            'primary_image' => 'new:0',
+        ], ['Accept' => 'application/json'])->assertOk();
+
+        $draft = UnitDraft::findOrFail($response->json('id'));
+        $this->assertSame('other', $draft->payload['category']);
+
+        $this->actingAs($host)->postJson(route('unit-drafts.store'), [
+            'draft_id' => $draft->id,
+            'name' => 'Home Cleaning Service',
+            'kind' => 'service',
+            'category' => 'cleaning',
+            'custom_category' => 'Home Care',
+        ])->assertOk();
+
+        $draft->refresh();
+        $this->assertSame('cleaning', $draft->payload['category']);
+        $this->assertArrayNotHasKey('custom_category', $draft->payload);
+
+        $this->actingAs($host)->get(route('units.create', ['draft' => $draft]))
+            ->assertOk()
+            ->assertSee('value="cleaning" selected', false)
+            ->assertDontSee('value="other" selected', false);
+
+        $this->actingAs($host)->post(route('units.store'), [
+            'draft_id' => $draft->id,
+            'name' => 'Home Cleaning Service',
+            'kind' => 'service',
+            'category' => 'cleaning',
+            'rules' => 'The client must provide access at the agreed time.',
+            'primary_image' => 'draft:0',
+            'price' => 900,
+            'pricing_unit' => 'session',
+            'is_active' => 1,
+        ])->assertRedirect(route('units.index'));
+
+        $this->assertDatabaseHas('units', [
+            'host_id' => $host->id,
+            'name' => 'Home Cleaning Service',
+            'kind' => 'service',
+            'category' => 'cleaning',
+        ]);
+        $this->assertDatabaseMissing('unit_drafts', ['id' => $draft->id]);
+    }
+
+    public function test_mismatched_draft_category_is_recovered_for_the_selected_listing_type(): void
+    {
+        $host = User::factory()->host()->create();
+        $draft = UnitDraft::create([
+            'host_id' => $host->id,
+            'title' => 'Incorrect category draft',
+            'payload' => [
+                'name' => 'Incorrect category draft',
+                'kind' => 'unit',
+                'category' => 'other',
+                'custom_category' => 'Old custom service',
+            ],
+        ]);
+
+        $this->actingAs($host)->get(route('units.create', ['draft' => $draft]))
+            ->assertOk()
+            ->assertSee('value="car" selected', false)
+            ->assertDontSee('value="other" selected', false);
+
+        $this->actingAs($host)->postJson(route('unit-drafts.store'), [
+            'draft_id' => $draft->id,
+            'name' => 'Recovered car draft',
+            'kind' => 'unit',
+            'category' => 'other',
+            'custom_category' => 'Old custom service',
+        ])->assertOk();
+
+        $draft->refresh();
+        $this->assertSame('unit', $draft->payload['kind']);
+        $this->assertSame('car', $draft->payload['category']);
+        $this->assertArrayNotHasKey('custom_category', $draft->payload);
+    }
+
     public function test_host_can_register_a_unit_and_client_cannot(): void
     {
         Storage::fake('public');

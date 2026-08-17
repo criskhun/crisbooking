@@ -167,9 +167,9 @@ class UnitController extends Controller
             throw ValidationException::withMessages(['photos' => 'A listing draft can contain up to 20 images.']);
         }
 
-        $payload = $this->sanitizeDraftPayload($request->except([
+        $payload = $this->normalizeDraftCategory($this->sanitizeDraftPayload($request->except([
             '_token', '_method', 'draft_id', 'photos', 'primary_image', 'remove_images', 'remove_draft_photos', 'wifi_qr', 'remove_wifi_qr',
-        ]));
+        ])));
 
         $primaryPhotoPath = $this->draftPrimaryPhotoPath(
             $request->input('primary_image'),
@@ -735,6 +735,40 @@ class UnitController extends Controller
                 return is_scalar($value) || $value === null ? $value : null;
             })
             ->all();
+    }
+
+    private function normalizeDraftCategory(array $payload): array
+    {
+        $kind = ($payload['kind'] ?? 'unit') === 'service' ? 'service' : 'unit';
+        $category = trim((string) ($payload['category'] ?? ''));
+        $assetCategories = ['car', 'condo'];
+        $serviceCategories = ['cleaning', 'driving', 'massage', 'consultancy', 'other'];
+
+        $payload['kind'] = $kind;
+
+        if ($kind === 'unit') {
+            $payload['category'] = in_array($category, $assetCategories, true) ? $category : 'car';
+            unset($payload['custom_category']);
+
+            return $payload;
+        }
+
+        if (in_array($category, $serviceCategories, true)) {
+            $payload['category'] = $category;
+        } elseif ($category !== '' && ! in_array($category, $assetCategories, true)) {
+            $payload['category'] = 'other';
+            $payload['custom_category'] = filled($payload['custom_category'] ?? null)
+                ? $payload['custom_category']
+                : Str::of($category)->replace('_', ' ')->title()->toString();
+        } else {
+            $payload['category'] = 'cleaning';
+        }
+
+        if ($payload['category'] !== 'other') {
+            unset($payload['custom_category']);
+        }
+
+        return $payload;
     }
 
     private function readDraftPayload(UnitDraft $draft): ?array

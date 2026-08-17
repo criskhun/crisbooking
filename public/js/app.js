@@ -259,11 +259,10 @@
                 group.hidden = inactive;
             });
 
-            const selectedOption = categorySelect.selectedOptions[0];
-            if (selectedOption?.parentElement?.dataset.categoryGroup !== activeKind) {
-                const activeGroup = categoryGroups.find((group) => group.dataset.categoryGroup === activeKind);
-                const firstOption = activeGroup?.querySelector('option');
-                if (firstOption) categorySelect.value = firstOption.value;
+            const activeGroup = categoryGroups.find((group) => group.dataset.categoryGroup === activeKind);
+            const activeOptions = Array.from(activeGroup?.querySelectorAll('option') || []);
+            if (!activeOptions.some((option) => option.value === categorySelect.value)) {
+                categorySelect.value = activeOptions[0]?.value || '';
             }
         };
 
