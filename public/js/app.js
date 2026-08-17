@@ -521,6 +521,11 @@
             draftForm.addEventListener('input', scheduleDraftSave);
             draftForm.addEventListener('change', scheduleDraftSave);
             draftForm.addEventListener('submit', () => {
+                // A draft may have been created with a category from the other
+                // listing type. Re-enable the active group immediately before
+                // submission so the selected category is included in FormData.
+                syncCategoryOptions();
+                syncListingRates();
                 submitting = true;
                 allowLeave = true;
                 window.clearTimeout(saveTimer);
