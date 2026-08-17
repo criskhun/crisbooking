@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'davao-rent-zone-v10';
+const CACHE_VERSION = 'davao-rent-zone-v11';
 const OFFLINE_URL = new URL('./offline.html', self.registration.scope).href;
 const PRECACHE_URLS = [
     './offline.html',

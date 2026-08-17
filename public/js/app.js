@@ -98,6 +98,24 @@
             }
         });
 
+        if (mobileSidebarToggle) {
+            const fullyVisibleAfter = 240;
+            let scrollFrame = null;
+            const updateMobileSidebarToggleOpacity = () => {
+                scrollFrame = null;
+                const scrollProgress = Math.min(Math.max(window.scrollY, 0) / fullyVisibleAfter, 1);
+                const opacity = .5 + (scrollProgress * .5);
+                mobileSidebarToggle.style.setProperty('--sidebar-toggle-opacity', opacity.toFixed(3));
+            };
+            const queueMobileSidebarToggleOpacityUpdate = () => {
+                if (scrollFrame !== null) return;
+                scrollFrame = window.requestAnimationFrame(updateMobileSidebarToggleOpacity);
+            };
+
+            updateMobileSidebarToggleOpacity();
+            window.addEventListener('scroll', queueMobileSidebarToggleOpacityUpdate, {passive: true});
+        }
+
         document.querySelector('#dark-mode-toggle')?.addEventListener('change', (event) => {
             const mode = event.currentTarget.checked ? 'dark' : 'light';
             root.dataset.colorMode = mode;

@@ -22,6 +22,7 @@
     }
 
     .sidebar-toggle {
+        --sidebar-toggle-opacity: .5;
         top: calc(1rem + env(safe-area-inset-top)) !important;
         right: -4rem !important;
         bottom: auto !important;
@@ -32,7 +33,15 @@
         color: #fff !important;
         background: var(--forest) !important;
         box-shadow: 0 12px 30px rgba(5, 20, 16, .3) !important;
+        opacity: var(--sidebar-toggle-opacity) !important;
         transform: none !important;
+        transition: opacity .18s ease, box-shadow .18s ease !important;
+    }
+
+    .sidebar.is-open .sidebar-toggle,
+    .sidebar-toggle:hover,
+    .sidebar-toggle:focus-visible {
+        opacity: 1 !important;
     }
 
     .sidebar-toggle-arrow {
