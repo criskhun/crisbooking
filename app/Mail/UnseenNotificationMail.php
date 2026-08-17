@@ -10,13 +10,11 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class InactiveUserAlertMail extends Mailable
+class UnseenNotificationMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public function __construct(public User $recipient, public UserNotification $alert)
-    {
-    }
+    public function __construct(public User $recipient, public UserNotification $alert) {}
 
     public function envelope(): Envelope
     {
@@ -25,6 +23,6 @@ class InactiveUserAlertMail extends Mailable
 
     public function content(): Content
     {
-        return new Content(view: 'emails.inactive-notification');
+        return new Content(view: 'emails.unseen-notification');
     }
 }

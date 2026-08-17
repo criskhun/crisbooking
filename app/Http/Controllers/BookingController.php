@@ -184,7 +184,7 @@ class BookingController extends Controller
             'desired_end_at' => $booking->end_at,
             'party_size' => $booking->party_size,
         ]);
-        $booking->loadMissing('unit.host');
+        $booking->loadMissing('unit.host', 'affiliatePartnership.marketer');
         app(AppNotificationService::class)->send(
             $booking->unit->host,
             'booking_request',
@@ -192,6 +192,16 @@ class BookingController extends Controller
             $request->user()->name.' requested to book '.$booking->unit->name.'.',
             route('inquiries.show', $booking->inquiry_id),
         );
+
+        if ($booking->affiliatePartnership) {
+            app(AppNotificationService::class)->send(
+                $booking->affiliatePartnership->marketer,
+                'affiliate_booking',
+                'New referred booking request',
+                $request->user()->name.' requested a booking for '.$booking->unit->name.' through your referral.',
+                route('affiliates.show', $booking->affiliatePartnership),
+            );
+        }
 
         return redirect()->route('calendar.index', [
             'mode' => 'book',
@@ -371,7 +381,7 @@ class BookingController extends Controller
             ]);
         });
 
-        $booking->loadMissing('unit');
+        $booking->loadMissing('unit', 'affiliatePartnership.marketer');
         app(AppNotificationService::class)->send(
             $booking->client,
             'booking_change_reviewed',
@@ -379,6 +389,16 @@ class BookingController extends Controller
             'Your requested changes for '.$booking->unit->name.' were '.$validated['decision'].'d.',
             route('bookings.show', $booking),
         );
+
+        if ($validated['decision'] === 'approve' && $booking->affiliatePartnership) {
+            app(AppNotificationService::class)->send(
+                $booking->affiliatePartnership->marketer,
+                'affiliate_booking',
+                'Referred booking updated',
+                'The schedule or total for '.$booking->unit->name.' changed. Your tracked commission is now ₱'.number_format((float) $booking->fresh()->affiliate_commission_amount, 2).'.',
+                route('affiliates.show', $booking->affiliatePartnership),
+            );
+        }
 
         return back()->with('status', $validated['decision'] === 'approve'
             ? 'Booking changes approved and the schedule has been updated.'
@@ -395,7 +415,7 @@ class BookingController extends Controller
         $validated = $request->validate(['status' => ['required', Rule::in(['confirmed', 'cancelled'])]]);
         $booking->update(['status' => $validated['status']]);
         $booking->inquiry()->update(['status' => $validated['status'] === 'confirmed' ? 'confirmed' : 'closed']);
-        $booking->loadMissing('unit');
+        $booking->loadMissing('unit', 'affiliatePartnership.marketer');
         app(AppNotificationService::class)->send(
             $booking->client,
             'booking_status',
@@ -403,6 +423,18 @@ class BookingController extends Controller
             $booking->unit->name.' was '.($validated['status'] === 'confirmed' ? 'approved.' : 'declined.'),
             route('bookings.show', $booking),
         );
+
+        if ($booking->affiliatePartnership) {
+            app(AppNotificationService::class)->send(
+                $booking->affiliatePartnership->marketer,
+                'affiliate_booking_status',
+                $validated['status'] === 'confirmed' ? 'Referral booking confirmed' : 'Referral booking declined',
+                $booking->unit->name.' was '.$validated['status'].'.'.($validated['status'] === 'confirmed'
+                    ? ' Your tracked commission is ₱'.number_format((float) $booking->affiliate_commission_amount, 2).'.'
+                    : ''),
+                route('affiliates.show', $booking->affiliatePartnership),
+            );
+        }
 
         return back()->with('status', $validated['status'] === 'confirmed' ? 'Booking confirmed.' : 'Booking declined.');
     }
@@ -414,7 +446,7 @@ class BookingController extends Controller
 
         $booking->update(['status' => 'cancelled']);
         $booking->inquiry()->update(['status' => 'closed']);
-        $booking->loadMissing('unit.host');
+        $booking->loadMissing('unit.host', 'affiliatePartnership.marketer');
         app(AppNotificationService::class)->send(
             $booking->unit->host,
             'booking_cancelled',
@@ -422,6 +454,16 @@ class BookingController extends Controller
             $request->user()->name.' cancelled the booking for '.$booking->unit->name.'.',
             route('bookings.show', $booking),
         );
+
+        if ($booking->affiliatePartnership) {
+            app(AppNotificationService::class)->send(
+                $booking->affiliatePartnership->marketer,
+                'affiliate_booking_status',
+                'Referral booking cancelled',
+                $booking->unit->name.' was cancelled by the customer.',
+                route('affiliates.show', $booking->affiliatePartnership),
+            );
+        }
 
         return back()->with('status', 'Booking cancelled. The schedule is available again.');
     }

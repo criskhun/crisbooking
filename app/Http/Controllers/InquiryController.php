@@ -113,6 +113,17 @@ class InquiryController extends Controller
             route('inquiries.show', $inquiry),
         );
 
+        if ($affiliate) {
+            $affiliate->loadMissing('marketer');
+            app(AppNotificationService::class)->send(
+                $affiliate->marketer,
+                'affiliate_referral',
+                'New referred inquiry',
+                $request->user()->name.' used your referral link for '.$unit->name.'.',
+                route('affiliates.show', $affiliate),
+            );
+        }
+
         return redirect()->route('inquiries.show', $inquiry)->with('status', 'Your inquiry was sent. You can now chat with the host before booking.');
     }
 

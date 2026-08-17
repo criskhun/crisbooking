@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\InquiryMessage;
 use App\Models\UnitImage;
 use App\Models\User;
+use App\Services\AppNotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -59,6 +60,23 @@ class AccountController extends Controller
             'is_active' => $isActive,
             'role' => $validated['role'] ?? $account->role,
         ]);
+
+        if ($account->wasChanged(['name', 'is_admin', 'is_active', 'role'])) {
+            $changes = collect([
+                $account->wasChanged('is_active') ? ($account->is_active ? 'your account was activated' : 'your account was suspended') : null,
+                $account->wasChanged('is_admin') ? ($account->is_admin ? 'administrator access was granted' : 'administrator access was removed') : null,
+                $account->wasChanged('role') ? 'your role is now '.$account->role : null,
+                $account->wasChanged('name') ? 'your account name was updated' : null,
+            ])->filter()->implode('; ');
+
+            app(AppNotificationService::class)->send(
+                $account,
+                'account_update',
+                'Account access updated',
+                ucfirst($changes).'.',
+                $account->is_active ? route('dashboard') : route('home'),
+            );
+        }
 
         return redirect()->route('accounts.index')->with('status', "{$account->name}'s account was updated.");
     }

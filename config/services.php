@@ -43,7 +43,10 @@ return [
     ],
 
     'notifications' => [
-        'inactive_email_after_minutes' => (int) env('NOTIFICATION_EMAIL_INACTIVE_MINUTES', 5),
+        'email_fallback_after_minutes' => (int) env(
+            'NOTIFICATION_EMAIL_FALLBACK_MINUTES',
+            env('NOTIFICATION_EMAIL_INACTIVE_MINUTES', 5),
+        ),
     ],
 
     'ses' => [

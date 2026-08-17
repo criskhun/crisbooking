@@ -102,10 +102,10 @@ MAIL_PASSWORD=your_mailbox_password
 MAIL_TIMEOUT=15
 MAIL_FROM_ADDRESS=bookings@davaorentzone.com
 MAIL_FROM_NAME="${APP_NAME}"
-NOTIFICATION_EMAIL_INACTIVE_MINUTES=5
+NOTIFICATION_EMAIL_FALLBACK_MINUTES=5
 ```
 
-This mailbox sends email verification and password-reset links. It also receives a copy of each in-app alert when its recipient has not used the site for the configured number of minutes. Never commit the mailbox password.
+This mailbox sends email verification and password-reset links. It also sends each in-app alert by email when the recipient has not opened the site within the configured number of minutes. Opening any authenticated page records the alert as seen; clicking it separately marks it read. Never commit the mailbox password.
 
 After changing these values, rebuild Laravel's configuration cache with the same PHP 8.4 binary used for deployment:
 
@@ -129,6 +129,24 @@ MAIL_PORT=587
 ```
 
 Then clear and rebuild the configuration cache again. An incorrect mailbox username/password usually appears in the log as an SMTP authentication failure.
+
+### 4.1 Run the notification scheduler
+
+Delayed email fallbacks, 24-hour booking reminders, and post-booking review reminders require Laravel's scheduler. In **hPanel -> Advanced -> Cron Jobs**, add one cron job that runs every minute from the deployed project directory:
+
+```cron
+* * * * * cd /home/YOUR_HOSTINGER_USER/domains/YOUR_DOMAIN/public_html && /opt/alt/php84/usr/bin/php artisan schedule:run >> /dev/null 2>&1
+```
+
+Replace the home directory and domain with the exact path shown by Hostinger. If the hPanel plan only allows five-minute intervals, use `*/5 * * * *`; fallback email can then arrive up to five minutes after the configured delay. Only one scheduler cron entry is needed—Laravel runs both notification tasks from it.
+
+Verify the configuration over SSH:
+
+```bash
+/opt/alt/php84/usr/bin/php artisan schedule:list
+/opt/alt/php84/usr/bin/php artisan notifications:generate-reminders
+/opt/alt/php84/usr/bin/php artisan notifications:send-email-fallback
+```
 
 ### 5. Configure Google and Facebook login
 

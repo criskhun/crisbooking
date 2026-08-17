@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Mail\InactiveUserAlertMail;
+use App\Mail\UnseenNotificationMail;
 use App\Models\Booking;
 use App\Models\Inquiry;
 use App\Models\Unit;
@@ -80,6 +80,7 @@ class NotificationTest extends TestCase
             ->assertOk()
             ->assertJsonPath('unread_count', 1)
             ->assertJsonPath('notifications.0.id', $notification->id);
+        $this->assertNotNull($notification->fresh()->seen_at);
 
         $this->actingAs($other)->patchJson(route('notifications.read', $notification))->assertForbidden();
         $this->actingAs($user)->patchJson(route('notifications.read', $notification))
@@ -139,28 +140,12 @@ class NotificationTest extends TestCase
             ->assertSee('Enable mobile notifications');
     }
 
-    public function test_notification_is_emailed_when_recipient_has_been_inactive(): void
+    public function test_unseen_notification_is_emailed_after_the_fallback_delay_only_once(): void
     {
         Mail::fake();
-        $user = User::factory()->create(['last_seen_at' => now()->subMinutes(6)]);
+        $user = User::factory()->create();
 
-        app(AppNotificationService::class)->send(
-            $user,
-            'chat_message',
-            'New message',
-            'A host replied to your inquiry.',
-            route('inquiries.index'),
-        );
-
-        Mail::assertSent(InactiveUserAlertMail::class, fn ($mail) => $mail->hasTo($user->email));
-    }
-
-    public function test_notification_is_not_emailed_while_recipient_is_active(): void
-    {
-        Mail::fake();
-        $user = User::factory()->create(['last_seen_at' => now()]);
-
-        app(AppNotificationService::class)->send(
+        $notification = app(AppNotificationService::class)->send(
             $user,
             'chat_message',
             'New message',
@@ -169,6 +154,70 @@ class NotificationTest extends TestCase
         );
 
         Mail::assertNothingSent();
+
+        $this->travel(6)->minutes();
+        $this->artisan('notifications:send-email-fallback')->assertSuccessful();
+
+        Mail::assertSent(UnseenNotificationMail::class, fn ($mail) => $mail->hasTo($user->email));
+        $this->assertNotNull($notification->fresh()->email_sent_at);
+
+        $this->artisan('notifications:send-email-fallback')->assertSuccessful();
+        Mail::assertSentCount(1);
+    }
+
+    public function test_notification_is_not_emailed_when_the_user_opens_the_system(): void
+    {
+        Mail::fake();
+        $user = User::factory()->create();
+
+        $notification = app(AppNotificationService::class)->send(
+            $user,
+            'chat_message',
+            'New message',
+            'A host replied to your inquiry.',
+            route('inquiries.index'),
+        );
+
+        $this->actingAs($user)->getJson(route('notifications.index'))->assertOk();
+        $this->assertNotNull($notification->fresh()->seen_at);
+
+        $this->travel(6)->minutes();
+        $this->artisan('notifications:send-email-fallback')->assertSuccessful();
+
+        Mail::assertNothingSent();
+    }
+
+    public function test_booking_and_review_reminders_are_generated_once_for_each_party(): void
+    {
+        $host = User::factory()->host()->create();
+        $customer = User::factory()->create();
+        $unit = $this->unit($host);
+
+        Booking::create([
+            'unit_id' => $unit->id,
+            'client_id' => $customer->id,
+            'start_at' => now()->addHours(12),
+            'end_at' => now()->addHours(14),
+            'status' => 'confirmed',
+            'total_amount' => 500,
+        ]);
+        Booking::create([
+            'unit_id' => $unit->id,
+            'client_id' => $customer->id,
+            'start_at' => now()->subHours(3),
+            'end_at' => now()->subHour(),
+            'status' => 'confirmed',
+            'total_amount' => 500,
+        ]);
+
+        $this->artisan('notifications:generate-reminders')->assertSuccessful();
+        $this->artisan('notifications:generate-reminders')->assertSuccessful();
+
+        $this->assertDatabaseCount('user_notifications', 4);
+        $this->assertSame(2, $host->appNotifications()->count());
+        $this->assertSame(2, $customer->appNotifications()->count());
+        $this->assertDatabaseHas('user_notifications', ['user_id' => $host->id, 'type' => 'booking_reminder']);
+        $this->assertDatabaseHas('user_notifications', ['user_id' => $customer->id, 'type' => 'review_reminder']);
     }
 
     public function test_authenticated_web_request_updates_user_activity(): void

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\HostApplication;
+use App\Models\User;
+use App\Services\AppNotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -142,6 +144,17 @@ class HostApplicationController extends Controller
             $newFaceSelfie ? $oldFaceSelfie : null,
             $newIdSelfie ? $oldIdSelfie : null,
         ]));
+
+        User::query()
+            ->where('is_admin', true)
+            ->where('is_active', true)
+            ->each(fn (User $admin) => app(AppNotificationService::class)->send(
+                $admin,
+                'host_application',
+                'Host application submitted',
+                $user->name.' submitted a host application for review.',
+                route('admin.host-applications.show', $user->hostApplication),
+            ));
 
         return redirect()->route('host-applications.show')->with('status', 'Your host application has been submitted for review.');
     }

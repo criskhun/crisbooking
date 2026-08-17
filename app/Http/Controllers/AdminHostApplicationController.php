@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\HostApplication;
+use App\Services\AppNotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -107,6 +109,18 @@ class AdminHostApplicationController extends Controller
                 'note' => $validated['review_note'] ?? null,
             ]);
         });
+
+        $hostApplication->refresh()->load('user');
+        $note = filled($hostApplication->review_note)
+            ? ' Note: '.Str::limit($hostApplication->review_note, 220)
+            : '';
+        app(AppNotificationService::class)->send(
+            $hostApplication->user,
+            'host_application_status',
+            'Host application status: '.$hostApplication->statusLabel(),
+            'Your host application is now '.$hostApplication->statusLabel().'.'.$note,
+            route('host-applications.show'),
+        );
 
         return redirect()->route('admin.host-applications.show', $hostApplication)->with('status', 'The host application status was updated.');
     }

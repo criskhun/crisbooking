@@ -53,6 +53,10 @@ class UserManagementTest extends TestCase
             'is_admin' => true,
             'is_active' => false,
         ]);
+        $this->assertDatabaseHas('user_notifications', [
+            'user_id' => $user->id,
+            'type' => 'account_update',
+        ]);
     }
 
     public function test_admin_can_delete_another_user(): void

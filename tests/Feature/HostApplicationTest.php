@@ -157,6 +157,10 @@ class HostApplicationTest extends TestCase
             'status' => HostApplication::STATUS_NEEDS_CHANGES,
             'reviewed_by' => $admin->id,
         ]);
+        $this->assertDatabaseHas('user_notifications', [
+            'user_id' => $client->id,
+            'type' => 'host_application_status',
+        ]);
 
         $this->actingAs($client)->post(route('host-applications.store'), $this->validApplicationData([
             'motivation' => 'I plan to provide a maintained condo and a reliable transport service for local guests.',
@@ -182,6 +186,10 @@ class HostApplicationTest extends TestCase
 
         $this->assertSame('host', $client->refresh()->role);
         $this->assertSame(HostApplication::STATUS_APPROVED, $application->refresh()->status);
+        $this->assertDatabaseHas('user_notifications', [
+            'user_id' => $client->id,
+            'title' => 'Host application status: Approved',
+        ]);
         $this->actingAs($client)->get(route('units.index'))->assertOk();
     }
 

@@ -10,6 +10,9 @@ class NotificationController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        $request->user()->appNotifications()
+            ->whereNull('seen_at')
+            ->update(['seen_at' => now(), 'email_claimed_at' => null]);
         $notifications = $request->user()->appNotifications()->latest()->limit(30)->get();
 
         return response()->json([
@@ -22,14 +25,22 @@ class NotificationController extends Controller
     public function read(Request $request, UserNotification $notification): JsonResponse
     {
         abort_unless($notification->user_id === $request->user()->id, 403);
-        $notification->update(['read_at' => $notification->read_at ?: now()]);
+        $notification->update([
+            'seen_at' => $notification->seen_at ?: now(),
+            'read_at' => $notification->read_at ?: now(),
+            'email_claimed_at' => null,
+        ]);
 
         return response()->json(['read' => true, 'url' => $notification->url]);
     }
 
     public function readAll(Request $request): JsonResponse
     {
-        $request->user()->appNotifications()->whereNull('read_at')->update(['read_at' => now()]);
+        $request->user()->appNotifications()->whereNull('read_at')->update([
+            'seen_at' => now(),
+            'read_at' => now(),
+            'email_claimed_at' => null,
+        ]);
 
         return response()->json(['read' => true]);
     }

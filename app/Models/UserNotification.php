@@ -7,11 +7,19 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class UserNotification extends Model
 {
-    protected $fillable = ['user_id', 'type', 'title', 'body', 'url', 'read_at'];
+    protected $fillable = [
+        'user_id', 'type', 'title', 'body', 'url', 'dedupe_key',
+        'seen_at', 'read_at', 'email_claimed_at', 'email_sent_at',
+    ];
 
     protected function casts(): array
     {
-        return ['read_at' => 'datetime'];
+        return [
+            'seen_at' => 'datetime',
+            'read_at' => 'datetime',
+            'email_claimed_at' => 'datetime',
+            'email_sent_at' => 'datetime',
+        ];
     }
 
     public function user(): BelongsTo

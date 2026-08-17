@@ -45,6 +45,10 @@ class AffiliateSalesTest extends TestCase
 
         $affiliate = AffiliatePartnership::firstOrFail();
         $this->assertSame('pending', $affiliate->status);
+        $this->assertDatabaseHas('user_notifications', [
+            'user_id' => $host->id,
+            'type' => 'affiliate_application',
+        ]);
 
         $this->actingAs($outsider)->patch(route('affiliates.review', $affiliate), [
             'status' => 'accepted',
@@ -61,11 +65,19 @@ class AffiliateSalesTest extends TestCase
         $this->assertSame('accepted', $affiliate->status);
         $this->assertSame('12.50', $affiliate->commission_percentage);
         $this->assertNotNull($affiliate->referral_code);
+        $this->assertDatabaseHas('user_notifications', [
+            'user_id' => $marketer->id,
+            'type' => 'affiliate_application_status',
+        ]);
 
         $this->actingAs($marketer)->post(route('affiliates.messages.store', $affiliate), [
             'message' => 'Thank you. I will begin sharing the tracked links today.',
         ])->assertRedirect();
         $this->assertDatabaseHas('affiliate_messages', ['affiliate_partnership_id' => $affiliate->id, 'sender_id' => $marketer->id]);
+        $this->assertDatabaseHas('user_notifications', [
+            'user_id' => $host->id,
+            'type' => 'affiliate_message',
+        ]);
     }
 
     public function test_tracked_link_snapshots_commission_on_inquiry_and_booking(): void
@@ -98,6 +110,10 @@ class AffiliateSalesTest extends TestCase
         $inquiry = Inquiry::firstOrFail();
         $this->assertSame($affiliate->id, $inquiry->affiliate_partnership_id);
         $this->assertSame('15.00', $inquiry->affiliate_commission_percentage);
+        $this->assertDatabaseHas('user_notifications', [
+            'user_id' => $marketer->id,
+            'type' => 'affiliate_referral',
+        ]);
 
         $affiliate->update(['commission_percentage' => 20]);
 
@@ -114,6 +130,10 @@ class AffiliateSalesTest extends TestCase
         $this->assertSame('15.00', $booking->affiliate_commission_percentage);
         $this->assertSame('180.00', $booking->affiliate_commission_amount);
         $this->assertSame('1200.00', $booking->total_amount);
+        $this->assertDatabaseHas('user_notifications', [
+            'user_id' => $marketer->id,
+            'type' => 'affiliate_booking',
+        ]);
 
         $this->actingAs($client)->patch(route('bookings.change-request', $booking), [
             'change_start_at' => $start->toDateTimeString(),
