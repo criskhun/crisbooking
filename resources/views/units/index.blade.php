@@ -123,8 +123,8 @@
                                         <input type="hidden" name="is_active" value="{{ $unit->is_active ? 0 : 1 }}">
                                         <button class="availability-action" type="submit">{{ $unit->is_active ? 'Disable' : 'Enable' }}</button>
                                     </form>
-                                    @if ($recordCount === 0)
-                                        <form method="POST" action="{{ route('units.destroy', $unit) }}" onsubmit="return confirm('Permanently delete this listing? This cannot be undone.')">
+                                    @if ($recordCount === 0 || auth()->user()->is_admin)
+                                        <form method="POST" action="{{ route('units.destroy', $unit) }}" data-listing-delete-form data-listing-name="{{ $unit->name }}" data-record-count="{{ $recordCount }}">
                                             @csrf @method('DELETE')
                                             <button type="submit">Delete</button>
                                         </form>
@@ -141,4 +141,15 @@
             </section>
         </main>
     </div>
+    <dialog class="listing-delete-dialog" data-listing-delete-dialog aria-labelledby="listing-delete-title" aria-describedby="listing-delete-message">
+        <div class="listing-delete-dialog-panel">
+            <span class="eyebrow">Permanent deletion</span>
+            <h2 id="listing-delete-title">Are you sure?</h2>
+            <p id="listing-delete-message" data-listing-delete-message>This listing will be permanently deleted. This cannot be undone.</p>
+            <div class="listing-delete-actions">
+                <button class="button button-danger" type="button" data-listing-delete-yes>Yes, delete it</button>
+                <button class="button button-ghost" type="button" data-listing-delete-no>No, keep it</button>
+            </div>
+        </div>
+    </dialog>
 @endsection

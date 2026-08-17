@@ -290,7 +290,11 @@ class UnitController extends Controller
     {
         $this->authorizeOwner($request, $unit);
 
-        if ($unit->bookings()->exists() || $unit->inquiries()->exists()) {
+        $bookingCount = $unit->bookings()->count();
+        $inquiryCount = $unit->inquiries()->count();
+        $recordCount = $bookingCount + $inquiryCount;
+
+        if ($recordCount > 0 && ! $request->user()->is_admin) {
             $unit->update(['is_active' => false]);
 
             return redirect()->route('units.index')->with(
@@ -303,14 +307,18 @@ class UnitController extends Controller
         $photoPaths = $unit->images()->pluck('path')->push($unit->photo_path)->filter()->unique();
         $wifiQrPath = $unit->wifi_qr_path;
         $inquiryAttachmentPaths = InquiryMessage::query()->whereNotNull('attachment_path')->whereHas('inquiry', fn ($query) => $query->where('unit_id', $unit->id))->pluck('attachment_path');
-        $unit->delete();
+        DB::transaction(fn () => $unit->delete());
         Storage::disk('public')->delete($photoPaths->all());
         if ($wifiQrPath) {
             Storage::disk('local')->delete($wifiQrPath);
         }
         Storage::disk('local')->delete($inquiryAttachmentPaths->all());
 
-        return redirect()->route('units.index')->with('status', "{$name} was removed.");
+        $status = $recordCount > 0
+            ? "{$name} and its {$recordCount} booking or inquiry ".Str::plural('record', $recordCount).' were permanently deleted.'
+            : "{$name} was removed.";
+
+        return redirect()->route('units.index')->with('status', $status);
     }
 
     public function updateAvailability(Request $request, Unit $unit): RedirectResponse

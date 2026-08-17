@@ -589,6 +589,12 @@ html[data-color-mode="dark"] .identity-missing-warning { border-color: #76504b; 
 .listing-moderation-actions form { margin: 0; }
 .listing-moderation-actions button.availability-action { color: var(--forest); }
 .listing-moderation-actions > span { color: var(--muted); font-size: .6rem; font-weight: 700; white-space: nowrap; }
+.listing-delete-dialog { width: min(92vw, 500px); padding: 0; border: 0; border-radius: 20px; color: var(--ink); background: var(--surface); box-shadow: 0 24px 70px rgba(15, 36, 30, .3); }
+.listing-delete-dialog::backdrop { background: rgba(10, 25, 21, .6); backdrop-filter: blur(3px); }
+.listing-delete-dialog-panel { padding: 1.5rem; }
+.listing-delete-dialog h2 { margin: .3rem 0 .55rem; font: 800 1.35rem Manrope; }
+.listing-delete-dialog p { margin: 0; color: var(--muted); line-height: 1.6; }
+.listing-delete-actions { display: flex; flex-wrap: wrap; gap: .65rem; margin-top: 1.35rem; }
 .listing-record-summary { display: flex; align-items: center; gap: .55rem; padding: .55rem .65rem; margin-bottom: .75rem; border: 1px solid var(--card-line); border-radius: 9px; background: var(--surface-tint); }
 .listing-record-summary > strong { display: grid; place-items: center; width: 1.8rem; height: 1.8rem; border-radius: 50%; color: var(--forest); background: var(--lime); font-size: .7rem; }
 .listing-record-summary > span { display: grid; color: var(--ink); font-size: .62rem; font-weight: 800; }

@@ -1501,7 +1501,7 @@ class BookingCalendarTest extends TestCase
         $this->assertDatabaseCount('bookings', 0);
     }
 
-    public function test_admin_can_moderate_all_listings_but_recorded_listings_are_disabled_instead_of_deleted(): void
+    public function test_admin_can_permanently_delete_a_listing_and_all_of_its_records(): void
     {
         Storage::fake('public');
         Storage::fake('local');
@@ -1513,13 +1513,22 @@ class BookingCalendarTest extends TestCase
         $emptyUnit = $this->createUnit($secondHost, ['name' => 'Unused Rental']);
         $start = now()->subMonth();
 
-        Booking::create([
+        $booking = Booking::create([
             'unit_id' => $recordedUnit->id,
             'client_id' => $client->id,
             'start_at' => $start,
             'end_at' => $start->copy()->addHour(),
             'status' => 'cancelled',
             'total_amount' => 600,
+        ]);
+        $inquiry = $this->createInquiry($recordedUnit, $client, $start, $start->copy()->addHour());
+        $attachmentPath = 'inquiry-attachments/'.$inquiry->id.'/proof.jpg';
+        Storage::disk('local')->put($attachmentPath, 'image contents');
+        $message = $inquiry->messages()->create([
+            'sender_id' => $client->id,
+            'body' => 'Attached booking proof.',
+            'attachment_path' => $attachmentPath,
+            'attachment_name' => 'proof.jpg',
         ]);
 
         $this->actingAs($admin)->get(route('units.index'))
@@ -1529,18 +1538,19 @@ class BookingCalendarTest extends TestCase
             ->assertSee('Unused Rental')
             ->assertSee('First Listing Host')
             ->assertSee('Second Listing Host')
-            ->assertSee('Deletion locked');
+            ->assertSee('Yes, delete it')
+            ->assertSee('No, keep it')
+            ->assertDontSee('Deletion locked');
 
         $this->actingAs($admin)->delete(route('units.destroy', $recordedUnit))
             ->assertRedirect(route('units.index'))
-            ->assertSessionHas('status', 'Recorded Rental was disabled instead of deleted because its booking or inquiry records must be retained.');
+            ->assertSessionHas('status', 'Recorded Rental and its 2 booking or inquiry records were permanently deleted.');
 
-        $this->assertDatabaseHas('units', ['id' => $recordedUnit->id, 'is_active' => false]);
-        $this->assertDatabaseHas('bookings', ['unit_id' => $recordedUnit->id]);
-
-        $this->actingAs($admin)->patch(route('units.availability', $recordedUnit), ['is_active' => 1])
-            ->assertRedirect(route('units.index'));
-        $this->assertDatabaseHas('units', ['id' => $recordedUnit->id, 'is_active' => true]);
+        $this->assertDatabaseMissing('units', ['id' => $recordedUnit->id]);
+        $this->assertDatabaseMissing('bookings', ['id' => $booking->id]);
+        $this->assertDatabaseMissing('inquiries', ['id' => $inquiry->id]);
+        $this->assertDatabaseMissing('inquiry_messages', ['id' => $message->id]);
+        Storage::disk('local')->assertMissing($attachmentPath);
 
         $this->actingAs($admin)->delete(route('units.destroy', $emptyUnit))
             ->assertRedirect(route('units.index'));

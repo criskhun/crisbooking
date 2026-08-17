@@ -153,6 +153,42 @@
             }
         });
 
+        const listingDeleteDialog = document.querySelector('[data-listing-delete-dialog]');
+        const listingDeleteMessage = listingDeleteDialog?.querySelector('[data-listing-delete-message]');
+        let pendingListingDeleteForm = null;
+
+        document.querySelectorAll('[data-listing-delete-form]').forEach((form) => {
+            form.addEventListener('submit', (event) => {
+                if (form.dataset.deleteConfirmed === 'true' || !listingDeleteDialog) return;
+
+                event.preventDefault();
+                pendingListingDeleteForm = form;
+                const listingName = form.dataset.listingName || 'this listing';
+                const recordCount = Number.parseInt(form.dataset.recordCount || '0', 10);
+                if (listingDeleteMessage) {
+                    listingDeleteMessage.textContent = recordCount > 0
+                        ? `Permanently delete ${listingName} and its ${recordCount} booking or inquiry record${recordCount === 1 ? '' : 's'}? This cannot be undone.`
+                        : `Permanently delete ${listingName}? This cannot be undone.`;
+                }
+                listingDeleteDialog.showModal();
+                listingDeleteDialog.querySelector('[data-listing-delete-no]')?.focus();
+            });
+        });
+
+        listingDeleteDialog?.querySelector('[data-listing-delete-yes]')?.addEventListener('click', () => {
+            if (!pendingListingDeleteForm) return;
+            pendingListingDeleteForm.dataset.deleteConfirmed = 'true';
+            pendingListingDeleteForm.requestSubmit();
+        });
+        listingDeleteDialog?.querySelector('[data-listing-delete-no]')?.addEventListener('click', () => {
+            listingDeleteDialog.close();
+            pendingListingDeleteForm?.querySelector('button[type="submit"]')?.focus();
+            pendingListingDeleteForm = null;
+        });
+        listingDeleteDialog?.addEventListener('cancel', () => {
+            pendingListingDeleteForm = null;
+        });
+
         const photoInput = document.querySelector('[data-photo-input]');
         const photoPreviewGrid = document.querySelector('[data-photo-preview-grid]');
 
