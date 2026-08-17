@@ -22,9 +22,9 @@
     }
 
     .sidebar-toggle {
-        top: auto !important;
+        top: calc(1rem + env(safe-area-inset-top)) !important;
         right: -4rem !important;
-        bottom: calc(1.25rem + env(safe-area-inset-bottom)) !important;
+        bottom: auto !important;
         width: 3.25rem !important;
         height: 3.25rem !important;
         border: 1px solid rgba(255, 255, 255, .3) !important;
