@@ -19,7 +19,8 @@ class AffiliateController extends Controller
     {
         $user = $request->user();
         $partnerships = AffiliatePartnership::query()
-            ->with(['host:id,name', 'marketer:id,name', 'messages' => fn ($query) => $query->latest()->limit(1)])
+            ->with(['host:id,name', 'marketer:id,name', 'units:id,name', 'messages' => fn ($query) => $query->latest()->limit(1)])
+            ->withCount('units as assigned_units_count')
             ->withCount(['bookings as confirmed_referrals_count' => fn ($query) => $query->where('status', 'confirmed')])
             ->withSum(['bookings as commission_earned' => fn ($query) => $query->where('status', 'confirmed')], 'affiliate_commission_amount')
             ->where(fn ($query) => $query->where('marketer_id', $user->id)->orWhere('host_id', $user->id))
@@ -80,6 +81,7 @@ class AffiliateController extends Controller
         $affiliate->messages()->where('sender_id', '!=', $request->user()->id)->whereNull('read_at')->update(['read_at' => now()]);
         $affiliate->load([
             'host.units' => fn ($query) => $query->where('is_active', true)->with(['rates', 'images']),
+            'units' => fn ($query) => $query->with(['rates', 'images']),
             'marketer',
             'messages.sender',
             'bookings' => fn ($query) => $query->with(['unit:id,name', 'client:id,name'])->latest()->limit(25),
@@ -97,6 +99,10 @@ class AffiliateController extends Controller
         $validated = $request->validate([
             'status' => ['required', Rule::in(['accepted', 'rejected'])],
             'commission_percentage' => ['nullable', 'required_if:status,accepted', 'numeric', 'min:0.01', 'max:100'],
+            'unit_ids' => ['nullable', 'required_if:status,accepted', 'array', 'min:1'],
+            'unit_ids.*' => ['integer', 'distinct', Rule::exists('units', 'id')->where(fn ($query) => $query
+                ->where('host_id', $affiliate->host_id)
+                ->where('is_active', true))],
             'review_note' => ['nullable', 'string', 'max:1000'],
         ]);
 
@@ -110,6 +116,7 @@ class AffiliateController extends Controller
                 'review_note' => $validated['review_note'] ?? null,
                 'reviewed_at' => now(),
             ]);
+            $locked->units()->sync($validated['status'] === 'accepted' ? $validated['unit_ids'] : []);
         });
 
         $affiliate->refresh()->load('marketer');
@@ -122,8 +129,40 @@ class AffiliateController extends Controller
         );
 
         return redirect()->route('affiliates.show', $affiliate)->with('status', $validated['status'] === 'accepted'
-            ? 'Affiliate approved. Their tracked sharing links are ready.'
+            ? 'Affiliate approved for the selected listings. Their tracked sharing links are ready.'
             : 'The affiliate application was declined.');
+    }
+
+    public function updateAssignments(Request $request, AffiliatePartnership $affiliate): RedirectResponse
+    {
+        abort_unless($request->user()->is_admin || $affiliate->host_id === $request->user()->id, 403);
+        abort_unless($affiliate->isAccepted(), 422, 'Only an accepted affiliate can have listing assignments.');
+
+        $validated = $request->validate([
+            'commission_percentage' => ['required', 'numeric', 'min:0.01', 'max:100'],
+            'unit_ids' => ['required', 'array', 'min:1'],
+            'unit_ids.*' => ['integer', 'distinct', Rule::exists('units', 'id')->where(fn ($query) => $query
+                ->where('host_id', $affiliate->host_id)
+                ->where('is_active', true))],
+        ]);
+
+        DB::transaction(function () use ($affiliate, $validated): void {
+            $locked = AffiliatePartnership::query()->lockForUpdate()->findOrFail($affiliate->id);
+            abort_unless($locked->isAccepted(), 422, 'Only an accepted affiliate can have listing assignments.');
+            $locked->update(['commission_percentage' => $validated['commission_percentage']]);
+            $locked->units()->sync($validated['unit_ids']);
+        });
+
+        $affiliate->refresh()->load('marketer');
+        app(AppNotificationService::class)->send(
+            $affiliate->marketer,
+            'affiliate_assignments',
+            'Affiliate listing assignments updated',
+            'The host updated the listings you may market and your commission rate.',
+            route('affiliates.show', $affiliate),
+        );
+
+        return back()->with('status', 'Affiliate assignments and commission were updated.');
     }
 
     public function message(Request $request, AffiliatePartnership $affiliate): RedirectResponse

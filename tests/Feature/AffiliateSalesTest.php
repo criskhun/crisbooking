@@ -36,7 +36,7 @@ class AffiliateSalesTest extends TestCase
         $host = User::factory()->host()->create(['name' => 'Established Host']);
         $marketer = User::factory()->create(['name' => 'Sales Marketer']);
         $outsider = User::factory()->create();
-        $this->unit($host);
+        $unit = $this->unit($host);
 
         $this->actingAs($marketer)->post(route('affiliates.store'), [
             'host_id' => $host->id,
@@ -58,6 +58,12 @@ class AffiliateSalesTest extends TestCase
         $this->actingAs($host)->patch(route('affiliates.review', $affiliate), [
             'status' => 'accepted',
             'commission_percentage' => 12.5,
+        ])->assertSessionHasErrors('unit_ids');
+
+        $this->actingAs($host)->patch(route('affiliates.review', $affiliate), [
+            'status' => 'accepted',
+            'commission_percentage' => 12.5,
+            'unit_ids' => [$unit->id],
             'review_note' => 'Approved for all active listings.',
         ])->assertRedirect(route('affiliates.show', $affiliate));
 
@@ -65,6 +71,7 @@ class AffiliateSalesTest extends TestCase
         $this->assertSame('accepted', $affiliate->status);
         $this->assertSame('12.50', $affiliate->commission_percentage);
         $this->assertNotNull($affiliate->referral_code);
+        $this->assertTrue($affiliate->units()->whereKey($unit->id)->exists());
         $this->assertDatabaseHas('user_notifications', [
             'user_id' => $marketer->id,
             'type' => 'affiliate_application_status',
@@ -95,6 +102,7 @@ class AffiliateSalesTest extends TestCase
             'application_message' => 'I will promote this host to my established client audience.',
             'reviewed_at' => now(),
         ]);
+        $affiliate->units()->attach($unit);
         $start = now()->addDays(3)->startOfHour();
         $end = $start->copy()->addHours(2);
 
@@ -148,6 +156,54 @@ class AffiliateSalesTest extends TestCase
         $booking->refresh();
         $this->assertSame('1800.00', $booking->total_amount);
         $this->assertSame('270.00', $booking->affiliate_commission_amount);
+    }
+
+    public function test_host_can_manage_assigned_listings_and_unassigned_links_are_not_tracked(): void
+    {
+        $host = User::factory()->host()->create();
+        $marketer = User::factory()->create();
+        $client = User::factory()->create();
+        $assigned = $this->unit($host, ['name' => 'Assigned Service']);
+        $unassigned = $this->unit($host, ['name' => 'Unassigned Service']);
+        $affiliate = AffiliatePartnership::create([
+            'host_id' => $host->id,
+            'marketer_id' => $marketer->id,
+            'status' => 'accepted',
+            'commission_percentage' => 10,
+            'referral_code' => 'ASSIGNEDONLY1',
+            'application_message' => 'I will market the listings assigned by this host.',
+            'reviewed_at' => now(),
+        ]);
+        $affiliate->units()->attach($assigned);
+
+        $this->get($assigned->publicUrl($affiliate->referral_code))->assertOk()->assertSee('Shared by an approved sales affiliate');
+        $this->get($unassigned->publicUrl($affiliate->referral_code))->assertOk()->assertDontSee('Shared by an approved sales affiliate');
+
+        $this->actingAs($host)->get(route('affiliates.index'))
+            ->assertOk()
+            ->assertSee('Affiliate management')
+            ->assertSee('1 assigned listing');
+
+        $this->actingAs($host)->patch(route('affiliates.assignments.update', $affiliate), [
+            'commission_percentage' => 14,
+            'unit_ids' => [$unassigned->id],
+        ])->assertRedirect();
+
+        $this->assertSame('14.00', $affiliate->fresh()->commission_percentage);
+        $this->assertFalse($affiliate->units()->whereKey($assigned->id)->exists());
+        $this->assertTrue($affiliate->units()->whereKey($unassigned->id)->exists());
+
+        $start = now()->addDays(3)->startOfHour();
+        $this->actingAs($client)->post(route('inquiries.store'), [
+            'unit_id' => $assigned->id,
+            'desired_start_at' => $start->toDateTimeString(),
+            'desired_end_at' => $start->copy()->addHour()->toDateTimeString(),
+            'party_size' => 1,
+            'initial_message' => 'I want to ask about this listing through the provided link.',
+            'referral_code' => $affiliate->referral_code,
+        ])->assertRedirect();
+
+        $this->assertNull(Inquiry::latest('id')->firstOrFail()->affiliate_partnership_id);
     }
 
     private function unit(User $host, array $attributes = []): Unit

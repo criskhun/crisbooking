@@ -73,7 +73,39 @@ class WorkspaceIntegrationTest extends TestCase
         ])->assertRedirect();
         $this->assertDatabaseHas('bookings', ['inquiry_id' => $inquiry->id, 'total_amount' => 750]);
 
-        $this->actingAs($client)->get(route('inquiries.show', $inquiry))->assertOk()->assertSee('Agreed at ₱750.00');
+        $this->actingAs($client)->get(route('inquiries.show', $inquiry))->assertOk()->assertSee('Booked at the agreed ₱750.00');
+    }
+
+    public function test_booking_request_closes_an_unanswered_price_proposal(): void
+    {
+        $host = User::factory()->host()->create();
+        $client = User::factory()->create();
+        $unit = $this->unit($host, 'Standard Price Massage', 'massage', 1000);
+        $start = now()->addDays(4)->startOfHour();
+        $inquiry = $this->inquiry($unit, $client, $start);
+
+        $this->actingAs($client)->post(route('inquiries.price-proposals.store', $inquiry), [
+            'amount' => 800,
+            'note' => 'Can the host consider this amount before I make a booking request?',
+        ])->assertRedirect();
+        $proposal = $inquiry->priceProposals()->firstOrFail();
+        $this->assertSame('pending', $proposal->status);
+
+        $this->actingAs($client)->post(route('bookings.store'), [
+            'unit_id' => $unit->id,
+            'inquiry_id' => $inquiry->id,
+            'start_at' => $start->toDateTimeString(),
+            'end_at' => $start->copy()->addHours(2)->toDateTimeString(),
+            'party_size' => 1,
+        ])->assertRedirect();
+
+        $this->assertSame('superseded', $proposal->fresh()->status);
+        $this->assertNotNull($proposal->fresh()->responded_at);
+        $this->actingAs($host)->get(route('inquiries.show', $inquiry))
+            ->assertOk()
+            ->assertSee('Price negotiation closed')
+            ->assertSee('No proposal action is needed')
+            ->assertDontSee('Accept price');
     }
 
     public function test_clients_workspace_only_contains_clients_with_confirmed_host_bookings(): void

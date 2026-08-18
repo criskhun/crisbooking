@@ -24,7 +24,7 @@
             <a @class(['active' => request()->routeIs('calendar.*') && request('mode') !== 'book']) href="{{ route('calendar.index', ['mode' => 'manage']) }}"><span>□</span> Host calendar</a>
         @endif
         <a @class(['active' => request()->routeIs('inquiries.*')]) href="{{ route('inquiries.index') }}"><span>✦</span> Inquiries <b class="sidebar-notification-badge" data-inquiry-attention-count @if(!$inquiryAttentionCount) hidden @endif title="Inquiries need your attention">{{ $inquiryAttentionCount > 99 ? '99+' : $inquiryAttentionCount }}</b></a>
-        <a @class(['active' => request()->routeIs('affiliates.*')]) href="{{ route('affiliates.index') }}"><span>％</span> Affiliates & sales</a>
+        <a @class(['active' => request()->routeIs('affiliates.*')]) href="{{ route('affiliates.index') }}"><span>％</span> {{ auth()->user()->isHost() || auth()->user()->is_admin ? 'Affiliate management' : 'Affiliates & sales' }}</a>
         <a @class(['active' => request()->routeIs('profile.*') || request()->routeIs('profiles.*')]) href="{{ route('profile.edit') }}"><span>♙</span> Verification profile @unless(auth()->user()->hasCompleteProfile())<b class="sidebar-notification-badge attention" title="Your verification profile needs attention">!</b>@endunless</a>
         @if (auth()->user()->isClient())
             <a @class(['active' => request()->routeIs('host-applications.*')]) href="{{ route('host-applications.show') }}"><span>◇</span> Become a host @if($hostApplicationAttention)<b class="sidebar-notification-badge attention" title="Your host application needs attention">!</b>@endif</a>

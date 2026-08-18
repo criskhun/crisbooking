@@ -128,6 +128,7 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     Route::post('/affiliates', [AffiliateController::class, 'store'])->name('affiliates.store');
     Route::get('/affiliates/{affiliate}', [AffiliateController::class, 'show'])->name('affiliates.show');
     Route::patch('/affiliates/{affiliate}', [AffiliateController::class, 'review'])->name('affiliates.review');
+    Route::patch('/affiliates/{affiliate}/assignments', [AffiliateController::class, 'updateAssignments'])->name('affiliates.assignments.update');
     Route::post('/affiliates/{affiliate}/messages', [AffiliateController::class, 'message'])->name('affiliates.messages.store');
     Route::post('/affiliates/{affiliate}/reviews', [ReviewController::class, 'affiliate'])->name('affiliates.reviews.store');
     Route::post('/bookings/{booking}/reviews', [ReviewController::class, 'booking'])->name('bookings.reviews.store');

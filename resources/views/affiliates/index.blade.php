@@ -7,14 +7,14 @@
     <div class="dashboard-shell">
         @include('partials.dashboard-sidebar')
         <main class="dashboard-main">
-            <header class="dashboard-header"><div><span class="form-kicker">Grow together</span><h1>Affiliates & sales</h1></div>@include('partials.user-badge')</header>
+            <header class="dashboard-header"><div><span class="form-kicker">Grow together</span><h1>{{ auth()->user()->isHost() || auth()->user()->is_admin ? 'Affiliate management' : 'Affiliates & sales' }}</h1></div>@include('partials.user-badge')</header>
             @if(session('status'))<div class="flash-message flash-dashboard" role="status">{{ session('status') }}</div>@endif
             @if($errors->any())<div class="oauth-error account-alert" role="alert">{{ $errors->first() }}</div>@endif
 
-            <section class="affiliate-hero"><div><span class="eyebrow">Performance partnerships</span><h2>Market trusted rentals and earn from confirmed sales.</h2><p>Apply directly to an established host. The host decides whether to accept and sets your commission percentage.</p></div><div><strong>{{ $partnerships->where('status', 'accepted')->count() }}</strong><small>Active partnerships</small></div></section>
+            <section class="affiliate-hero"><div><span class="eyebrow">Performance partnerships</span><h2>{{ auth()->user()->isHost() || auth()->user()->is_admin ? 'Review applicants and control what each affiliate may market.' : 'Market trusted rentals and earn from confirmed sales.' }}</h2><p>{{ auth()->user()->isHost() || auth()->user()->is_admin ? 'Open an applicant below to assign listings and commission before acceptance. Return here anytime to manage active affiliates.' : 'Apply directly to an established host. The host decides whether to accept, which listings you may market, and your commission percentage.' }}</p></div><div><strong>{{ $partnerships->where('status', 'accepted')->count() }}</strong><small>Active partnerships</small></div></section>
 
             <section class="overview-section">
-                <div class="overview-section-heading"><div><span class="eyebrow">Your network</span><h2>Applications and partnerships</h2></div></div>
+                <div class="overview-section-heading"><div><span class="eyebrow">Your network</span><h2>{{ auth()->user()->isHost() || auth()->user()->is_admin ? 'Affiliate applicants and active partners' : 'Applications and partnerships' }}</h2><p>Open a partnership to review it, assign listings, change commission, view referrals, or message the affiliate.</p></div></div>
                 <div class="affiliate-partnership-grid">
                     @forelse($partnerships as $partnership)
                         @php($isHostSide = $partnership->host_id === auth()->id())
@@ -22,7 +22,7 @@
                             <span class="affiliate-status status-{{ $partnership->status }}">{{ str($partnership->status)->title() }}</span>
                             <small>{{ $isHostSide ? 'Sales applicant' : 'Host partner' }}</small>
                             <h3>{{ $isHostSide ? $partnership->marketer->name : $partnership->host->name }}</h3>
-                            @if($partnership->isAccepted())<p><strong>{{ number_format($partnership->commission_percentage, 2) }}%</strong> commission · {{ $partnership->confirmed_referrals_count }} confirmed {{ Str::plural('sale', $partnership->confirmed_referrals_count) }}</p><b>₱{{ number_format($partnership->commission_earned ?? 0, 2) }} earned</b>@else<p>{{ Str::limit($partnership->review_note ?: $partnership->application_message, 100) }}</p>@endif
+                            @if($partnership->isAccepted())<p><strong>{{ number_format($partnership->commission_percentage, 2) }}%</strong> commission · {{ $partnership->assigned_units_count }} assigned {{ Str::plural('listing', $partnership->assigned_units_count) }} · {{ $partnership->confirmed_referrals_count }} confirmed {{ Str::plural('sale', $partnership->confirmed_referrals_count) }}</p><b>₱{{ number_format($partnership->commission_earned ?? 0, 2) }} earned</b>@else<p>{{ Str::limit($partnership->review_note ?: $partnership->application_message, 100) }}</p>@endif
                             <span>Open partnership →</span>
                         </a>
                     @empty

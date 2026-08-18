@@ -82,6 +82,7 @@ class InquiryController extends Controller
                 ->where('referral_code', $validated['referral_code'])
                 ->where('host_id', $unit->host_id)
                 ->where('status', 'accepted')
+                ->whereHas('units', fn ($units) => $units->whereKey($unit->id))
                 ->first()
             : null;
 

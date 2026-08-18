@@ -58,7 +58,7 @@
                     <a class="button button-ghost" href="{{ route('profiles.show', $partner) }}">View validation profile</a>
                     <div class="context-details"><span><small>Listing</small><strong>{{ $inquiry->unit->name }}</strong></span><span><small>Desired schedule</small><strong>{{ $inquiry->desired_start_at->format('M j') }} – {{ $inquiry->desired_end_at->format('M j, Y') }}</strong></span><span><small>Party</small><strong>{{ $inquiry->party_size }} {{ Str::plural('person', $inquiry->party_size) }}</strong></span></div>
                     @php
-                        $pendingPriceProposal = $inquiry->priceProposals->firstWhere('status', 'pending');
+                        $pendingPriceProposal = $inquiry->booking ? null : $inquiry->priceProposals->firstWhere('status', 'pending');
                         $rateLabels = ['12_hours' => '12 hours', 'day' => '1 day', 'week' => '1 week', 'month' => '1 month'];
                         $coverageLabels = ['within_city' => 'Within Davao City', 'out_of_town' => 'Out of town', 'standard' => 'Standard'];
                     @endphp
@@ -74,8 +74,9 @@
                         <p>Standard pricing applies unless the client and host both accept a negotiated proposal.</p>
                     </section>
                     <section class="price-negotiation-panel">
-                        <div class="price-negotiation-heading"><span>↔</span><div><small>Price negotiation</small><strong>{{ $inquiry->agreed_price !== null ? 'Agreed at ₱'.number_format($inquiry->agreed_price, 2) : ($pendingPriceProposal ? 'A proposal needs attention' : 'Optional — request only when needed') }}</strong></div></div>
-                        @if ($inquiry->agreed_price !== null)<p class="agreed-price-note">✓ This price is locked as the booking subtotal. Required listing charges, if any, are added separately.</p>@endif
+                        <div class="price-negotiation-heading"><span>↔</span><div><small>Price negotiation</small><strong>{{ $inquiry->booking ? ($inquiry->agreed_price !== null ? 'Booked at the agreed ₱'.number_format($inquiry->agreed_price, 2) : 'Closed after booking request') : ($inquiry->agreed_price !== null ? 'Agreed at ₱'.number_format($inquiry->agreed_price, 2) : ($pendingPriceProposal ? 'A proposal needs attention' : 'Optional — request only when needed')) }}</strong></div></div>
+                        @if ($inquiry->booking)<p class="agreed-price-note">✓ Price negotiation closed when booking request #{{ $inquiry->booking->id }} was submitted. No proposal action is needed.</p>@endif
+                        @if ($inquiry->agreed_price !== null && ! $inquiry->booking)<p class="agreed-price-note">✓ This price is locked as the booking subtotal. Required listing charges, if any, are added separately.</p>@endif
                         @if ($pendingPriceProposal)
                             <article class="price-proposal-current"><small>{{ $pendingPriceProposal->proposed_by === auth()->id() ? 'Your proposal' : $pendingPriceProposal->proposer->name.' proposed' }}</small><strong>₱{{ number_format($pendingPriceProposal->amount, 2) }}</strong>@if($pendingPriceProposal->note)<p>{{ $pendingPriceProposal->note }}</p>@endif
                                 @if ($pendingPriceProposal->proposed_by !== auth()->id())<div><form method="POST" action="{{ route('price-proposals.review', $pendingPriceProposal) }}">@csrf @method('PATCH')<button class="button button-primary" name="decision" value="accept" type="submit">Accept price</button></form><form method="POST" action="{{ route('price-proposals.review', $pendingPriceProposal) }}">@csrf @method('PATCH')<button class="button button-ghost" name="decision" value="decline" type="submit">Decline</button></form></div>@else<em>Waiting for {{ auth()->id() === $inquiry->client_id ? 'host' : 'client' }} approval</em>@endif

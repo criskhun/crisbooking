@@ -157,7 +157,7 @@ class BookingController extends Controller
                 ->sum('amount'));
             $commissionPercentage = $inquiry->affiliate_commission_percentage;
 
-            return $unit->bookings()->create([
+            $booking = $unit->bookings()->create([
                 'inquiry_id' => $inquiry->id,
                 'client_id' => $request->user()->id,
                 'unit_rate_id' => $rate?->id,
@@ -178,6 +178,12 @@ class BookingController extends Controller
                     ? round($commissionableTotal * (float) $commissionPercentage / 100, 2)
                     : null,
             ]);
+
+            $inquiry->priceProposals()
+                ->where('status', 'pending')
+                ->update(['status' => 'superseded', 'responded_at' => now()]);
+
+            return $booking;
         });
 
         $booking->inquiry()->update([

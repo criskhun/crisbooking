@@ -40,6 +40,7 @@ class PublicListingController extends Controller
             ->where('referral_code', $code)
             ->where('host_id', $unit->host_id)
             ->where('status', 'accepted')
+            ->whereHas('units', fn ($units) => $units->whereKey($unit->id))
             ->first();
     }
 }
