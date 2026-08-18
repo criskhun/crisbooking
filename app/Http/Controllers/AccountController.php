@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Booking;
 use App\Models\InquiryMessage;
 use App\Models\UnitImage;
 use App\Models\User;
@@ -107,6 +108,10 @@ class AccountController extends Controller
             $account->hostApplication?->id_selfie_path,
         ]);
         $inquiryAttachmentPaths = InquiryMessage::query()->whereNotNull('attachment_path')->whereHas('inquiry', fn ($query) => $query->where('client_id', $account->id)->orWhere('host_id', $account->id))->pluck('attachment_path');
+        $paymentProofPaths = Booking::query()->whereNotNull('payment_proof_path')->where(function ($query) use ($account) {
+            $query->where('client_id', $account->id)
+                ->orWhereHas('unit', fn ($units) => $units->where('host_id', $account->id));
+        })->pluck('payment_proof_path');
         $account->delete();
         Storage::disk('public')->delete($photoPaths->all());
         Storage::disk('public')->delete($profileImagePaths->all());
@@ -119,6 +124,7 @@ class AccountController extends Controller
         }
         Storage::disk('local')->delete($hostApplicationIdentityPaths);
         Storage::disk('local')->delete($inquiryAttachmentPaths->all());
+        Storage::disk('local')->delete($paymentProofPaths->all());
 
         return redirect()->route('accounts.index')->with('status', "{$name}'s account was deleted.");
     }

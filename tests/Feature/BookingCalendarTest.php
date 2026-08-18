@@ -1015,6 +1015,10 @@ class BookingCalendarTest extends TestCase
         $this->actingAs($client)->get(route('units.wifi-qr', $unit))->assertForbidden();
         $this->actingAs($unrelatedClient)->get(route('units.wifi-qr', $unit))->assertForbidden();
 
+        $this->actingAs($host)->patch(route('bookings.status', $booking), ['status' => 'pre_approved'])->assertRedirect();
+        $this->actingAs($client)->post(route('bookings.payment-proof.store', $booking), [
+            'payment_proof' => UploadedFile::fake()->image('payment-proof.jpg'),
+        ])->assertRedirect();
         $this->actingAs($host)->patch(route('bookings.status', $booking), ['status' => 'confirmed'])->assertRedirect();
 
         $this->actingAs($client)->get($calendarUrl)
@@ -1301,7 +1305,7 @@ class BookingCalendarTest extends TestCase
         $this->assertSame('pending', $booking->change_request_status);
     }
 
-    public function test_only_owning_host_can_confirm_a_booking(): void
+    public function test_only_owning_host_can_complete_booking_approval(): void
     {
         $host = User::factory()->host()->create();
         $otherHost = User::factory()->host()->create();
@@ -1316,7 +1320,12 @@ class BookingCalendarTest extends TestCase
             'total_amount' => 600,
         ]);
 
-        $this->actingAs($otherHost)->patch(route('bookings.status', $booking), ['status' => 'confirmed'])->assertForbidden();
+        Storage::fake('local');
+        $this->actingAs($otherHost)->patch(route('bookings.status', $booking), ['status' => 'pre_approved'])->assertForbidden();
+        $this->actingAs($host)->patch(route('bookings.status', $booking), ['status' => 'pre_approved'])->assertRedirect();
+        $this->actingAs($client)->post(route('bookings.payment-proof.store', $booking), [
+            'payment_proof' => UploadedFile::fake()->image('payment-proof.jpg'),
+        ])->assertRedirect();
         $this->actingAs($host)->patch(route('bookings.status', $booking), ['status' => 'confirmed'])->assertRedirect();
         $this->assertDatabaseHas('bookings', ['id' => $booking->id, 'status' => 'confirmed']);
     }

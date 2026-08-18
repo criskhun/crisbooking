@@ -95,6 +95,8 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('bookings.show');
     Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
     Route::patch('/bookings/{booking}/status', [BookingController::class, 'updateStatus'])->name('bookings.status');
+    Route::post('/bookings/{booking}/payment-proof', [BookingController::class, 'submitPaymentProof'])->name('bookings.payment-proof.store');
+    Route::get('/bookings/{booking}/payment-proof', [BookingController::class, 'paymentProof'])->name('bookings.payment-proof.show');
     Route::patch('/bookings/{booking}/change-request', [BookingController::class, 'requestChange'])->name('bookings.change-request');
     Route::patch('/bookings/{booking}/change-request/review', [BookingController::class, 'reviewChange'])->name('bookings.change-request.review');
     Route::patch('/bookings/{booking}/cancel', [BookingController::class, 'cancel'])->name('bookings.cancel');

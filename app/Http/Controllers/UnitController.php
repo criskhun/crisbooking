@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Booking;
 use App\Models\InquiryMessage;
 use App\Models\Unit;
 use App\Models\UnitDraft;
@@ -307,12 +308,14 @@ class UnitController extends Controller
         $photoPaths = $unit->images()->pluck('path')->push($unit->photo_path)->filter()->unique();
         $wifiQrPath = $unit->wifi_qr_path;
         $inquiryAttachmentPaths = InquiryMessage::query()->whereNotNull('attachment_path')->whereHas('inquiry', fn ($query) => $query->where('unit_id', $unit->id))->pluck('attachment_path');
+        $paymentProofPaths = Booking::query()->where('unit_id', $unit->id)->whereNotNull('payment_proof_path')->pluck('payment_proof_path');
         DB::transaction(fn () => $unit->delete());
         Storage::disk('public')->delete($photoPaths->all());
         if ($wifiQrPath) {
             Storage::disk('local')->delete($wifiQrPath);
         }
         Storage::disk('local')->delete($inquiryAttachmentPaths->all());
+        Storage::disk('local')->delete($paymentProofPaths->all());
 
         $status = $recordCount > 0
             ? "{$name} and its {$recordCount} booking or inquiry ".Str::plural('record', $recordCount).' were permanently deleted.'

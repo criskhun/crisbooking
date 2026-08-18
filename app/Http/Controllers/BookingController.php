@@ -10,9 +10,11 @@ use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BookingController extends Controller
 {
@@ -207,13 +209,13 @@ class BookingController extends Controller
             'mode' => 'book',
             'month' => $booking->start_at->format('Y-m'),
             'date' => $booking->start_at->format('Y-m-d'),
-        ])->with('status', 'Booking request submitted. The host can now confirm it.');
+        ])->with('status', 'Booking request submitted. The host must pre-approve or decline it.');
     }
 
     public function requestChange(Request $request, Booking $booking): RedirectResponse
     {
         abort_unless($booking->client_id === $request->user()->id, 403);
-        abort_unless(in_array($booking->status, ['pending', 'confirmed'], true) && $booking->end_at->isFuture(), 422, 'Only an active upcoming booking can be changed.');
+        abort_unless(in_array($booking->status, ['pending', 'pre_approved', 'payment_submitted', 'confirmed'], true) && $booking->end_at->isFuture(), 422, 'Only an active upcoming booking can be changed.');
 
         $validated = $request->validate([
             'change_start_at' => ['required', 'date', 'after:now'],
@@ -229,7 +231,7 @@ class BookingController extends Controller
             $lockedBooking = Booking::query()->lockForUpdate()->findOrFail($booking->id);
             $unit = Unit::query()->lockForUpdate()->findOrFail($lockedBooking->unit_id);
             abort_unless($lockedBooking->client_id === $request->user()->id, 403);
-            abort_unless(in_array($lockedBooking->status, ['pending', 'confirmed'], true) && $lockedBooking->end_at->isFuture(), 422, 'Only an active upcoming booking can be changed.');
+            abort_unless(in_array($lockedBooking->status, ['pending', 'pre_approved', 'payment_submitted', 'confirmed'], true) && $lockedBooking->end_at->isFuture(), 422, 'Only an active upcoming booking can be changed.');
 
             $start = Carbon::parse($validated['change_start_at']);
             $requestedEnd = Carbon::parse($validated['change_end_at']);
@@ -412,23 +414,110 @@ class BookingController extends Controller
             403
         );
 
-        $validated = $request->validate(['status' => ['required', Rule::in(['confirmed', 'cancelled'])]]);
-        $booking->update(['status' => $validated['status']]);
-        $booking->inquiry()->update(['status' => $validated['status'] === 'confirmed' ? 'confirmed' : 'closed']);
-        $booking->loadMissing('unit', 'affiliatePartnership.marketer');
+        $validated = $request->validate(['status' => ['required', Rule::in(['pre_approved', 'confirmed', 'declined'])]]);
+
+        $disabledBookingIds = DB::transaction(function () use ($booking, $validated, $request) {
+            $lockedBooking = Booking::query()->lockForUpdate()->findOrFail($booking->id);
+            $unit = Unit::query()->lockForUpdate()->findOrFail($lockedBooking->unit_id);
+            abort_unless($request->user()->is_admin || ($request->user()->isHost() && $unit->host_id === $request->user()->id), 403);
+
+            if ($validated['status'] === 'declined') {
+                abort_unless(in_array($lockedBooking->status, ['pending', 'pre_approved', 'payment_submitted'], true), 422, 'This request can no longer be declined.');
+                $lockedBooking->update([
+                    'status' => 'declined',
+                    'payment_reviewed_at' => $lockedBooking->payment_submitted_at ? now() : null,
+                ]);
+                $lockedBooking->inquiry()->update(['status' => 'closed']);
+
+                return [];
+            }
+
+            if ($validated['status'] === 'pre_approved') {
+                abort_unless($lockedBooking->status === 'pending', 422, 'Only a pending request can be pre-approved.');
+
+                if ($this->hasScheduleConflict($unit, $lockedBooking->start_at, $lockedBooking->end_at, $lockedBooking->id)) {
+                    throw ValidationException::withMessages([
+                        'status' => 'This schedule is already held or booked. Decline this request or choose another request.',
+                    ]);
+                }
+
+                $lockedBooking->update(['status' => 'pre_approved']);
+                $lockedBooking->inquiry()->update(['status' => 'pre_approved']);
+
+                return [];
+            }
+
+            abort_unless($lockedBooking->status === 'payment_submitted', 422, 'The client must submit proof of payment before final confirmation.');
+
+            if ($this->hasScheduleConflict($unit, $lockedBooking->start_at, $lockedBooking->end_at, $lockedBooking->id)) {
+                throw ValidationException::withMessages([
+                    'status' => 'This schedule was booked by another confirmed request and can no longer be confirmed.',
+                ]);
+            }
+
+            $lockedBooking->update([
+                'status' => 'confirmed',
+                'payment_reviewed_at' => now(),
+            ]);
+            $lockedBooking->inquiry()->update(['status' => 'confirmed']);
+
+            $conflictingRequests = Booking::query()
+                ->where('unit_id', $unit->id)
+                ->whereKeyNot($lockedBooking->id)
+                ->where('status', 'pending')
+                ->where('start_at', '<', $lockedBooking->end_at)
+                ->where('end_at', '>', $lockedBooking->start_at)
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($conflictingRequests as $conflictingRequest) {
+                $conflictingRequest->update(['status' => 'unavailable']);
+                $conflictingRequest->inquiry()->update(['status' => 'closed']);
+            }
+
+            return $conflictingRequests->pluck('id')->all();
+        });
+
+        $booking->refresh()->loadMissing('unit', 'affiliatePartnership.marketer');
+        $statusCopy = match ($validated['status']) {
+            'pre_approved' => [
+                'Booking pre-approved',
+                $booking->unit->name.' was pre-approved. Submit your proof of payment to continue.',
+            ],
+            'confirmed' => [
+                'Booking confirmed',
+                $booking->unit->name.' was confirmed after your payment proof was reviewed.',
+            ],
+            default => [
+                'Booking declined',
+                $booking->unit->name.' was declined.',
+            ],
+        };
         app(AppNotificationService::class)->send(
             $booking->client,
             'booking_status',
-            $validated['status'] === 'confirmed' ? 'Booking approved' : 'Booking declined',
-            $booking->unit->name.' was '.($validated['status'] === 'confirmed' ? 'approved.' : 'declined.'),
+            $statusCopy[0],
+            $statusCopy[1],
             route('bookings.show', $booking),
         );
+
+        if ($validated['status'] === 'confirmed' && $disabledBookingIds !== []) {
+            Booking::query()->with(['client', 'unit'])->whereKey($disabledBookingIds)->get()->each(function (Booking $disabledBooking): void {
+                app(AppNotificationService::class)->send(
+                    $disabledBooking->client,
+                    'booking_unavailable',
+                    'Requested schedule is no longer available',
+                    'Another request for '.$disabledBooking->unit->name.' was confirmed, so your pending request was closed.',
+                    route('bookings.show', $disabledBooking),
+                );
+            });
+        }
 
         if ($booking->affiliatePartnership) {
             app(AppNotificationService::class)->send(
                 $booking->affiliatePartnership->marketer,
                 'affiliate_booking_status',
-                $validated['status'] === 'confirmed' ? 'Referral booking confirmed' : 'Referral booking declined',
+                $validated['status'] === 'confirmed' ? 'Referral booking confirmed' : ($validated['status'] === 'pre_approved' ? 'Referral booking pre-approved' : 'Referral booking declined'),
                 $booking->unit->name.' was '.$validated['status'].'.'.($validated['status'] === 'confirmed'
                     ? ' Your tracked commission is ₱'.number_format((float) $booking->affiliate_commission_amount, 2).'.'
                     : ''),
@@ -436,13 +525,81 @@ class BookingController extends Controller
             );
         }
 
-        return back()->with('status', $validated['status'] === 'confirmed' ? 'Booking confirmed.' : 'Booking declined.');
+        return back()->with('status', match ($validated['status']) {
+            'pre_approved' => 'Booking pre-approved. The client can now submit proof of payment.',
+            'confirmed' => 'Payment proof accepted and booking confirmed. Conflicting pending requests are now unavailable.',
+            default => 'Booking declined.',
+        });
+    }
+
+    public function submitPaymentProof(Request $request, Booking $booking): RedirectResponse
+    {
+        abort_unless($booking->client_id === $request->user()->id, 403);
+        abort_unless(in_array($booking->status, ['pre_approved', 'payment_submitted'], true), 422, 'Payment proof is available only after host pre-approval.');
+
+        $validated = $request->validate([
+            'payment_proof' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
+        ]);
+        $proof = $validated['payment_proof'];
+        $path = $proof->store('booking-payment-proofs/'.$booking->id, 'local');
+
+        try {
+            $oldPath = DB::transaction(function () use ($booking, $request, $proof, $path) {
+                $lockedBooking = Booking::query()->lockForUpdate()->findOrFail($booking->id);
+                abort_unless($lockedBooking->client_id === $request->user()->id, 403);
+                abort_unless(in_array($lockedBooking->status, ['pre_approved', 'payment_submitted'], true), 422, 'Payment proof is available only after host pre-approval.');
+                $oldPath = $lockedBooking->payment_proof_path;
+                $lockedBooking->update([
+                    'status' => 'payment_submitted',
+                    'payment_proof_path' => $path,
+                    'payment_proof_name' => $proof->getClientOriginalName(),
+                    'payment_submitted_at' => now(),
+                    'payment_reviewed_at' => null,
+                ]);
+                $lockedBooking->inquiry()->update(['status' => 'payment_submitted']);
+
+                return $oldPath;
+            });
+        } catch (\Throwable $exception) {
+            Storage::disk('local')->delete($path);
+            throw $exception;
+        }
+
+        if ($oldPath && $oldPath !== $path) {
+            Storage::disk('local')->delete($oldPath);
+        }
+
+        $booking->refresh()->loadMissing('unit.host');
+        app(AppNotificationService::class)->send(
+            $booking->unit->host,
+            'payment_proof',
+            'Payment proof submitted',
+            $request->user()->name.' submitted payment proof for '.$booking->unit->name.'. Review it before confirming the booking.',
+            route('bookings.show', $booking),
+        );
+
+        return back()->with('status', 'Payment proof submitted. The host must review it before the booking is confirmed.');
+    }
+
+    public function paymentProof(Request $request, Booking $booking): StreamedResponse
+    {
+        $canView = $request->user()->is_admin
+            || $booking->client_id === $request->user()->id
+            || ($request->user()->isHost() && $booking->unit()->where('host_id', $request->user()->id)->exists());
+
+        abort_unless($canView, 403);
+        abort_unless($booking->payment_proof_path && Storage::disk('local')->exists($booking->payment_proof_path), 404);
+
+        return Storage::disk('local')->response($booking->payment_proof_path, $booking->payment_proof_name, [
+            'Cache-Control' => 'private, no-store, max-age=0',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     public function cancel(Request $request, Booking $booking): RedirectResponse
     {
         abort_unless($booking->client_id === $request->user()->id, 403);
-        abort_if($booking->status === 'cancelled', 422, 'This booking is already cancelled.');
+        abort_unless(in_array($booking->status, ['pending', 'pre_approved', 'payment_submitted', 'confirmed'], true), 422, 'This booking is no longer active.');
 
         $booking->update(['status' => 'cancelled']);
         $booking->inquiry()->update(['status' => 'closed']);

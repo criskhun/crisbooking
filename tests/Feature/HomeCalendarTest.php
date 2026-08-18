@@ -20,7 +20,7 @@ class HomeCalendarTest extends TestCase
         $selectedListing = $this->unit($host, 'Selected Date Cleaning');
         $popularListing = $this->unit($host, 'Historically Popular Driving');
 
-        $this->booking($selectedListing, $client, $selectedDate->copy()->addHours(9), 'pending');
+        $this->booking($selectedListing, $client, $selectedDate->copy()->addHours(9), 'pre_approved');
         foreach (range(1, 3) as $offset) {
             $this->booking($popularListing, $client, $selectedDate->copy()->subMonths($offset)->addHours(9), 'confirmed');
         }

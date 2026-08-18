@@ -20,9 +20,9 @@
                         @endforeach
                         @if ($inquiry->booking)
                             <article class="chat-booking-request" data-booking-request-id="{{ $inquiry->booking->id }}">
-                                <span>{{ $inquiry->booking->status === 'pending' ? '◷' : ($inquiry->booking->status === 'confirmed' ? '✓' : '×') }}</span>
+                                <span>{{ in_array($inquiry->booking->status, ['pending', 'pre_approved', 'payment_submitted'], true) ? '◷' : ($inquiry->booking->status === 'confirmed' ? '✓' : '×') }}</span>
                                 <div><small>Booking request</small><strong>{{ auth()->id() === $inquiry->host_id ? $inquiry->client->name.' requested this booking.' : 'Your booking request was sent.' }}</strong><p>{{ $inquiry->booking->start_at->format('M j, Y · g:i A') }} – {{ $inquiry->booking->end_at->format('M j, Y · g:i A') }} · ₱{{ number_format($inquiry->booking->total_amount, 2) }}</p><a href="{{ route('bookings.show', $inquiry->booking) }}">View request</a></div>
-                                <em class="booking-status status-{{ $inquiry->booking->status }}">{{ ucfirst($inquiry->booking->status) }}</em>
+                                <em class="booking-status status-{{ $inquiry->booking->status }}">{{ $inquiry->booking->statusLabel() }}</em>
                             </article>
                         @endif
                     </div>
@@ -87,7 +87,7 @@
                         @if ($inquiry->priceProposals->where('status', '!=', 'pending')->isNotEmpty())<details class="price-proposal-history"><summary>Price history</summary>@foreach($inquiry->priceProposals->where('status', '!=', 'pending') as $proposal)<span><b>₱{{ number_format($proposal->amount, 2) }}</b><small>{{ ucfirst($proposal->status) }} · {{ $proposal->proposer->name }}</small></span>@endforeach</details>@endif
                     </section>
                     @if ($inquiry->booking)
-                        <div class="inquiry-booking-state"><small>Booking request</small><strong>{{ ucfirst($inquiry->booking->status) }}</strong><span>₱{{ number_format($inquiry->booking->total_amount, 2) }}</span></div>
+                        <div class="inquiry-booking-state"><small>Booking request</small><strong>{{ $inquiry->booking->statusLabel() }}</strong><span>₱{{ number_format($inquiry->booking->total_amount, 2) }}</span></div>
                         <a class="button button-primary button-full booking-detail-return" href="{{ route('bookings.show', $inquiry->booking) }}">View booking details</a>
                         @if ($canAttachImages)<small class="context-note">✓ Booking approved — private image attachments are now enabled in chat.</small>@endif
                     @elseif (auth()->id() === $inquiry->client_id)

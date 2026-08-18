@@ -20,7 +20,7 @@
                     <div><span class="eyebrow">All listings</span><strong>{{ $units->count() }}</strong></div>
                     <div><span class="eyebrow">Available now</span><strong>{{ $units->where('is_active', true)->where('active_bookings_count', 0)->count() }}</strong></div>
                     <div><span class="eyebrow">Booked now</span><strong>{{ $units->where('active_bookings_count', '>', 0)->count() }}</strong></div>
-                    <p>A listing is shown as booked whenever a pending or confirmed reservation overlaps the current time.</p>
+                    <p>A listing is shown as booked when a host-held or confirmed reservation overlaps the current time. Pending requests remain available for review.</p>
                 </div>
 
                 <div class="listing-grid">

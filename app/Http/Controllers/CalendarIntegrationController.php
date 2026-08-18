@@ -24,7 +24,7 @@ class CalendarIntegrationController extends Controller
 
         $bookings = Booking::query()
             ->with(['unit.host:id,name', 'client:id,name'])
-            ->whereIn('status', ['pending', 'confirmed'])
+            ->open()
             ->where(function ($query) use ($user) {
                 $query->where('client_id', $user->id)
                     ->orWhereHas('unit', fn ($units) => $units->where('host_id', $user->id));
@@ -63,8 +63,8 @@ class CalendarIntegrationController extends Controller
         ];
 
         foreach ($bookings as $booking) {
-            $summary = $booking->unit->name.' · '.ucfirst($booking->status);
-            $description = "Booking #{$booking->id}\nClient: {$booking->client->name}\nHost: {$booking->unit->host->name}\nStatus: ".ucfirst($booking->status);
+            $summary = $booking->unit->name.' · '.$booking->statusLabel();
+            $description = "Booking #{$booking->id}\nClient: {$booking->client->name}\nHost: {$booking->unit->host->name}\nStatus: ".$booking->statusLabel();
             $lines = [...$lines,
                 'BEGIN:VEVENT',
                 'UID:booking-'.$booking->id.'@davaorentzone.com',

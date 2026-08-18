@@ -22,8 +22,12 @@
         $myBookingReview = $booking->reviews->firstWhere('reviewer_id', auth()->id());
         $reviewPartner = $isClient ? $unit->host : $booking->client;
         $statusCopy = [
-            'pending' => ['Waiting for host', 'Your request and inquiry are ready for the host to review.'],
-            'confirmed' => ['Booking approved', 'Your booking is confirmed. Keep coordinating in chat.'],
+            'pending' => [$isClient ? 'Waiting for host' : 'Action required', $isClient ? 'The host must pre-approve or decline your request.' : 'Review this request and either pre-approve or decline it.'],
+            'pre_approved' => ['Pre-approved — payment required', $isClient ? 'Upload your proof of payment so the host can complete confirmation.' : 'The client can now submit proof of payment.'],
+            'payment_submitted' => ['Payment proof needs review', $isClient ? 'Your proof was sent. The host must review it before confirmation.' : 'Review the client’s payment proof, then confirm or decline the booking.'],
+            'confirmed' => ['Booking confirmed', 'Payment was reviewed and this booking is confirmed. Keep coordinating in chat.'],
+            'declined' => ['Booking declined', 'The host declined this request.'],
+            'unavailable' => ['Schedule no longer available', 'Another request was confirmed for this schedule, so this pending request was disabled.'],
             'cancelled' => ['Booking cancelled', 'This booking is no longer active.'],
         ];
         [$statusTitle, $statusDescription] = $statusCopy[$booking->status] ?? [ucfirst($booking->status), 'Review the booking information below.'];
@@ -35,7 +39,7 @@
 
             <section class="booking-detail-shell">
                 @if (session('status'))<div class="flash-message account-alert">{{ session('status') }}</div>@endif
-                <div class="booking-detail-status status-{{ $booking->status }}"><span>{{ $booking->status === 'confirmed' ? '✓' : ($booking->status === 'pending' ? '◷' : '×') }}</span><div><small>{{ ucfirst($booking->status) }} booking #{{ $booking->id }}</small><h2>{{ $statusTitle }}</h2><p>{{ $statusDescription }}</p></div>@if ($booking->inquiry)<a class="button button-primary" href="{{ route('inquiries.show', $booking->inquiry) }}">Open booking chat</a>@endif</div>
+                <div class="booking-detail-status status-{{ $booking->status }}"><span>{{ $booking->status === 'confirmed' ? '✓' : (in_array($booking->status, ['pending', 'pre_approved', 'payment_submitted'], true) ? '◷' : '×') }}</span><div><small>{{ $booking->statusLabel() }} booking #{{ $booking->id }}</small><h2>{{ $statusTitle }}</h2><p>{{ $statusDescription }}</p></div>@if ($booking->inquiry)<a class="button button-primary" href="{{ route('inquiries.show', $booking->inquiry) }}">Open booking chat</a>@endif</div>
 
                 <div class="booking-detail-layout">
                     <div class="booking-detail-main">
@@ -87,7 +91,7 @@
                             @if (! empty($booking->additional_charges))
                                 <div><dt>Required charges</dt><dd class="package-breakdown-list">@foreach($booking->additional_charges as $charge)<span>{{ $charge['label'] }} <small>₱{{ number_format($charge['amount'], 2) }}{{ !empty($charge['refundable']) ? ' · refundable' : '' }}</small></span>@endforeach</dd></div>
                             @endif
-                            <div><dt>Status</dt><dd><span class="booking-status status-{{ $booking->status }}">{{ ucfirst($booking->status) }}</span></dd></div>
+                            <div><dt>Status</dt><dd><span class="booking-status status-{{ $booking->status }}">{{ $booking->statusLabel() }}</span></dd></div>
                         </dl>
                         <div class="booking-total"><small>Total booking value</small><strong>₱{{ number_format($booking->total_amount, 2) }}</strong></div>
                         <div class="booking-calendar-actions"><a href="{{ $googleCalendarUrl }}" target="_blank" rel="noopener">Google Calendar</a><a href="{{ route('bookings.calendar', $booking) }}">iPhone / Apple (.ics)</a></div>
@@ -96,13 +100,35 @@
                             <small class="booking-chat-note">This opens the conversation for this exact booking.</small>
                         @endif
                         @if ($isClient)<a class="button button-ghost button-full" href="{{ route('profiles.show', $unit->host) }}">View host profile</a>@else<a class="button button-ghost button-full" href="{{ route('profiles.show', $booking->client) }}">View client profile</a>@endif
-                        @if ($isClient && $booking->status !== 'cancelled' && $booking->end_at->isFuture())
+                        @if ($isClient && in_array($booking->status, ['pending', 'pre_approved', 'payment_submitted', 'confirmed'], true) && $booking->end_at->isFuture())
                             <form method="POST" action="{{ route('bookings.cancel', $booking) }}" onsubmit="return confirm('Cancel this booking?')">@csrf @method('PATCH')<button class="booking-cancel-button" type="submit">Cancel booking</button></form>
                         @elseif (! $isClient && $booking->status === 'pending')
-                            <div class="booking-host-actions"><form method="POST" action="{{ route('bookings.status', $booking) }}">@csrf @method('PATCH')<input type="hidden" name="status" value="confirmed"><button class="button button-primary" type="submit">Approve</button></form><form method="POST" action="{{ route('bookings.status', $booking) }}">@csrf @method('PATCH')<input type="hidden" name="status" value="cancelled"><button class="booking-cancel-button" type="submit">Decline</button></form></div>
+                            <div class="booking-host-actions"><form method="POST" action="{{ route('bookings.status', $booking) }}">@csrf @method('PATCH')<input type="hidden" name="status" value="pre_approved"><button class="button button-primary" type="submit">Pre-approve</button></form><form method="POST" action="{{ route('bookings.status', $booking) }}">@csrf @method('PATCH')<input type="hidden" name="status" value="declined"><button class="booking-cancel-button" type="submit">Decline</button></form></div>
+                        @elseif (! $isClient && in_array($booking->status, ['pre_approved', 'payment_submitted'], true))
+                            <div class="booking-host-actions">
+                                @if ($booking->status === 'payment_submitted')<form method="POST" action="{{ route('bookings.status', $booking) }}">@csrf @method('PATCH')<input type="hidden" name="status" value="confirmed"><button class="button button-primary" type="submit">Accept payment & confirm</button></form>@endif
+                                <form method="POST" action="{{ route('bookings.status', $booking) }}">@csrf @method('PATCH')<input type="hidden" name="status" value="declined"><button class="booking-cancel-button" type="submit">Decline</button></form>
+                            </div>
                         @endif
                     </aside>
                 </div>
+
+                @if ($isClient && in_array($booking->status, ['pre_approved', 'payment_submitted'], true))
+                    <section class="booking-change-card payment-proof-card">
+                        <div class="booking-change-heading"><span>₱</span><div><small>Pre-approval payment step</small><h2>{{ $booking->payment_proof_path ? 'Payment proof submitted' : 'Send proof of payment' }}</h2><p>The booking remains unconfirmed until the host reviews your proof.</p></div></div>
+                        @if ($booking->payment_proof_path)<p><a class="button button-ghost" href="{{ route('bookings.payment-proof.show', $booking) }}" target="_blank">View submitted proof</a></p>@endif
+                        <form method="POST" action="{{ route('bookings.payment-proof.store', $booking) }}" enctype="multipart/form-data" class="booking-change-form">
+                            @csrf
+                            <div class="field-group"><label for="payment_proof">{{ $booking->payment_proof_path ? 'Replace payment proof' : 'Payment receipt or transfer proof' }}</label><input id="payment_proof" name="payment_proof" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required><small class="field-help">JPG, PNG, WebP, or PDF up to 5 MB.</small>@error('payment_proof')<p class="error-text">{{ $message }}</p>@enderror</div>
+                            <button class="button button-primary" type="submit">{{ $booking->payment_proof_path ? 'Replace proof' : 'Submit proof' }}</button>
+                        </form>
+                    </section>
+                @elseif ($booking->payment_proof_path)
+                    <section class="booking-change-card payment-proof-card">
+                        <div class="booking-change-heading"><span>₱</span><div><small>Private payment document</small><h2>{{ $isClient ? 'Submitted payment proof' : 'Review payment proof' }}</h2><p>{{ $isClient ? 'This is the proof attached to your booking.' : 'Open the client’s proof before making the final confirmation decision.' }}</p></div></div>
+                        <a class="button button-primary" href="{{ route('bookings.payment-proof.show', $booking) }}" target="_blank">Open {{ $booking->payment_proof_name ?: 'payment proof' }}</a>
+                    </section>
+                @endif
 
                 @if ($booking->status === 'confirmed' && $booking->end_at->isPast())
                     <section class="booking-review-card">
@@ -140,7 +166,7 @@
                     </section>
                 @endif
 
-                @if ($isClient && in_array($booking->status, ['pending', 'confirmed'], true) && $booking->end_at->isFuture() && ! $booking->hasPendingChangeRequest())
+                @if ($isClient && in_array($booking->status, ['pending', 'pre_approved', 'payment_submitted', 'confirmed'], true) && $booking->end_at->isFuture() && ! $booking->hasPendingChangeRequest())
                     <section class="booking-change-card">
                         <div class="booking-change-heading"><span>↻</span><div><small>Changes require host approval</small><h2>Request new dates or pax</h2><p>Your current reservation remains unchanged while the host reviews availability.</p></div></div>
                         <form method="POST" action="{{ route('bookings.change-request', $booking) }}" class="booking-change-form">

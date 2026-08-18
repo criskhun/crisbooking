@@ -37,6 +37,10 @@ class Booking extends Model
         'change_requested_at',
         'change_reviewed_at',
         'notes',
+        'payment_proof_path',
+        'payment_proof_name',
+        'payment_submitted_at',
+        'payment_reviewed_at',
         'affiliate_partnership_id',
         'affiliate_commission_percentage',
         'affiliate_commission_amount',
@@ -58,6 +62,8 @@ class Booking extends Model
             'change_package_breakdown' => 'array',
             'change_requested_at' => 'datetime',
             'change_reviewed_at' => 'datetime',
+            'payment_submitted_at' => 'datetime',
+            'payment_reviewed_at' => 'datetime',
             'affiliate_commission_percentage' => 'decimal:2',
             'affiliate_commission_amount' => 'decimal:2',
         ];
@@ -95,7 +101,22 @@ class Booking extends Model
 
     public function scopeBlocking(Builder $query): Builder
     {
-        return $query->whereIn('status', ['pending', 'confirmed']);
+        return $query->whereIn('status', ['pre_approved', 'payment_submitted', 'confirmed']);
+    }
+
+    public function scopeOpen(Builder $query): Builder
+    {
+        return $query->whereIn('status', ['pending', 'pre_approved', 'payment_submitted', 'confirmed']);
+    }
+
+    public function statusLabel(): string
+    {
+        return match ($this->status) {
+            'pre_approved' => 'Pre-approved',
+            'payment_submitted' => 'Payment submitted',
+            'unavailable' => 'No longer available',
+            default => ucfirst($this->status),
+        };
     }
 
     public function hasPendingChangeRequest(): bool

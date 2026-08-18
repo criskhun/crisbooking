@@ -337,7 +337,7 @@ class ProfileInquiryTest extends TestCase
 
         $this->actingAs($client)->get(route('bookings.show', $booking))
             ->assertOk()
-            ->assertSee('Booking approved')
+            ->assertSee('Booking confirmed')
             ->assertSee($unit->name)
             ->assertSee('3 people')
             ->assertSee('Pickup at the hotel lobby.')

@@ -22,25 +22,25 @@ class DashboardController extends Controller
             $bookings->where('client_id', $user->id);
         }
 
-        $todayCount = (clone $bookings)->blocking()
+        $todayCount = (clone $bookings)->open()
             ->where('start_at', '<', today()->endOfDay())
             ->where('end_at', '>', today()->startOfDay())
             ->count();
-        $upcomingCount = (clone $bookings)->blocking()->where('start_at', '>', now())->count();
+        $upcomingCount = (clone $bookings)->open()->where('start_at', '>', now())->count();
         $monthSales = (clone $bookings)->where('status', 'confirmed')
             ->whereBetween('start_at', [now()->startOfMonth(), now()->endOfMonth()])
             ->get(['total_amount', 'additional_charges'])
             ->sum(fn (Booking $booking) => $booking->revenueAmount());
-        $pendingBalance = (clone $bookings)->where('status', 'pending')->sum('total_amount');
+        $pendingBalance = (clone $bookings)->whereIn('status', ['pending', 'pre_approved', 'payment_submitted'])->sum('total_amount');
         $todayBookings = (clone $bookings)->with(['unit.host', 'client'])
-            ->blocking()
+            ->open()
             ->where('start_at', '<', today()->endOfDay())
             ->where('end_at', '>', today()->startOfDay())
             ->orderBy('start_at')
             ->limit(6)
             ->get();
         $upcomingBookings = (clone $bookings)->with(['unit.host', 'client'])
-            ->blocking()
+            ->open()
             ->where('start_at', '>', now())
             ->orderBy('start_at')
             ->limit(6)
@@ -86,7 +86,7 @@ class DashboardController extends Controller
                 ->with([
                     'rates',
                     'images',
-                    'bookings' => fn ($query) => $query->blocking()->where('end_at', '>', now())->orderBy('start_at'),
+                    'bookings' => fn ($query) => $query->open()->where('end_at', '>', now())->orderBy('start_at'),
                 ])
                 ->when(! $user->is_admin, fn ($query) => $query->where('host_id', $user->id))
                 ->orderByDesc('is_active')

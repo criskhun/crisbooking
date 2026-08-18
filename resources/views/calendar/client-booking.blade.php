@@ -277,7 +277,7 @@
                                     @if (! empty($booking->unit->wifi_details['notes']))<p>{{ $booking->unit->wifi_details['notes'] }}</p>@endif
                                     @if ($booking->unit->wifi_qr_path)<img src="{{ route('units.wifi-qr', $booking->unit) }}" alt="Wi-Fi QR code for {{ $booking->unit->name }}">@endif
                                 </div>
-                            @elseif ($booking->status === 'pending')
+                            @elseif (in_array($booking->status, ['pending', 'pre_approved', 'payment_submitted'], true))
                                 <p class="locked-access-note">🔒 Wi-Fi access will appear here after the host confirms this booking.</p>
                             @endif
                         @endif
@@ -285,14 +285,14 @@
                         <span class="booking-card-open">View details →</span>
                     </a>
                     <div class="booking-item-actions">
-                        <span class="booking-status status-{{ $booking->status }}">{{ $booking->status === 'confirmed' ? 'Booked' : ucfirst($booking->status) }}</span>
-                        @if ($booking->status !== 'cancelled')
+                        <span class="booking-status status-{{ $booking->status }}">{{ $booking->status === 'confirmed' ? 'Booked' : $booking->statusLabel() }}</span>
+                        @if (in_array($booking->status, ['pending', 'pre_approved', 'payment_submitted', 'confirmed'], true))
                             <form method="POST" action="{{ route('bookings.cancel', $booking) }}" onsubmit="return confirm('Cancel this booking?')">@csrf @method('PATCH')<button class="danger-action" type="submit">Cancel</button></form>
                         @endif
                     </div>
                 </article>
             @empty
-                <div class="day-bookings-empty"><span>◇</span><p>Your confirmed and pending trips will appear here.</p></div>
+                <div class="day-bookings-empty"><span>◇</span><p>Your booking requests, payment steps, and confirmed trips will appear here.</p></div>
             @endforelse
         </div>
     </section>

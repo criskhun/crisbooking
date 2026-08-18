@@ -270,7 +270,7 @@ class CalendarController extends Controller
         $occupied = [];
         $laneCount = 1;
 
-        foreach ($bookings->whereIn('status', ['pending', 'confirmed'])->sortBy('start_at') as $booking) {
+        foreach ($bookings->whereIn('status', ['pending', 'pre_approved', 'payment_submitted', 'confirmed'])->sortBy('start_at') as $booking) {
             $firstDay = $booking->start_at->copy()->startOfDay()->max($calendarStart);
             $lastDay = $booking->end_at->copy()->subSecond()->startOfDay()->min($gridEnd->copy()->startOfDay());
 

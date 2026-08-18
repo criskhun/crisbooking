@@ -26,8 +26,8 @@ class SalesController extends Controller
             ->when($selectedCategory, fn ($query) => $query->whereHas('unit', fn ($units) => $units->where('category', $selectedCategory)))
             ->latest('start_at')->get();
         $confirmed = $bookings->where('status', 'confirmed');
-        $pending = $bookings->where('status', 'pending');
-        $cancelled = $bookings->where('status', 'cancelled');
+        $pending = $bookings->whereIn('status', ['pending', 'pre_approved', 'payment_submitted']);
+        $cancelled = $bookings->whereIn('status', ['cancelled', 'declined', 'unavailable']);
         $salesTotal = $confirmed->sum(fn (Booking $booking) => $booking->revenueAmount());
         $metrics = [
             'sales_total' => $salesTotal,

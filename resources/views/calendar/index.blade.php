@@ -178,17 +178,19 @@
                                                     @if (! empty($booking->unit->wifi_details['notes']))<p>{{ $booking->unit->wifi_details['notes'] }}</p>@endif
                                                     @if ($booking->unit->wifi_qr_path)<img src="{{ route('units.wifi-qr', $booking->unit) }}" alt="Wi-Fi QR code for {{ $booking->unit->name }}">@endif
                                                 </div>
-                                            @elseif ($booking->status === 'pending')
+                                            @elseif (in_array($booking->status, ['pending', 'pre_approved', 'payment_submitted'], true))
                                                 <p class="locked-access-note">🔒 Wi-Fi access will appear here after the host confirms this booking.</p>
                                             @endif
                                         @endif
                                     </div>
                                     <div class="booking-item-actions">
-                                        <span class="booking-status status-{{ $booking->status }}">{{ ucfirst($booking->status) }}</span>
+                                        <span class="booking-status status-{{ $booking->status }}">{{ $booking->statusLabel() }}</span>
                                         @if ((auth()->user()->isHost() || auth()->user()->is_admin) && $booking->status === 'pending')
-                                            <form method="POST" action="{{ route('bookings.status', $booking) }}">@csrf @method('PATCH')<input type="hidden" name="status" value="confirmed"><button type="submit">Confirm</button></form>
-                                            <form method="POST" action="{{ route('bookings.status', $booking) }}">@csrf @method('PATCH')<input type="hidden" name="status" value="cancelled"><button class="danger-action" type="submit">Decline</button></form>
-                                        @elseif ($booking->client_id === auth()->id() && $booking->status !== 'cancelled' && $booking->end_at->isFuture())
+                                            <form method="POST" action="{{ route('bookings.status', $booking) }}">@csrf @method('PATCH')<input type="hidden" name="status" value="pre_approved"><button type="submit">Pre-approve</button></form>
+                                            <form method="POST" action="{{ route('bookings.status', $booking) }}">@csrf @method('PATCH')<input type="hidden" name="status" value="declined"><button class="danger-action" type="submit">Decline</button></form>
+                                        @elseif ((auth()->user()->isHost() || auth()->user()->is_admin) && $booking->status === 'payment_submitted')
+                                            <a href="{{ route('bookings.show', $booking) }}">Review payment</a>
+                                        @elseif ($booking->client_id === auth()->id() && in_array($booking->status, ['pending', 'pre_approved', 'payment_submitted', 'confirmed'], true) && $booking->end_at->isFuture())
                                             <form method="POST" action="{{ route('bookings.cancel', $booking) }}" onsubmit="return confirm('Cancel this booking?')">@csrf @method('PATCH')<button class="danger-action" type="submit">Cancel</button></form>
                                         @endif
                                     </div>
