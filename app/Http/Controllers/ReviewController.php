@@ -46,9 +46,9 @@ class ReviewController extends Controller
 
     public function affiliate(Request $request, AffiliatePartnership $affiliate): RedirectResponse
     {
-        abort_unless(in_array($request->user()->id, [$affiliate->marketer_id, $affiliate->host_id], true) && $affiliate->isAccepted(), 403);
-        $reviewee = $request->user()->id === $affiliate->host_id ? $affiliate->marketer : $affiliate->host;
-        $context = $request->user()->id === $affiliate->host_id ? 'affiliate' : 'host';
+        abort_unless($request->user()->id === $affiliate->host_id && $affiliate->isAccepted(), 403);
+        $reviewee = $affiliate->marketer;
+        $context = 'affiliate';
         $validated = $this->validatedReview($request);
 
         if (Review::query()->where('affiliate_partnership_id', $affiliate->id)->where('reviewer_id', $request->user()->id)->where('reviewee_id', $reviewee->id)->exists()) {

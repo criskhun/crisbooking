@@ -6,6 +6,7 @@
 @section('content')
     @php
         $viewerIsHost = auth()->id() === $affiliate->host_id || auth()->user()->is_admin;
+        $viewerCanRateAffiliate = auth()->id() === $affiliate->host_id;
         $assignedUnitIds = collect(old('unit_ids', $affiliate->units->pluck('id')->all()))->map(fn ($id) => (int) $id);
     @endphp
     <div class="dashboard-shell">
@@ -44,8 +45,20 @@
                         <section class="overview-section"><div class="overview-section-heading"><div><span class="eyebrow">Tracked links</span><h2>Assigned listings ready to share</h2><p>Only listings assigned by the host appear here and accept this affiliate’s referral code.</p></div></div><div class="affiliate-link-list">@forelse($affiliate->units->where('is_active', true) as $unit)<article>@if($unit->primaryImagePath())<img src="{{ Storage::disk('public')->url($unit->primaryImagePath()) }}" alt="">@else<span class="affiliate-link-placeholder">{{ ['car' => '🚗', 'condo' => '🏢', 'driving' => '🛞', 'pet_transport' => '🐾'][$unit->category] ?? '◇' }}</span>@endif<div><small>{{ str($unit->category)->replace('_', ' ')->title() }}</small><strong>{{ $unit->name }}</strong><input value="{{ $unit->publicUrl($affiliate->referral_code) }}" readonly></div><button type="button" data-affiliate-copy="{{ $unit->publicUrl($affiliate->referral_code) }}">Copy link</button><a href="{{ $unit->publicUrl($affiliate->referral_code) }}" target="_blank" rel="noopener">Preview</a></article>@empty<div class="overview-empty"><strong>No active listing is assigned.</strong><p>The host can update assignments in the management form above.</p></div>@endforelse</div></section>
 
                         <section class="overview-section"><div class="overview-section-heading"><div><span class="eyebrow">Sales ledger</span><h2>Referred bookings</h2></div></div><div class="affiliate-sales-list">@forelse($affiliate->bookings as $booking)<article><span><strong>{{ $booking->unit->name }}</strong><small>{{ $booking->client->name }} · {{ $booking->created_at->format('M j, Y') }}</small></span><span class="booking-status status-{{ $booking->status }}">{{ $booking->statusLabel() }}</span><b>{{ $booking->status === 'confirmed' ? '₱'.number_format($booking->affiliate_commission_amount, 2) : $booking->statusLabel() }}</b></article>@empty<div class="overview-empty compact"><strong>No referred booking yet.</strong><p>Bookings that begin through the tracked links will appear here.</p></div>@endforelse</div></section>
-                        @php($myAffiliateReview = $affiliate->reviews->firstWhere('reviewer_id', auth()->id()))
-                        <section class="overview-section affiliate-partnership-review"><div class="overview-section-heading"><div><span class="eyebrow">Partnership reputation</span><h2>Review {{ $viewerIsHost ? $affiliate->marketer->name : $affiliate->host->name }}</h2><p>This review appears on their {{ $viewerIsHost ? 'affiliate' : 'host' }} profile.</p></div></div>@if($myAffiliateReview)<div class="review-submitted"><strong>{{ str_repeat('★', $myAffiliateReview->rating) }}{{ str_repeat('☆', 5 - $myAffiliateReview->rating) }}</strong><p>{{ $myAffiliateReview->comment }}</p></div>@else<form method="POST" action="{{ route('affiliates.reviews.store', $affiliate) }}" class="review-form">@csrf<fieldset><legend>Your rating</legend><div class="review-star-options">@foreach(range(5, 1) as $star)<input id="affiliate-rating-{{ $star }}" name="rating" type="radio" value="{{ $star }}" required><label for="affiliate-rating-{{ $star }}">★</label>@endforeach</div></fieldset><div class="field-group"><label for="affiliate_review_comment">Public comment</label><textarea id="affiliate_review_comment" name="comment" rows="3" minlength="10" maxlength="1500" required></textarea></div><button class="button button-primary" type="submit">Publish review</button></form>@endif</section>
+                        @php
+                            $affiliateRating = $affiliate->reviews
+                                ->first(fn ($review) => $review->reviewee_id === $affiliate->marketer_id && $review->reviewee_context === 'affiliate');
+                        @endphp
+                        <section class="overview-section affiliate-partnership-review">
+                            <div class="overview-section-heading"><div><span class="eyebrow">Partnership reputation</span><h2>{{ $viewerCanRateAffiliate ? 'Rate '.$affiliate->marketer->name : 'Your affiliate rating' }}</h2><p>{{ $viewerCanRateAffiliate ? 'Your review appears on this affiliate’s public profile.' : 'Only the host can submit this rating. You can view it here and on your public profile.' }}</p></div></div>
+                            @if($affiliateRating)
+                                <div class="review-submitted"><strong>{{ str_repeat('★', $affiliateRating->rating) }}{{ str_repeat('☆', 5 - $affiliateRating->rating) }}</strong><p>{{ $affiliateRating->comment }}</p><small>Rated by {{ $affiliate->host->name }}</small></div>
+                            @elseif($viewerCanRateAffiliate)
+                                <form method="POST" action="{{ route('affiliates.reviews.store', $affiliate) }}" class="review-form">@csrf<fieldset><legend>Your rating</legend><div class="review-star-options">@foreach(range(5, 1) as $star)<input id="affiliate-rating-{{ $star }}" name="rating" type="radio" value="{{ $star }}" required><label for="affiliate-rating-{{ $star }}">★</label>@endforeach</div></fieldset><div class="field-group"><label for="affiliate_review_comment">Public comment</label><textarea id="affiliate_review_comment" name="comment" rows="3" minlength="10" maxlength="1500" required></textarea></div><button class="button button-primary" type="submit">Publish affiliate review</button></form>
+                            @else
+                                <div class="overview-empty compact"><strong>No host rating yet.</strong><p>Your host has not published an affiliate review for this partnership.</p></div>
+                            @endif
+                        </section>
                     @endif
                 </div>
 

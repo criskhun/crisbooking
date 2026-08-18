@@ -149,7 +149,7 @@ class WorkspaceIntegrationTest extends TestCase
         $this->actingAs($host)->get(route('profiles.show', $client))->assertOk()->assertSee('As a client')->assertSee('communicated clearly');
     }
 
-    public function test_affiliate_partners_can_publish_role_specific_profile_reviews(): void
+    public function test_only_host_can_rate_affiliate_and_affiliate_sees_read_only_reputation(): void
     {
         $host = User::factory()->host()->create();
         $affiliateUser = User::factory()->create(['name' => 'Trusted Affiliate']);
@@ -163,11 +163,23 @@ class WorkspaceIntegrationTest extends TestCase
             'reviewed_at' => now(),
         ]);
 
+        $this->actingAs($affiliateUser)->post(route('affiliates.reviews.store', $partnership), [
+            'rating' => 5,
+            'comment' => 'I should not be able to publish a rating for this partnership.',
+        ])->assertForbidden();
+
         $this->actingAs($host)->post(route('affiliates.reviews.store', $partnership), [
             'rating' => 5,
             'comment' => 'A dependable affiliate who brings qualified booking clients.',
         ])->assertRedirect();
         $this->assertDatabaseHas('reviews', ['affiliate_partnership_id' => $partnership->id, 'reviewee_id' => $affiliateUser->id, 'reviewee_context' => 'affiliate']);
+        $this->assertDatabaseCount('reviews', 1);
+        $this->actingAs($affiliateUser)->get(route('affiliates.show', $partnership))
+            ->assertOk()
+            ->assertSee('Your affiliate rating')
+            ->assertSee('Rated by '.$host->name)
+            ->assertSee('dependable affiliate')
+            ->assertDontSee('Publish affiliate review');
         $this->actingAs($host)->get(route('profiles.show', $affiliateUser))->assertOk()->assertSee('As an affiliate')->assertSee('dependable affiliate');
     }
 
