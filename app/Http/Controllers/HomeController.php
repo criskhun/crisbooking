@@ -6,7 +6,9 @@ use App\Models\Booking;
 use App\Models\Unit;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class HomeController extends Controller
@@ -16,28 +18,32 @@ class HomeController extends Controller
         $validated = $request->validate([
             'month' => ['nullable', 'date_format:Y-m'],
             'date' => ['nullable', 'date_format:Y-m-d'],
+            'start_date' => ['nullable', 'date_format:Y-m-d'],
+            'end_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:start_date'],
+            'category' => ['nullable', Rule::in(['all', 'car', 'condo', 'driving', 'other'])],
+            'show' => ['nullable', Rule::in(['all'])],
         ]);
+
+        $startDateValue = $validated['start_date'] ?? $validated['date'] ?? now()->toDateString();
+        $endDateValue = $validated['end_date'] ?? $startDateValue;
+        $startDate = CarbonImmutable::createFromFormat('Y-m-d', $startDateValue)->startOfDay();
+        $endDate = CarbonImmutable::createFromFormat('Y-m-d', $endDateValue)->startOfDay();
+        $availabilityEndExclusive = $endDate->addDay();
+        $selectedCategory = $validated['category'] ?? 'all';
+        $showAllAvailable = ($validated['show'] ?? null) === 'all';
 
         $month = isset($validated['month'])
             ? CarbonImmutable::createFromFormat('Y-m-d', $validated['month'].'-01')->startOfMonth()
-            : now()->toImmutable()->startOfMonth();
-
-        $selectedDate = isset($validated['date'])
-            ? CarbonImmutable::createFromFormat('Y-m-d', $validated['date'])->startOfDay()
-            : ($month->isSameMonth(now()) ? now()->toImmutable()->startOfDay() : $month);
-
-        if (! $selectedDate->isSameMonth($month)) {
-            $month = $selectedDate->startOfMonth();
-        }
+            : $startDate->startOfMonth();
 
         $gridStart = $month->startOfWeek(CarbonImmutable::MONDAY);
         $gridEnd = $month->endOfMonth()->endOfWeek(CarbonImmutable::SUNDAY);
         $gridEndExclusive = $gridEnd->addDay()->startOfDay();
 
         $bookingCounts = [];
-        $topBookedListings = collect();
+        $availableListings = collect();
 
-        if (Schema::hasTable('users') && Schema::hasTable('units') && Schema::hasTable('bookings')) {
+        if (Schema::hasTable('users') && Schema::hasTable('units') && Schema::hasTable('bookings') && Schema::hasTable('reviews')) {
             Booking::query()
                 ->blocking()
                 ->where('start_at', '<', $gridEndExclusive)
@@ -56,24 +62,33 @@ class HomeController extends Controller
                     }
                 });
 
-            $selectedEnd = $selectedDate->addDay();
-            $topBookedListings = Unit::query()
-                ->with('images')
+            $availableListingsQuery = Unit::query()
+                ->with([
+                    'images',
+                    'listingReviews' => fn ($reviews) => $reviews->with('reviewer')->latest(),
+                ])
+                ->withAvg('listingReviews', 'rating')
+                ->withCount('listingReviews')
                 ->where('is_active', true)
                 ->whereHas('host', fn ($host) => $host->whereNotNull('profile_completed_at'))
-                ->withCount([
-                    'bookings as selected_date_bookings_count' => fn ($bookings) => $bookings
-                        ->blocking()
-                        ->where('start_at', '<', $selectedEnd)
-                        ->where('end_at', '>', $selectedDate),
-                    'bookings as confirmed_bookings_count' => fn ($bookings) => $bookings->where('status', 'confirmed'),
-                ])
-                ->orderByDesc('selected_date_bookings_count')
-                ->orderByDesc('confirmed_bookings_count')
+                ->availableBetween($startDate, $availabilityEndExclusive);
+
+            match ($selectedCategory) {
+                'car', 'condo', 'driving' => $availableListingsQuery->where('category', $selectedCategory),
+                'other' => $availableListingsQuery->whereNotIn('category', ['car', 'condo', 'driving']),
+                default => null,
+            };
+
+            $availableListings = $availableListingsQuery
+                ->orderByDesc('listing_reviews_avg_rating')
+                ->orderByDesc('listing_reviews_count')
                 ->orderBy('name')
-                ->limit(3)
                 ->get();
         }
+
+        $visibleListings = $showAllAvailable
+            ? $availableListings
+            : $this->topListingPerCategory($availableListings, $selectedCategory);
 
         $calendarDays = collect();
         for ($day = $gridStart; $day->lte($gridEnd); $day = $day->addDay()) {
@@ -82,10 +97,33 @@ class HomeController extends Controller
 
         return view('welcome', compact(
             'month',
-            'selectedDate',
+            'startDate',
+            'endDate',
             'calendarDays',
             'bookingCounts',
-            'topBookedListings',
+            'availableListings',
+            'visibleListings',
+            'selectedCategory',
+            'showAllAvailable',
         ));
+    }
+
+    private function topListingPerCategory(Collection $listings, string $selectedCategory): Collection
+    {
+        if ($selectedCategory !== 'all') {
+            return $listings->take(1);
+        }
+
+        return collect(['car', 'condo', 'driving', 'other'])
+            ->map(fn (string $group) => $listings->first(
+                fn (Unit $unit) => $this->categoryGroup($unit->category) === $group
+            ))
+            ->filter()
+            ->values();
+    }
+
+    private function categoryGroup(string $category): string
+    {
+        return in_array($category, ['car', 'condo', 'driving'], true) ? $category : 'other';
     }
 }

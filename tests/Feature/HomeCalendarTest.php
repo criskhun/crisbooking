@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Booking;
+use App\Models\Review;
 use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -12,33 +13,90 @@ class HomeCalendarTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_public_calendar_navigates_dates_and_prioritizes_listings_booked_on_selected_date(): void
+    public function test_home_shows_the_highest_rated_available_listing_per_category_with_a_review_preview(): void
     {
         $host = User::factory()->host()->create();
-        $client = User::factory()->create();
-        $selectedDate = now()->addMonth()->startOfMonth()->addDays(8)->startOfDay();
-        $selectedListing = $this->unit($host, 'Selected Date Cleaning');
-        $popularListing = $this->unit($host, 'Historically Popular Driving');
+        $reviewer = User::factory()->create();
+        $start = now()->addDays(8)->startOfDay();
+        $topCar = $this->unit($host, 'Top Rated Car', ['category' => 'car', 'kind' => 'unit']);
+        $lowerCar = $this->unit($host, 'Lower Rated Car', ['category' => 'car', 'kind' => 'unit']);
+        $condo = $this->unit($host, 'Available Condo', ['category' => 'condo', 'kind' => 'unit']);
 
-        $this->booking($selectedListing, $client, $selectedDate->copy()->addHours(9), 'pre_approved');
-        foreach (range(1, 3) as $offset) {
-            $this->booking($popularListing, $client, $selectedDate->copy()->subMonths($offset)->addHours(9), 'confirmed');
-        }
+        $this->review($topCar, $reviewer, 5, 'Excellent car and a very smooth rental experience.');
+        $this->review($lowerCar, $reviewer, 3, 'The car was acceptable and the host was responsive.');
 
         $response = $this->get(route('home', [
-            'month' => $selectedDate->format('Y-m'),
-            'date' => $selectedDate->format('Y-m-d'),
+            'start_date' => $start->toDateString(),
+            'end_date' => $start->toDateString(),
         ]));
 
         $response->assertOk()
-            ->assertSee($selectedDate->format('F Y'))
-            ->assertSee('aria-current="date"', false)
-            ->assertSee('booked this date')
-            ->assertSeeInOrder(['Selected Date Cleaning', 'Historically Popular Driving'])
-            ->assertSee(route('home', [
-                'month' => $selectedDate->copy()->addMonth()->format('Y-m'),
-                'date' => $selectedDate->copy()->addMonth()->startOfMonth()->toDateString(),
-            ]));
+            ->assertSee('Top available by category')
+            ->assertSee('Top Rated Car')
+            ->assertSee('Available Condo')
+            ->assertDontSee('Lower Rated Car')
+            ->assertSee('★ 5.0')
+            ->assertSee('Excellent car and a very smooth rental experience.')
+            ->assertSee('See all 3 available');
+    }
+
+    public function test_category_and_date_range_filters_only_show_matching_available_listings(): void
+    {
+        $host = User::factory()->host()->create();
+        $client = User::factory()->create();
+        $start = now()->addDays(12)->startOfDay();
+        $end = $start->copy()->addDays(2);
+        $availableDriver = $this->unit($host, 'Available Professional Driver', ['category' => 'driving']);
+        $busyDriver = $this->unit($host, 'Busy Professional Driver', ['category' => 'driving']);
+        $car = $this->unit($host, 'Available Car', ['category' => 'car', 'kind' => 'unit']);
+
+        $this->booking($busyDriver, $client, $start->copy()->addDay()->addHours(9), 'confirmed');
+
+        $response = $this->get(route('home', [
+            'start_date' => $start->toDateString(),
+            'end_date' => $end->toDateString(),
+            'category' => 'driving',
+            'show' => 'all',
+        ]));
+
+        $response->assertOk()
+            ->assertSee('class="active"', false)
+            ->assertSee('Available Professional Driver')
+            ->assertDontSee('Busy Professional Driver')
+            ->assertDontSee('Available Car')
+            ->assertSee('value="'.$start->toDateString().'"', false)
+            ->assertSee('value="'.$end->toDateString().'"', false)
+            ->assertSee('in-range', false);
+
+        $this->assertTrue($availableDriver->exists);
+        $this->assertTrue($car->exists);
+    }
+
+    public function test_see_all_available_expands_the_lower_ranked_listings(): void
+    {
+        $host = User::factory()->host()->create();
+        $date = now()->addDays(3)->startOfDay();
+        $this->unit($host, 'Alpha Car', ['category' => 'car', 'kind' => 'unit']);
+        $this->unit($host, 'Beta Car', ['category' => 'car', 'kind' => 'unit']);
+
+        $this->get(route('home', [
+            'start_date' => $date->toDateString(),
+            'end_date' => $date->toDateString(),
+            'category' => 'car',
+        ]))->assertOk()
+            ->assertSee('Alpha Car')
+            ->assertDontSee('Beta Car')
+            ->assertSee('See all 2 available');
+
+        $this->get(route('home', [
+            'start_date' => $date->toDateString(),
+            'end_date' => $date->toDateString(),
+            'category' => 'car',
+            'show' => 'all',
+        ]))->assertOk()
+            ->assertSee('Alpha Car')
+            ->assertSee('Beta Car')
+            ->assertSee('Show only top picks');
     }
 
     public function test_public_calendar_hides_inactive_or_unapproved_listings(): void
@@ -82,6 +140,20 @@ class HomeCalendarTest extends TestCase
             'status' => $status,
             'total_amount' => 1500,
             'party_size' => 1,
+        ]);
+    }
+
+    private function review(Unit $unit, User $reviewer, int $rating, string $comment): Review
+    {
+        $booking = $this->booking($unit, $reviewer, now()->subMonth()->startOfDay()->addHours(9), 'confirmed');
+
+        return Review::create([
+            'booking_id' => $booking->id,
+            'reviewer_id' => $reviewer->id,
+            'reviewee_id' => $unit->host_id,
+            'reviewee_context' => 'host',
+            'rating' => $rating,
+            'comment' => $comment,
         ]);
     }
 }

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class Unit extends Model
 {
@@ -64,6 +65,15 @@ class Unit extends Model
     public function bookings(): HasMany
     {
         return $this->hasMany(Booking::class);
+    }
+
+    /**
+     * Guest reviews written after a booking of this listing.
+     */
+    public function listingReviews(): HasManyThrough
+    {
+        return $this->hasManyThrough(Review::class, Booking::class)
+            ->where('reviewee_context', 'host');
     }
 
     public function inquiries(): HasMany
