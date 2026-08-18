@@ -16,6 +16,7 @@ class AvailabilityController extends Controller
             'start_date' => ['nullable', 'date_format:Y-m-d'],
             'end_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:start_date'],
             'category' => ['nullable', Rule::in(['all', 'car', 'condo', 'driving', 'other'])],
+            'location' => ['nullable', 'string', 'max:100'],
         ]);
 
         $startDateValue = $validated['start_date'] ?? now()->toDateString();
@@ -23,6 +24,7 @@ class AvailabilityController extends Controller
         $startDate = CarbonImmutable::createFromFormat('Y-m-d', $startDateValue)->startOfDay();
         $endDate = CarbonImmutable::createFromFormat('Y-m-d', $endDateValue)->startOfDay();
         $selectedCategory = $validated['category'] ?? 'all';
+        $selectedLocation = trim($validated['location'] ?? '');
 
         $listingsQuery = Unit::query()
             ->with([
@@ -44,6 +46,14 @@ class AvailabilityController extends Controller
             default => null,
         };
 
+        if ($selectedLocation !== '') {
+            $listingsQuery->where(fn ($locations) => $locations
+                ->whereLike('location', '%'.$selectedLocation.'%')
+                ->orWhereHas('host', fn ($host) => $host
+                    ->whereLike('country', '%'.$selectedLocation.'%')
+                    ->orWhereLike('city', '%'.$selectedLocation.'%')));
+        }
+
         $availableListings = $listingsQuery
             ->orderByDesc('listing_reviews_avg_rating')
             ->orderByDesc('listing_reviews_count')
@@ -55,6 +65,7 @@ class AvailabilityController extends Controller
             'startDate',
             'endDate',
             'selectedCategory',
+            'selectedLocation',
         ));
     }
 }

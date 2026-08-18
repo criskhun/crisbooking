@@ -50,6 +50,10 @@
                     @endforeach
                 </select>
             </div>
+            <div class="availability-field availability-location-field">
+                <label for="results-location">Country or city</label>
+                <input id="results-location" name="location" type="search" maxlength="100" value="{{ $selectedLocation }}" placeholder="e.g. Davao City">
+            </div>
             <button class="button button-primary button-small" type="submit">Update results</button>
         </form>
 
@@ -60,6 +64,7 @@
                 <p>
                     {{ $categoryLabels[$selectedCategory] }} ·
                     {{ $startDate->isSameDay($endDate) ? $startDate->format('M j, Y') : $startDate->format('M j').' – '.$endDate->format('M j, Y') }}
+                    @if($selectedLocation !== '') · {{ $selectedLocation }} @endif
                 </p>
             </div>
             <span class="availability-sort-note">Highest rated first</span>

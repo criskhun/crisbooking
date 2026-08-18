@@ -100,6 +100,33 @@ class HomeCalendarTest extends TestCase
             ->assertSee('value="car" selected', false);
     }
 
+    public function test_available_results_can_filter_country_or_city_from_one_location_box(): void
+    {
+        $davaoHost = User::factory()->host()->create(['city' => 'Davao City', 'country' => 'Philippines']);
+        $tokyoHost = User::factory()->host()->create(['city' => 'Tokyo', 'country' => 'Japan']);
+        $date = now()->addDays(5)->startOfDay();
+        $this->unit($davaoHost, 'Davao City Car', ['category' => 'car', 'kind' => 'unit', 'location' => null]);
+        $this->unit($tokyoHost, 'Tokyo City Car', ['category' => 'car', 'kind' => 'unit', 'location' => null]);
+        $filters = [
+            'start_date' => $date->toDateString(),
+            'end_date' => $date->toDateString(),
+            'category' => 'car',
+        ];
+
+        $this->get(route('availability.index', array_merge($filters, ['location' => 'Davao'])))
+            ->assertOk()
+            ->assertSee('Country or city')
+            ->assertSee('name="location"', false)
+            ->assertSee('value="Davao"', false)
+            ->assertSee('Davao City Car')
+            ->assertDontSee('Tokyo City Car');
+
+        $this->get(route('availability.index', array_merge($filters, ['location' => 'Japan'])))
+            ->assertOk()
+            ->assertSee('Tokyo City Car')
+            ->assertDontSee('Davao City Car');
+    }
+
     public function test_public_calendar_hides_inactive_or_unapproved_listings(): void
     {
         $approvedHost = User::factory()->host()->create();
