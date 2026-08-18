@@ -116,13 +116,7 @@
                     <section class="availability-results" id="availability-results" aria-labelledby="availability-heading">
                         <div class="calendar-list-heading">
                             <small>{{ $startDate->isSameDay($endDate) ? $startDate->format('D, M j') : $startDate->format('M j').' – '.$endDate->format('M j') }}</small>
-                            <strong id="availability-heading">
-                                @if($showAllAvailable)
-                                    All available {{ $selectedCategory === 'all' ? 'listings' : strtolower($categoryLabels[$selectedCategory]) }}
-                                @else
-                                    {{ $selectedCategory === 'all' ? 'Top available by category' : 'Top available '.strtolower($categoryLabels[$selectedCategory]) }}
-                                @endif
-                            </strong>
+                            <strong id="availability-heading">{{ $selectedCategory === 'all' ? 'Top available by category' : 'Top available '.strtolower($categoryLabels[$selectedCategory]) }}</strong>
                         </div>
 
                         @forelse($visibleListings as $listing)
@@ -149,8 +143,8 @@
                         @endforelse
 
                         @if($availableListings->isNotEmpty())
-                            <a class="see-all-available" href="{{ route('home', array_merge($baseFilters, $showAllAvailable ? [] : ['show' => 'all'])).'#availability-results' }}">
-                                {{ $showAllAvailable ? 'Show only top picks' : 'See all '.$availableListings->count().' available' }} <span aria-hidden="true">→</span>
+                            <a class="see-all-available" href="{{ route('availability.index', $baseFilters) }}">
+                                See all {{ $availableListings->count() }} available <span aria-hidden="true">→</span>
                             </a>
                         @endif
                     </section>

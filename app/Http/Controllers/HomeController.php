@@ -21,7 +21,6 @@ class HomeController extends Controller
             'start_date' => ['nullable', 'date_format:Y-m-d'],
             'end_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:start_date'],
             'category' => ['nullable', Rule::in(['all', 'car', 'condo', 'driving', 'other'])],
-            'show' => ['nullable', Rule::in(['all'])],
         ]);
 
         $startDateValue = $validated['start_date'] ?? $validated['date'] ?? now()->toDateString();
@@ -30,7 +29,6 @@ class HomeController extends Controller
         $endDate = CarbonImmutable::createFromFormat('Y-m-d', $endDateValue)->startOfDay();
         $availabilityEndExclusive = $endDate->addDay();
         $selectedCategory = $validated['category'] ?? 'all';
-        $showAllAvailable = ($validated['show'] ?? null) === 'all';
 
         $month = isset($validated['month'])
             ? CarbonImmutable::createFromFormat('Y-m-d', $validated['month'].'-01')->startOfMonth()
@@ -86,9 +84,7 @@ class HomeController extends Controller
                 ->get();
         }
 
-        $visibleListings = $showAllAvailable
-            ? $availableListings
-            : $this->topListingPerCategory($availableListings, $selectedCategory);
+        $visibleListings = $this->topListingPerCategory($availableListings, $selectedCategory);
 
         $calendarDays = collect();
         for ($day = $gridStart; $day->lte($gridEnd); $day = $day->addDay()) {
@@ -104,7 +100,6 @@ class HomeController extends Controller
             'availableListings',
             'visibleListings',
             'selectedCategory',
-            'showAllAvailable',
         ));
     }
 

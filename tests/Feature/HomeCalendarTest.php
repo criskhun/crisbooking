@@ -56,7 +56,6 @@ class HomeCalendarTest extends TestCase
             'start_date' => $start->toDateString(),
             'end_date' => $end->toDateString(),
             'category' => 'driving',
-            'show' => 'all',
         ]));
 
         $response->assertOk()
@@ -72,31 +71,33 @@ class HomeCalendarTest extends TestCase
         $this->assertTrue($car->exists);
     }
 
-    public function test_see_all_available_expands_the_lower_ranked_listings(): void
+    public function test_see_all_available_opens_a_filtered_results_page_with_every_matching_listing(): void
     {
         $host = User::factory()->host()->create();
         $date = now()->addDays(3)->startOfDay();
         $this->unit($host, 'Alpha Car', ['category' => 'car', 'kind' => 'unit']);
         $this->unit($host, 'Beta Car', ['category' => 'car', 'kind' => 'unit']);
 
-        $this->get(route('home', [
+        $filters = [
             'start_date' => $date->toDateString(),
             'end_date' => $date->toDateString(),
             'category' => 'car',
-        ]))->assertOk()
+        ];
+
+        $this->get(route('home', $filters))->assertOk()
             ->assertSee('Alpha Car')
             ->assertDontSee('Beta Car')
-            ->assertSee('See all 2 available');
+            ->assertSee('See all 2 available')
+            ->assertSee(route('availability.index', $filters));
 
-        $this->get(route('home', [
-            'start_date' => $date->toDateString(),
-            'end_date' => $date->toDateString(),
-            'category' => 'car',
-            'show' => 'all',
-        ]))->assertOk()
+        $this->get(route('availability.index', $filters))->assertOk()
+            ->assertSee('Change your dates or category')
+            ->assertSee('2 listings found')
             ->assertSee('Alpha Car')
             ->assertSee('Beta Car')
-            ->assertSee('Show only top picks');
+            ->assertSee('Highest rated first')
+            ->assertSee('availability-sticky-filter', false)
+            ->assertSee('value="car" selected', false);
     }
 
     public function test_public_calendar_hides_inactive_or_unapproved_listings(): void
