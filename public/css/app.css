@@ -91,7 +91,7 @@ button, input, select, textarea { font: inherit; }
 .service-list a:hover { border-color: var(--forest); color: var(--forest); transform: translateY(-1px); }
 .service-list a.active { border-color: var(--forest); color: white; background: var(--forest); box-shadow: 0 8px 20px rgba(23, 60, 52, .16); }
 .hero-visual { position: relative; }
-.calendar-card { position: relative; padding: 1.7rem; border: 1px solid rgba(255,255,255,.8); border-radius: 25px; background: rgba(255,255,255,.82); box-shadow: var(--shadow); backdrop-filter: blur(12px); transform: rotate(1deg); }
+.calendar-card { position: relative; padding: 1.7rem; border: 1px solid rgba(255,255,255,.8); border-radius: 25px; background: rgba(255,255,255,.82); box-shadow: var(--shadow); backdrop-filter: blur(12px); }
 .availability-filter { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto; align-items: end; gap: .6rem; padding: .75rem; margin-bottom: .35rem; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-soft); }
 .availability-filter > span { align-self: center; margin-top: 1rem; color: var(--muted); font-weight: 800; }
 .availability-field { display: grid; gap: .28rem; min-width: 0; }
