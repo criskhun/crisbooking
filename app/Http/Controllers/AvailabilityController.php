@@ -35,6 +35,9 @@ class AvailabilityController extends Controller
             ])
             ->withAvg('listingReviews', 'rating')
             ->withCount('listingReviews')
+            ->when($request->user(), fn ($query, $user) => $query->withExists([
+                'favoritedBy as is_favorited' => fn ($favorites) => $favorites->where('users.id', $user->id),
+            ]))
             ->where('is_active', true)
             ->whereHas('host', fn ($host) => $host
                 ->whereNotNull('profile_completed_at'))

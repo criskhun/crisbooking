@@ -75,22 +75,26 @@
                 @php
                     $group = in_array($listing->category, ['car', 'condo', 'driving'], true) ? $listing->category : 'other';
                     $latestReview = $listing->listingReviews->first();
-                    $startingPrice = $listing->isPackageRental() && $listing->rates->isNotEmpty()
-                        ? $listing->rates->min('price')
-                        : $listing->price;
+                    $startingPrice = $listing->startingPrice();
+                    $salePrice = $listing->discountedPrice($startingPrice);
+                    $property = $listing->property_details ?? [];
+                    $car = $listing->car_details ?? [];
                 @endphp
                 <article class="available-unit-card">
-                    <a class="available-unit-photo" href="{{ route('listings.show', $listing) }}" aria-label="View {{ $listing->name }}">
-                        @if($listing->primaryImagePath())
-                            <img src="{{ Storage::disk('public')->url($listing->primaryImagePath()) }}" alt="{{ $listing->name }}">
-                        @else
-                            <span aria-hidden="true">{{ $categoryIcons[$group] }}</span>
-                        @endif
-                        <small>Available</small>
-                    </a>
+                    <div class="available-unit-media">
+                        <a class="available-unit-photo" href="{{ route('listings.show', $listing) }}" aria-label="View {{ $listing->name }}">
+                            @if($listing->primaryImagePath())
+                                <img src="{{ Storage::disk('public')->url($listing->primaryImagePath()) }}" alt="{{ $listing->name }}">
+                            @else
+                                <span aria-hidden="true">{{ $categoryIcons[$group] }}</span>
+                            @endif
+                        </a>
+                        @if($listing->hasSale())<span class="listing-sale-badge">{{ number_format((float) $listing->sale_percentage, $listing->sale_percentage == (int) $listing->sale_percentage ? 0 : 1) }}% off</span>@endif
+                        @include('partials.listing-favorite', ['favoriteUnit' => $listing])
+                    </div>
                     <div class="available-unit-copy">
                         <div class="available-unit-meta">
-                            <span>{{ $categoryLabels[$group] }}</span>
+                            <span>{{ $listing->location ?: $categoryLabels[$group] }}</span>
                             @if($listing->listing_reviews_count)
                                 <strong>★ {{ number_format((float) $listing->listing_reviews_avg_rating, 1) }} <small>({{ $listing->listing_reviews_count }})</small></strong>
                             @else
@@ -98,14 +102,22 @@
                             @endif
                         </div>
                         <h2><a href="{{ route('listings.show', $listing) }}">{{ $listing->name }}</a></h2>
-                        <p class="available-unit-location">⌖ {{ $listing->location ?: 'Location arranged with host' }}</p>
+                        <p class="available-unit-location">{{ $categoryLabels[$group] }} · {{ $listing->capacity ? $listing->capacity.' '.Str::plural('guest', $listing->capacity) : 'Ask host for capacity' }}</p>
+                        <div class="available-unit-amenities" aria-label="Listing highlights">
+                            @if(in_array('wifi', $property['amenities'] ?? [], true))<span title="Wi-Fi">⌁ Wi-Fi</span>@endif
+                            @if(in_array('pool', $property['amenities'] ?? [], true))<span title="Swimming pool">≈ Pool</span>@endif
+                            @if(in_array('parking', $property['amenities'] ?? [], true))<span title="Parking">P Parking</span>@endif
+                            @if($listing->category === 'condo' && isset($property['bedrooms']))<span>{{ $property['bedrooms'] }} BR</span>@endif
+                            @if($listing->category === 'car' && isset($car['transmission']))<span>{{ str($car['transmission'])->title() }}</span>@endif
+                            @if($listing->category === 'car' && isset($car['year']))<span>{{ $car['year'] }}</span>@endif
+                        </div>
                         @if($latestReview)
                             <p class="available-unit-review">“{{ Str::limit($latestReview->comment, 115) }}”</p>
                         @else
                             <p class="available-unit-review">No reviews yet. Be among the first to book this listing.</p>
                         @endif
                         <div class="available-unit-footer">
-                            <span><small>From</small><strong>₱{{ number_format((float) $startingPrice, 2) }}</strong></span>
+                            <span><small>From</small>@if($listing->hasSale())<del>₱{{ number_format($startingPrice, 2) }}</del>@endif<strong>₱{{ number_format($salePrice, 2) }}</strong><em>{{ $listing->isPackageRental() ? 'per package' : 'per '.$listing->pricing_unit }}</em>@if($listing->hasSale())<b>✓ Save {{ number_format((float) $listing->sale_percentage, 0) }}% direct</b>@endif</span>
                             <a href="{{ route('listings.show', $listing) }}">View listing <span aria-hidden="true">→</span></a>
                         </div>
                     </div>

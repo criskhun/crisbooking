@@ -14,6 +14,11 @@ class HostStorefrontController extends Controller
             'hostApplication',
             'reviewsReceived' => fn ($reviews) => $reviews->where('reviewee_context', 'host')->latest()->limit(12),
             'units' => fn ($units) => $units->with(['rates', 'images'])
+                ->withAvg('listingReviews', 'rating')
+                ->withCount('listingReviews')
+                ->when(auth()->user(), fn ($query, $user) => $query->withExists([
+                    'favoritedBy as is_favorited' => fn ($favorites) => $favorites->where('users.id', $user->id),
+                ]))
                 ->where('is_active', true)
                 ->where(function ($bookable) {
                     $bookable->whereNotIn('category', ['car', 'condo'])->orWhereHas('rates');

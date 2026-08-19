@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
@@ -43,6 +44,11 @@ class User extends Authenticatable implements MustVerifyEmailContract
     public function units(): HasMany
     {
         return $this->hasMany(Unit::class, 'host_id');
+    }
+
+    public function favoriteUnits(): BelongsToMany
+    {
+        return $this->belongsToMany(Unit::class, 'favorite_units')->withTimestamps();
     }
 
     public function profileImages(): HasMany

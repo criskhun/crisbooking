@@ -13,7 +13,15 @@ class PublicListingController extends Controller
     public function show(Request $request, Unit $unit): View
     {
         abort_unless($unit->is_active && $unit->host()->whereNotNull('profile_completed_at')->exists(), 404);
-        $unit->load(['host.hostApplication', 'rates', 'images']);
+        $unit->load([
+            'host.hostApplication',
+            'rates',
+            'images',
+            'listingReviews' => fn ($reviews) => $reviews->with('reviewer')->latest(),
+        ])->loadAvg('listingReviews', 'rating')->loadCount('listingReviews');
+        if ($request->user()) {
+            $unit->loadExists(['favoritedBy as is_favorited' => fn ($favorites) => $favorites->where('users.id', $request->user()->id)]);
+        }
         $affiliate = $this->affiliateFor($request->query('ref'), $unit);
 
         return view('listings.show', compact('unit', 'affiliate'));

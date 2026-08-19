@@ -76,6 +76,9 @@ class CalendarController extends Controller
 
         $units = Unit::query()
             ->with(['host.hostApplication', 'rates', 'images'])
+            ->withAvg('listingReviews', 'rating')
+            ->withCount('listingReviews')
+            ->withExists(['favoritedBy as is_favorited' => fn ($favorites) => $favorites->where('users.id', $user->id)])
             ->when(
                 $bookingMode,
                 fn ($query) => $query->where('host_id', '!=', $user->id)
@@ -135,6 +138,9 @@ class CalendarController extends Controller
         if ($searchSubmitted && $category && $searchStart && $searchEnd) {
             $matchingUnitsQuery = Unit::query()
                 ->with(['host.hostApplication', 'rates', 'images'])
+                ->withAvg('listingReviews', 'rating')
+                ->withCount('listingReviews')
+                ->withExists(['favoritedBy as is_favorited' => fn ($favorites) => $favorites->where('users.id', $user->id)])
                 ->where('is_active', true)
                 ->where('host_id', '!=', $user->id)
                 ->whereHas('host', fn ($hosts) => $hosts->whereNotNull('profile_completed_at'))

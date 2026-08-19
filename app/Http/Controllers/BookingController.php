@@ -148,9 +148,12 @@ class BookingController extends Controller
             }
 
             $additionalCharges = $this->carAdditionalCharges($unit);
+            $baseRentalTotal = $packageBreakdown
+                ? $this->packageTotal($packageBreakdown)
+                : $this->calculateTotal($unit, $start, $end);
             $rentalTotal = $inquiry->agreed_price !== null
                 ? (float) $inquiry->agreed_price
-                : ($packageBreakdown ? $this->packageTotal($packageBreakdown) : $this->calculateTotal($unit, $start, $end));
+                : $unit->discountedPrice($baseRentalTotal);
             $bookingTotal = round($rentalTotal + $this->additionalChargeTotal($additionalCharges), 2);
             $commissionableTotal = max(0, $bookingTotal - (float) collect($additionalCharges)
                 ->filter(fn ($charge) => (bool) ($charge['refundable'] ?? false))
@@ -359,10 +362,10 @@ class BookingController extends Controller
             $unitRateId = $ratePeriod && $ratePeriod !== 'mixed'
                 ? $unit->rates()->where('coverage', $rentalCoverage)->where('period', $ratePeriod)->value('id')
                 : null;
-            $total = $packageBreakdown
+            $baseRentalTotal = $packageBreakdown
                 ? $this->packageTotal($packageBreakdown)
                 : $this->calculateTotal($unit, $start, $end);
-            $total = round($total + $this->additionalChargeTotal($lockedBooking->additional_charges ?? []), 2);
+            $total = round($unit->discountedPrice($baseRentalTotal) + $this->additionalChargeTotal($lockedBooking->additional_charges ?? []), 2);
             $commissionableTotal = max(0, $total - (float) collect($lockedBooking->additional_charges ?? [])
                 ->filter(fn ($charge) => (bool) ($charge['refundable'] ?? false))
                 ->sum('amount'));

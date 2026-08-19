@@ -40,6 +40,7 @@ class Unit extends Model
         'capacity',
         'price',
         'pricing_unit',
+        'sale_percentage',
         'is_active',
     ];
 
@@ -50,6 +51,7 @@ class Unit extends Model
             'latitude' => 'decimal:7',
             'longitude' => 'decimal:7',
             'is_active' => 'boolean',
+            'sale_percentage' => 'decimal:2',
             'car_details' => 'array',
             'gps_details' => 'encrypted:array',
             'wifi_details' => 'encrypted:array',
@@ -86,6 +88,11 @@ class Unit extends Model
         return $this->belongsToMany(AffiliatePartnership::class)->withTimestamps();
     }
 
+    public function favoritedBy(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'favorite_units')->withTimestamps();
+    }
+
     public function rates(): HasMany
     {
         return $this->hasMany(UnitRate::class)
@@ -116,6 +123,27 @@ class Unit extends Model
     public function hasRentalRates(): bool
     {
         return ! $this->isPackageRental() || $this->rates->isNotEmpty();
+    }
+
+    public function hasSale(): bool
+    {
+        return (float) $this->sale_percentage > 0;
+    }
+
+    public function discountedPrice(float|int|string|null $price): float
+    {
+        $amount = (float) $price;
+
+        return $this->hasSale()
+            ? round($amount * (1 - ((float) $this->sale_percentage / 100)), 2)
+            : round($amount, 2);
+    }
+
+    public function startingPrice(): float
+    {
+        $price = $this->isPackageRental() ? $this->rates->min('price') : $this->price;
+
+        return round((float) $price, 2);
     }
 
     public function primaryImagePath(): ?string

@@ -26,6 +26,8 @@ class UnitController extends Controller
     {
         $units = Unit::query()
             ->with(['rates', 'images', 'host:id,name'])
+            ->withAvg('listingReviews', 'rating')
+            ->withCount('listingReviews')
             ->withCount([
                 'bookings',
                 'inquiries',
@@ -412,6 +414,7 @@ class UnitController extends Controller
             'capacity' => ['nullable', 'integer', 'min:1', 'max:10000'],
             'price' => [Rule::requiredIf(! $isRental), 'nullable', 'numeric', 'min:0', 'max:9999999999.99'],
             'pricing_unit' => [Rule::requiredIf(! $isRental), 'nullable', Rule::in(['hour', 'day', 'session'])],
+            'sale_percentage' => ['nullable', 'numeric', 'min:0', 'max:90'],
             'offered_rates' => [$isProperty ? 'required' : 'nullable', 'array', 'min:1'],
             'offered_rates.*' => [Rule::in(['12_hours', 'day', 'week', 'month'])],
             'rates' => ['nullable', 'array'],
@@ -489,6 +492,10 @@ class UnitController extends Controller
             $validated['category'] = $customCategory;
         }
         unset($validated['custom_category']);
+
+        $validated['sale_percentage'] = (float) ($validated['sale_percentage'] ?? 0) > 0
+            ? round((float) $validated['sale_percentage'], 2)
+            : null;
 
         if ($unit) {
             $removedCount = collect($validated['remove_images'] ?? [])->unique()->count();

@@ -38,6 +38,7 @@
                                 @else
                                     <span>{{ $icons[$unit->category] ?? '◇' }}</span>
                                 @endif
+                                @if($unit->hasSale())<span class="listing-sale-badge">{{ number_format((float) $unit->sale_percentage, 0) }}% sale</span>@endif
                             </div>
                             <div class="listing-card-top">
                                 <span class="listing-icon">{{ $icons[$unit->category] ?? '◇' }}</span>
@@ -98,8 +99,9 @@
                                 <details class="listing-rules-preview"><summary>{{ $unit->category === 'car' ? 'Car rules' : ($unit->category === 'condo' ? 'House rules' : 'Service rules') }}</summary><p>{{ $unit->rules }}</p></details>
                             @endif
                             <div class="listing-meta">
-                                <span><small>Rate</small><strong>{{ $unit->isPackageRental() ? ($unit->hasRentalRates() ? $unit->rates->count().' '.Str::plural('rental package', $unit->rates->count()) : 'Rates need setup') : '₱'.number_format($unit->price, 2).' / '.$unit->pricing_unit }}</strong></span>
+                                <span><small>Rate</small><strong>{{ $unit->isPackageRental() ? ($unit->hasRentalRates() ? $unit->rates->count().' '.Str::plural('rental package', $unit->rates->count()) : 'Rates need setup') : '₱'.number_format($unit->discountedPrice($unit->price), 2).' / '.$unit->pricing_unit }}</strong></span>
                                 <span><small>Location</small><strong>{{ $unit->location ?: 'Not specified' }}</strong></span>
+                                <span><small>Unit rating</small><strong>{{ $unit->listing_reviews_count ? '★ '.number_format((float) $unit->listing_reviews_avg_rating, 1).' ('.$unit->listing_reviews_count.')' : 'No ratings yet' }}</strong></span>
                             </div>
                             @if ($unit->isPackageRental())
                                 @php
@@ -107,7 +109,7 @@
                                 @endphp
                                 @if ($unit->rates->isNotEmpty())
                                     <div class="rental-rate-list">
-                                        @foreach ($unit->rates as $rate)<span><small>{{ $unit->category === 'car' ? (['within_city' => 'Within city', 'out_of_town' => 'Out of town'][$rate->coverage] ?? '').' · ' : '' }}{{ $rateLabels[$rate->period] }}</small><strong>₱{{ number_format($rate->price, 2) }}</strong></span>@endforeach
+                                        @foreach ($unit->rates as $rate)<span><small>{{ $unit->category === 'car' ? (['within_city' => 'Within city', 'out_of_town' => 'Out of town'][$rate->coverage] ?? '').' · ' : '' }}{{ $rateLabels[$rate->period] }}</small><strong>@if($unit->hasSale())<del>₱{{ number_format($rate->price, 2) }}</del> @endif₱{{ number_format($unit->discountedPrice($rate->price), 2) }}</strong></span>@endforeach
                                     </div>
                                 @else
                                     <p class="rate-setup-note">Edit this listing to add its four rental prices and photo.</p>

@@ -94,16 +94,17 @@
                     @php
                         $isSelected = $selectedUnit?->id === $unit->id;
                         $selectUrl = route('calendar.index', array_merge(request()->query(), ['selected_unit' => $unit->id])).'#booking-selection';
+                        $startingPrice = $unit->startingPrice();
                     @endphp
                     <article @class(['client-result-card', 'selected' => $isSelected])>
-                        <div class="result-photo">@if ($unit->primaryImagePath())<img src="{{ Storage::disk('public')->url($unit->primaryImagePath()) }}" alt="{{ $unit->name }}">@else<span>{{ $categories[$unit->category]['icon'] ?? '◇' }}</span>@endif</div>
+                        <div class="result-photo">@if ($unit->primaryImagePath())<img src="{{ Storage::disk('public')->url($unit->primaryImagePath()) }}" alt="{{ $unit->name }}">@else<span>{{ $categories[$unit->category]['icon'] ?? '◇' }}</span>@endif @if($unit->hasSale())<span class="listing-sale-badge">{{ number_format((float) $unit->sale_percentage, 0) }}% off</span>@endif @include('partials.listing-favorite', ['favoriteUnit' => $unit])</div>
                         <div class="result-card-body">
-                            <div class="result-card-kicker"><span>{{ $categories[$unit->category]['label'] ?? ucfirst($unit->kind) }}</span><small>Available</small></div>
+                            <div class="result-card-kicker"><span>{{ $categories[$unit->category]['label'] ?? ucfirst($unit->kind) }}</span>@if($unit->listing_reviews_count)<strong>★ {{ number_format((float) $unit->listing_reviews_avg_rating, 1) }} <small>({{ $unit->listing_reviews_count }})</small></strong>@else<small>New listing</small>@endif</div>
                             <h4>{{ $unit->name }}</h4>
                             <p class="result-location">⌖ {{ $unit->location ?: 'Location arranged with host' }}</p>
                             <p>{{ Str::limit($unit->description ?: 'Contact the host for more details about this listing.', 115) }}</p>
                             <div class="result-facts"><span><small>Capacity</small><strong>{{ $unit->capacity ? 'Up to '.$unit->capacity : 'Ask host' }}</strong></span><span><small>{{ isset($unit->distance_km) ? 'Distance' : 'Verified host' }}</small><strong>{{ isset($unit->distance_km) ? number_format($unit->distance_km, 1).' km away' : '✓ '.$unit->host->name }}</strong></span></div>
-                            <div class="result-card-footer"><div><small>From</small><strong>₱{{ number_format($unit->isPackageRental() ? $unit->rates->min('price') : $unit->price, 2) }}</strong></div><a class="button {{ $isSelected ? 'button-selected' : 'button-primary' }}" href="{{ $selectUrl }}">{{ $isSelected ? 'Selected ✓' : 'View & select' }}</a></div>
+                            <div class="result-card-footer"><div><small>From</small>@if($unit->hasSale())<del>₱{{ number_format($startingPrice, 2) }}</del>@endif<strong>₱{{ number_format($unit->discountedPrice($startingPrice), 2) }}</strong>@if($unit->hasSale())<em>Save {{ number_format((float) $unit->sale_percentage, 0) }}%</em>@endif</div><a class="button {{ $isSelected ? 'button-selected' : 'button-primary' }}" href="{{ $selectUrl }}">{{ $isSelected ? 'Selected ✓' : 'View & select' }}</a></div>
                         </div>
                     </article>
                 @empty
@@ -178,7 +179,7 @@
                                     <div class="package-builder-heading"><div><span class="eyebrow">{{ $coverageLabels[$coverage] }}</span><h3>Your matching rental package</h3></div><small>Calculated using the selected travel coverage.</small></div>
                                     <div class="package-quantity-grid">
                                         @foreach ($coverageRates as $rate)
-                                            <label class="package-quantity-card" data-package-card><span><strong>{{ $rateLabels[$rate->period] }}</strong><small>₱{{ number_format($rate->price, 2) }} each</small></span><input type="number" name="package_quantities[{{ $rate->period }}]" min="0" max="365" value="0" data-package-quantity data-period="{{ $rate->period }}" data-price="{{ $rate->price }}" aria-label="Number of {{ $rateLabels[$rate->period] }} packages" readonly @disabled($selectedCoverage !== $coverage)></label>
+                                            <label class="package-quantity-card" data-package-card><span><strong>{{ $rateLabels[$rate->period] }}</strong><small>@if($selectedUnit->hasSale())<del>₱{{ number_format($rate->price, 2) }}</del> @endif₱{{ number_format($selectedUnit->discountedPrice($rate->price), 2) }} each</small></span><input type="number" name="package_quantities[{{ $rate->period }}]" min="0" max="365" value="0" data-package-quantity data-period="{{ $rate->period }}" data-price="{{ $selectedUnit->discountedPrice($rate->price) }}" aria-label="Number of {{ $rateLabels[$rate->period] }} packages" readonly @disabled($selectedCoverage !== $coverage)></label>
                                         @endforeach
                                     </div>
                                     <div class="package-calculation-summary"><span><small>Selected return</small><strong data-package-end-note></strong></span><span><small>Estimated package total</small><strong data-package-total></strong></span></div>
@@ -190,12 +191,13 @@
                             <div class="package-builder-heading"><div><span class="eyebrow">Rates for your selected dates</span><h3>Your matching rental package</h3></div><small>Change the dates above to see a different rate combination.</small></div>
                             <div class="package-quantity-grid">
                                 @foreach ($selectedUnit->rates->where('coverage', 'standard') as $rate)
-                                    <label class="package-quantity-card" data-package-card><span><strong>{{ $rateLabels[$rate->period] }}</strong><small>₱{{ number_format($rate->price, 2) }} each</small></span><input type="number" name="package_quantities[{{ $rate->period }}]" min="0" max="365" value="0" data-package-quantity data-period="{{ $rate->period }}" data-price="{{ $rate->price }}" aria-label="Number of {{ $rateLabels[$rate->period] }} packages" readonly></label>
+                                    <label class="package-quantity-card" data-package-card><span><strong>{{ $rateLabels[$rate->period] }}</strong><small>@if($selectedUnit->hasSale())<del>₱{{ number_format($rate->price, 2) }}</del> @endif₱{{ number_format($selectedUnit->discountedPrice($rate->price), 2) }} each</small></span><input type="number" name="package_quantities[{{ $rate->period }}]" min="0" max="365" value="0" data-package-quantity data-period="{{ $rate->period }}" data-price="{{ $selectedUnit->discountedPrice($rate->price) }}" aria-label="Number of {{ $rateLabels[$rate->period] }} packages" readonly></label>
                                 @endforeach
                             </div>
                             <div class="package-calculation-summary"><span><small>Selected return</small><strong data-package-end-note></strong></span><span><small>Estimated package total</small><strong data-package-total></strong></span></div>
                         </div>
                     @endif
+                    @if($selectedUnit->hasSale())<p class="booking-sale-note">✓ {{ number_format((float) $selectedUnit->sale_percentage, 0) }}% host sale applied to the rental price. Required fees stay unchanged.</p>@endif
                     @error('package_quantities')<p class="error-text">{{ $message }}</p>@enderror
                 @else
                     <input id="unit_rate_id" name="unit_rate_id" type="hidden" value="">
@@ -215,7 +217,7 @@
         <div class="catalog-list">
             @foreach ($units as $unit)
                 @php
-                    $startingPrice = $unit->isPackageRental() ? $unit->rates->min('price') : $unit->price;
+                    $startingPrice = $unit->startingPrice();
                     $fees = $unit->category === 'car'
                         ? collect($unit->car_details['charges'] ?? [])->map(fn ($charge) => $charge['label'].': ₱'.number_format($charge['amount'] ?? 0, 2).(!empty($charge['refundable']) ? ' refundable' : ''))
                         : collect(['parking' => 'Parking', 'pool' => 'Swimming pool'])->map(function ($label, $key) use ($unit) {
@@ -225,15 +227,11 @@
                         })->filter();
                 @endphp
                 <article class="catalog-card">
-                    <a class="catalog-photo" href="{{ route('listings.show', $unit) }}" aria-label="View {{ $unit->name }}">
-                        @if ($unit->primaryImagePath())
-                            <img src="{{ Storage::disk('public')->url($unit->primaryImagePath()) }}" alt="{{ $unit->name }}">
-                        @else
-                            <span aria-hidden="true">{{ $categories[$unit->category]['icon'] ?? '◇' }}</span>
-                        @endif
-                    </a>
+                    <div class="catalog-media"><a class="catalog-photo" href="{{ route('listings.show', $unit) }}" aria-label="View {{ $unit->name }}">
+                            @if ($unit->primaryImagePath())<img src="{{ Storage::disk('public')->url($unit->primaryImagePath()) }}" alt="{{ $unit->name }}">@else<span aria-hidden="true">{{ $categories[$unit->category]['icon'] ?? '◇' }}</span>@endif
+                        </a>@if($unit->hasSale())<span class="listing-sale-badge">{{ number_format((float) $unit->sale_percentage, 0) }}% off</span>@endif @include('partials.listing-favorite', ['favoriteUnit' => $unit])</div>
                     <div class="catalog-card-body">
-                        <div class="catalog-card-category"><span>{{ $categories[$unit->category]['label'] ?? str($unit->category)->replace('_', ' ')->title() }}</span><small>Available</small></div>
+                        <div class="catalog-card-category"><span>{{ $categories[$unit->category]['label'] ?? str($unit->category)->replace('_', ' ')->title() }}</span>@if($unit->listing_reviews_count)<strong>★ {{ number_format((float) $unit->listing_reviews_avg_rating, 1) }} <small>({{ $unit->listing_reviews_count }})</small></strong>@else<small>New listing</small>@endif</div>
                         <h4><a href="{{ route('listings.show', $unit) }}">{{ $unit->name }}</a></h4>
                         <p class="catalog-location">⌖ {{ $unit->location ?: 'Location arranged with host' }}</p>
                         <p class="catalog-host">Hosted by <a href="{{ route('hosts.show', $unit->host) }}">{{ $unit->host->publicHostName() }}</a></p>
@@ -244,7 +242,7 @@
                                 <p>{{ $unit->rules }}</p>
                             </details>
                         @endif
-                        <div class="catalog-price"><span><small>From</small><strong>₱{{ number_format($startingPrice, 2) }}</strong></span>@if($unit->capacity)<small>Up to {{ $unit->capacity }} {{ Str::plural('person', $unit->capacity) }}</small>@endif</div>
+                        <div class="catalog-price"><span><small>From</small>@if($unit->hasSale())<del>₱{{ number_format($startingPrice, 2) }}</del>@endif<strong>₱{{ number_format($unit->discountedPrice($startingPrice), 2) }}</strong>@if($unit->hasSale())<em>✓ Save {{ number_format((float) $unit->sale_percentage, 0) }}% direct</em>@endif</span>@if($unit->capacity)<small>Up to {{ $unit->capacity }} {{ Str::plural('person', $unit->capacity) }}</small>@endif</div>
                         <div class="catalog-actions">
                             <a class="button button-ghost" href="{{ route('listings.show', $unit) }}">View details</a>
                             <a class="button button-primary" href="{{ route('listings.inquire', $unit) }}">Inquire now</a>

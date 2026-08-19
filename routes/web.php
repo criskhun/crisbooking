@@ -14,6 +14,7 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\CalendarIntegrationController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\FavoriteUnitController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HostApplicationController;
 use App\Http\Controllers\HostStorefrontController;
@@ -89,6 +90,7 @@ Route::middleware(['auth', 'active'])->group(function () {
 
 Route::middleware(['auth', 'active', 'verified'])->group(function () {
     Route::get('/listings/{unit}/inquire', [PublicListingController::class, 'inquire'])->name('listings.inquire');
+    Route::post('/listings/{unit}/favorite', FavoriteUnitController::class)->name('listings.favorite');
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
     Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar.index');
     Route::post('/calendar/integration', [CalendarIntegrationController::class, 'refresh'])->name('calendar.integration.refresh');

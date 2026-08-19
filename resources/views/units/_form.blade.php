@@ -315,6 +315,13 @@
         </div>
     </fieldset>
 
+    <div class="field-group listing-sale-field">
+        <label for="sale_percentage">Limited-time sale <span class="optional-label">Optional</span></label>
+        <div class="percentage-input"><input id="sale_percentage" name="sale_percentage" type="number" value="{{ old('sale_percentage', $unit->sale_percentage ?? '') }}" min="0" max="90" step="0.01" placeholder="0"><span>% off</span></div>
+        <small class="field-help">Leave blank or enter 0 for no sale. The discount applies to the listing price; required fees stay unchanged.</small>
+        @error('sale_percentage')<p class="error-text">{{ $message }}</p>@enderror
+    </div>
+
     <div class="field-group">
         <label for="capacity">Capacity <span class="optional-label">Optional</span></label>
         <input id="capacity" name="capacity" type="number" value="{{ old('capacity', $unit->capacity ?? '') }}" min="1" max="10000" placeholder="Guests, seats, or quantity">

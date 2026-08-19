@@ -1925,6 +1925,36 @@
             dialog.addEventListener('cancel', stopGuide);
         }
 
+        document.querySelectorAll('[data-favorite-form]').forEach((form) => {
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                const button = form.querySelector('button');
+                const icon = form.querySelector('[data-favorite-icon]');
+                if (!button || button.disabled) return;
+
+                button.disabled = true;
+                try {
+                    const response = await fetch(form.action, {
+                        method: 'POST',
+                        headers: {'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'},
+                        body: new FormData(form),
+                    });
+                    if (!response.ok) throw new Error('Unable to update favorite');
+                    const result = await response.json();
+                    const label = result.favorited ? 'Remove from favorites' : 'Save to favorites';
+                    button.classList.toggle('is-favorited', result.favorited);
+                    button.setAttribute('aria-pressed', result.favorited ? 'true' : 'false');
+                    button.setAttribute('aria-label', label);
+                    button.title = label;
+                    if (icon) icon.textContent = result.favorited ? '♥' : '♡';
+                } catch (error) {
+                    HTMLFormElement.prototype.submit.call(form);
+                } finally {
+                    button.disabled = false;
+                }
+            });
+        });
+
         const accountType = document.querySelector('[data-host-account-type]');
         const businessFields = document.querySelector('[data-host-business-fields]');
         if (! accountType || ! businessFields) return;
