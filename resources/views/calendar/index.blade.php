@@ -26,6 +26,7 @@
                     @endif
                     @include('calendar.client-booking')
                 @else
+                @include('calendar.manual-booking')
                 @php
                     $calendarCategoryMeta = [
                         'condo' => ['theme' => 'condo', 'icon' => '🏠', 'label' => 'Condo / residence'],
@@ -113,15 +114,17 @@
                                 @php
                                     $calendarBooking = $segment['booking'];
                                     $eventMeta = $calendarCategoryMeta[$calendarBooking->unit->category] ?? ['theme' => 'other', 'icon' => '✦', 'label' => str($calendarBooking->unit->category)->replace('_', ' ')->title()];
+                                    $calendarCanOpenBooking = $viewerCanManageBookings || ($calendarBooking->isManualBooking() && $calendarBooking->affiliatePartnership?->marketer_id === auth()->id());
                                 @endphp
                                 <a @class(['calendar-booking-span', 'category-'.$eventMeta['theme'], 'status-'.$calendarBooking->status, 'starts-booking' => $segment['starts_booking'], 'ends-booking' => $segment['ends_booking'], 'continues-before' => $segment['continues_before'], 'continues-after' => $segment['continues_after']])
                                    style="grid-column: {{ $segment['start_column'] }} / {{ $segment['end_column'] }}; grid-row: {{ $segment['week'] }}; --calendar-lane: {{ $segment['lane'] }};"
                                    data-booking-id="{{ $calendarBooking->id }}" data-segment-start="{{ $segment['start_date'] }}" data-segment-end="{{ $segment['end_date'] }}"
                                    data-unit="{{ $calendarBooking->unit->name }}" data-category="{{ $eventMeta['label'] }}" data-category-icon="{{ $eventMeta['icon'] }}"
-                                   @if($viewerCanManageBookings)
-                                       data-calendar-booking-open data-client="{{ $calendarBooking->client->name }}" data-status="{{ $calendarBooking->statusLabel() }}" data-status-key="{{ $calendarBooking->status }}"
+                                   @if($calendarCanOpenBooking)
+                                       data-calendar-booking-open data-client="{{ $calendarBooking->customerDisplayName() }}" data-status="{{ $calendarBooking->statusLabel() }}" data-status-key="{{ $calendarBooking->status }}"
                                        data-start="{{ $calendarBooking->start_at->format('M j, Y · g:i A') }}" data-end="{{ $calendarBooking->end_at->format('M j, Y · g:i A') }}"
                                        data-party-size="{{ number_format($calendarBooking->party_size) }}" data-total="₱{{ number_format($calendarBooking->total_amount, 2) }}"
+                                       data-source="{{ $calendarBooking->isManualBooking() ? $calendarBooking->sourceDisplayLabel() : '' }}"
                                        data-notes="{{ $calendarBooking->notes }}" data-booking-url="{{ route('bookings.show', $calendarBooking) }}"
                                        href="{{ route('bookings.show', $calendarBooking) }}"
                                    @else
@@ -131,7 +134,7 @@
                                     @if ($segment['continues_before'])<span class="calendar-span-continuation">‹</span>@endif
                                     @if ($segment['starts_booking'])<time>{{ $calendarBooking->start_at->format('g:i A') }}</time>@endif
                                     <span class="calendar-event-icon" aria-hidden="true">{{ $eventMeta['icon'] }}</span>
-                                    <strong>{{ $calendarBooking->unit->name }}</strong>
+                                    <strong>{{ $calendarBooking->unit->name }}{{ $calendarBooking->isManualBooking() ? ' · '.$calendarBooking->sourceLabel() : '' }}</strong>
                                     @if ($segment['ends_booking'])<time>→ {{ $calendarBooking->end_at->format('g:i A') }}</time>@elseif ($segment['continues_after'])<span class="calendar-span-continuation">›</span>@endif
                                 </a>
                             @endforeach
@@ -180,8 +183,8 @@
                                     <span class="booking-time">{{ $booking->start_at->format('g:i A') }}<small>to {{ $booking->end_at->format($booking->end_at->isSameDay($booking->start_at) ? 'g:i A' : 'M j, g:i A') }}</small></span>
                                     <div class="booking-details">
                                         <strong>{{ $booking->unit->name }}</strong>
-                                        <small>Client: {{ $booking->client->name }}{{ $booking->rate_period ? ' · '.(['12_hours' => '12 hours', 'day' => '1 day', 'week' => '1 week', 'month' => '1 month'][$booking->rate_period] ?? $booking->rate_period) : '' }} · ₱{{ number_format($booking->total_amount, 2) }}</small>
-                                        @if (auth()->user()->isHost() || auth()->user()->is_admin)
+                                        <small>{{ $booking->isManualBooking() ? 'External: '.$booking->customerDisplayName().' · '.$booking->sourceDisplayLabel().' · '.$booking->durationDays().' '.Str::plural('day', $booking->durationDays()) : 'Client: '.$booking->customerDisplayName().($booking->rate_period ? ' · '.(['12_hours' => '12 hours', 'day' => '1 day', 'week' => '1 week', 'month' => '1 month'][$booking->rate_period] ?? $booking->rate_period) : '') }} · ₱{{ number_format($booking->total_amount, 2) }}</small>
+                                        @if ((auth()->user()->isHost() || auth()->user()->is_admin) && ! $booking->isManualBooking())
                                             <div class="booking-trust-links"><a href="{{ route('profiles.show', $booking->client) }}">View client profile</a>@if ($booking->inquiry)<a href="{{ route('inquiries.show', $booking->inquiry) }}">Open inquiry chat</a>@endif</div>
                                         @endif
                                         @if ($booking->notes)<p>{{ $booking->notes }}</p>@endif
@@ -227,11 +230,12 @@
                         </header>
                         <div class="calendar-dialog-status-row"><span class="booking-status" data-calendar-dialog-status>Pending</span></div>
                         <dl>
-                            <div><dt>Client</dt><dd data-calendar-dialog-client></dd></div>
+                            <div><dt>Customer / booking name</dt><dd data-calendar-dialog-client></dd></div>
                             <div><dt>Starts</dt><dd data-calendar-dialog-start></dd></div>
                             <div><dt>Ends</dt><dd data-calendar-dialog-end></dd></div>
                             <div><dt>Guests / quantity</dt><dd data-calendar-dialog-party></dd></div>
                             <div><dt>Total</dt><dd data-calendar-dialog-total></dd></div>
+                            <div data-calendar-dialog-source-wrap hidden><dt>Sales source</dt><dd data-calendar-dialog-source></dd></div>
                         </dl>
                         <div class="calendar-dialog-notes" data-calendar-dialog-notes-wrap><small>Booking notes</small><p data-calendar-dialog-notes></p></div>
                         <footer><button class="button button-ghost" type="button" data-calendar-dialog-close>Close</button><a class="button button-primary" href="#" data-calendar-dialog-link>Open full booking</a></footer>

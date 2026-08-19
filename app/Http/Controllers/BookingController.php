@@ -22,10 +22,11 @@ class BookingController extends Controller
     {
         $canView = $request->user()->is_admin
             || $booking->client_id === $request->user()->id
-            || ($request->user()->isHost() && $booking->unit()->where('host_id', $request->user()->id)->exists());
+            || ($request->user()->isHost() && $booking->unit()->where('host_id', $request->user()->id)->exists())
+            || ($booking->isManualBooking() && $booking->affiliatePartnership()->where('marketer_id', $request->user()->id)->exists());
 
         abort_unless($canView, 403);
-        $booking->load(['unit.host', 'unit.images', 'unit.rates', 'client', 'inquiry', 'reviews']);
+        $booking->load(['unit.host', 'unit.images', 'unit.rates', 'client', 'bookedBy', 'inquiry', 'affiliatePartnership.marketer', 'reviews']);
 
         $googleCalendarUrl = 'https://calendar.google.com/calendar/render?'.http_build_query([
             'action' => 'TEMPLATE',
@@ -607,6 +608,30 @@ class BookingController extends Controller
 
     public function cancel(Request $request, Booking $booking): RedirectResponse
     {
+        if ($booking->isManualBooking()) {
+            $booking->loadMissing('unit.host', 'affiliatePartnership.marketer');
+            $canCancelManualBooking = $request->user()->is_admin
+                || $booking->unit->host_id === $request->user()->id
+                || $booking->booked_by_user_id === $request->user()->id
+                || $booking->affiliatePartnership?->marketer_id === $request->user()->id;
+            abort_unless($canCancelManualBooking, 403);
+            abort_unless($booking->status === 'confirmed', 422, 'This outside booking is no longer active.');
+
+            $booking->update(['status' => 'cancelled']);
+
+            if ($request->user()->id !== $booking->unit->host_id) {
+                app(AppNotificationService::class)->send(
+                    $booking->unit->host,
+                    'manual_booking_cancelled',
+                    'Outside booking removed',
+                    $booking->sourceDisplayLabel().' booking for '.$booking->unit->name.' was removed. The dates are available again.',
+                    route('calendar.index', ['mode' => 'manage', 'month' => $booking->start_at->format('Y-m')]),
+                );
+            }
+
+            return back()->with('status', 'Outside booking cancelled. The dates are available again.');
+        }
+
         abort_unless($booking->client_id === $request->user()->id, 403);
         abort_unless(in_array($booking->status, ['pending', 'pre_approved', 'payment_submitted', 'confirmed'], true), 422, 'This booking is no longer active.');
 

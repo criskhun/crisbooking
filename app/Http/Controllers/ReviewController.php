@@ -14,6 +14,7 @@ class ReviewController extends Controller
 {
     public function booking(Request $request, Booking $booking): RedirectResponse
     {
+        abort_if($booking->isManualBooking(), 403);
         $booking->loadMissing(['unit.host', 'client']);
         abort_unless($booking->status === 'confirmed' && $booking->end_at->isPast(), 422, 'Reviews unlock after a confirmed booking has ended.');
 

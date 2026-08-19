@@ -717,6 +717,9 @@ html[data-color-mode="dark"] .identity-missing-warning { border-color: #76504b; 
 .calendar-mode-switch { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .8rem 1rem; margin-bottom: 1rem; border: 1px solid var(--card-line); border-radius: 12px; background: var(--surface-tint); }
 .calendar-mode-switch span { color: var(--muted); font-size: .7rem; line-height: 1.45; }
 .calendar-mode-switch .button { flex: 0 0 auto; }
+.manual-booking-card { margin-bottom: 1rem; overflow: hidden; border: 1px solid color-mix(in srgb, var(--forest) 30%, var(--card-line)); border-radius: 16px; background: var(--surface); box-shadow: var(--card-shadow); }
+.manual-booking-card > summary { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .8rem; padding: 1rem 1.1rem; cursor: pointer; list-style: none; }.manual-booking-card > summary::-webkit-details-marker { display: none; }.manual-booking-card > summary > span { display: grid; place-items: center; width: 2.4rem; height: 2.4rem; border-radius: 10px; color: white; background: var(--forest); font-size: 1.1rem; font-weight: 900; }.manual-booking-card > summary > div { display: grid; gap: .12rem; }.manual-booking-card > summary strong { font-size: .78rem; }.manual-booking-card > summary small { color: var(--muted); font-size: .61rem; line-height: 1.45; }.manual-booking-card > summary > b { padding: .42rem .62rem; border-radius: 99px; color: var(--forest); background: var(--mint); font-size: .59rem; }
+.manual-booking-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .9rem; padding: 1.1rem; border-top: 1px solid var(--row-line); background: var(--surface-soft); }.manual-booking-form .field-group { min-width: 0; }.manual-booking-form input, .manual-booking-form select, .manual-booking-form textarea { width: 100%; min-width: 0; }.manual-booking-wide, .manual-booking-intro, .manual-booking-submit { grid-column: 1 / -1; }.manual-booking-intro { display: flex; align-items: center; gap: .65rem; padding: .75rem .85rem; border-left: 3px solid var(--forest); border-radius: 8px; background: var(--surface); }.manual-booking-intro > span { flex: 0 0 auto; padding: .3rem .5rem; border-radius: 99px; color: var(--forest); background: var(--mint); font-size: .54rem; font-weight: 900; text-transform: uppercase; }.manual-booking-intro p { margin: 0; color: var(--muted); font-size: .62rem; line-height: 1.5; }.manual-booking-duration { grid-column: 1 / -1; padding: .6rem .75rem; border-radius: 8px; color: var(--forest); background: var(--mint); font-size: .62rem; font-weight: 800; }.manual-booking-submit { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-top: .85rem; border-top: 1px solid var(--row-line); }.manual-booking-submit small { max-width: 520px; color: var(--muted); font-size: .58rem; line-height: 1.45; }
 .calendar-toolbar h2 { margin: .25rem 0 0; font: 800 1.55rem Manrope; }
 .calendar-toolbar-actions { display: flex; align-items: center; gap: .7rem; }
 .calendar-view-switch { display: flex; gap: .2rem; padding: .2rem; border: 1px solid var(--card-line); border-radius: 10px; background: var(--surface-soft); }
@@ -976,6 +979,11 @@ html[data-color-mode="dark"] .agreed-price-note, html[data-color-mode="dark"] .n
     .booking-form { grid-template-columns: 1fr; }
     .booking-unit-field, .booking-notes-field, .booking-form .button { grid-column: auto; }
     .booking-form .button { width: 100%; }
+    .manual-booking-form { grid-template-columns: 1fr; }
+    .manual-booking-wide, .manual-booking-intro, .manual-booking-duration, .manual-booking-submit { grid-column: auto; }
+    .manual-booking-card > summary { grid-template-columns: auto minmax(0, 1fr); }.manual-booking-card > summary > b { display: none; }
+    .manual-booking-intro, .manual-booking-submit { align-items: stretch; flex-direction: column; }
+    .manual-booking-submit .button { width: 100%; }
     .day-booking-item { grid-template-columns: 1fr auto; }
     .booking-time { grid-column: 1 / -1; }
     .sidebar-nav a { font-size: .68rem; padding: .5rem; }

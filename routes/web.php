@@ -20,6 +20,7 @@ use App\Http\Controllers\HostApplicationController;
 use App\Http\Controllers\HostStorefrontController;
 use App\Http\Controllers\InquiryController;
 use App\Http\Controllers\ListingSearchController;
+use App\Http\Controllers\ManualBookingController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PriceProposalController;
 use App\Http\Controllers\ProfileController;
@@ -95,6 +96,7 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     Route::get('/favorites', [FavoriteUnitController::class, 'index'])->name('favorites.index');
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
     Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar.index');
+    Route::post('/calendar/manual-bookings', [ManualBookingController::class, 'store'])->name('calendar.manual-bookings.store');
     Route::post('/calendar/integration', [CalendarIntegrationController::class, 'refresh'])->name('calendar.integration.refresh');
     Route::get('/bookings/{booking}/calendar.ics', [CalendarIntegrationController::class, 'booking'])->name('bookings.calendar');
     Route::get('/units/{unit}/wifi-qr', [UnitController::class, 'wifiQr'])->name('units.wifi-qr');

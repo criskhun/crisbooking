@@ -6,7 +6,7 @@
 @section('content')
     @php
         $unit = $booking->unit;
-        $isClient = auth()->id() === $booking->client_id;
+        $isClient = ! $booking->isManualBooking() && auth()->id() === $booking->client_id;
         $galleryImages = $unit->images->values();
         $galleryCount = $galleryImages->count();
         $rateLabels = ['12_hours' => '12 hours', 'day' => '1 day', 'week' => '1 week', 'month' => '1 month'];
@@ -20,12 +20,14 @@
         $requestedPackageSummary = $requestedPackages->map(fn ($package, $period) => $package['quantity'].' × '.($rateLabels[$period] ?? str($period)->replace('_', ' ')->title()))->implode(' + ');
         $requestedPackageTotal = $requestedPackages->sum('subtotal');
         $myBookingReview = $booking->reviews->firstWhere('reviewer_id', auth()->id());
-        $reviewPartner = $isClient ? $unit->host : $booking->client;
+        $reviewPartner = $booking->isManualBooking() ? null : ($isClient ? $unit->host : $booking->client);
         $statusCopy = [
             'pending' => [$isClient ? 'Waiting for host' : 'Action required', $isClient ? 'The host must pre-approve or decline your request.' : 'Review this request and either pre-approve or decline it.'],
             'pre_approved' => ['Pre-approved — payment required', $isClient ? 'Upload your proof of payment so the host can complete confirmation.' : 'The client can now submit proof of payment.'],
             'payment_submitted' => ['Payment proof needs review', $isClient ? 'Your proof was sent. The host must review it before confirmation.' : 'Review the client’s payment proof, then confirm or decline the booking.'],
-            'confirmed' => ['Booking confirmed', 'Payment was reviewed and this booking is confirmed. Keep coordinating in chat.'],
+            'confirmed' => $booking->isManualBooking()
+                ? ['Outside booking recorded', $booking->durationDays().' '.str('day')->plural($booking->durationDays()).' are blocked on every availability calendar.']
+                : ['Booking confirmed', 'Payment was reviewed and this booking is confirmed. Keep coordinating in chat.'],
             'declined' => ['Booking declined', 'The host declined this request.'],
             'unavailable' => ['Schedule no longer available', 'Another request was confirmed for this schedule, so this pending request was disabled.'],
             'cancelled' => ['Booking cancelled', 'This booking is no longer active.'],
@@ -84,6 +86,12 @@
                             <div><dt>Starts</dt><dd>{{ $booking->start_at->format('M j, Y · g:i A') }}</dd></div>
                             <div><dt>Ends</dt><dd>{{ $booking->end_at->format('M j, Y · g:i A') }}</dd></div>
                             <div><dt>Guests / pax</dt><dd>{{ $booking->party_size }} {{ Str::plural('person', $booking->party_size) }}</dd></div>
+                            @if($booking->isManualBooking())
+                                <div><dt>Days blocked</dt><dd>{{ $booking->durationDays() }} {{ Str::plural('day', $booking->durationDays()) }}</dd></div>
+                                <div><dt>Sales source</dt><dd>{{ $booking->sourceDisplayLabel() }}</dd></div>
+                                <div><dt>External customer</dt><dd>{{ $booking->customerDisplayName() }}</dd></div>
+                                @if($booking->affiliatePartnership)<div><dt>Affiliate</dt><dd>{{ $booking->affiliatePartnership->marketer->name }} · {{ number_format((float) $booking->affiliate_commission_percentage, 2) }}%</dd></div>@endif
+                            @endif
                             @if ($booking->rental_coverage)<div><dt>Rental coverage</dt><dd>{{ ['within_city' => 'Within-city use', 'out_of_town' => 'Out-of-town use'][$booking->rental_coverage] ?? str($booking->rental_coverage)->replace('_', ' ')->title() }}</dd></div>@endif
                             @if ($currentPackages->isNotEmpty())
                                 <div><dt>Packages</dt><dd class="package-breakdown-list">@foreach($currentPackages as $period => $package)<span>{{ $package['quantity'] }} × {{ $rateLabels[$period] ?? str($period)->replace('_', ' ')->title() }} <small>₱{{ number_format($package['unit_price'], 2) }} each</small></span>@endforeach</dd></div>
@@ -99,8 +107,10 @@
                             <a class="button button-primary button-full" href="{{ route('inquiries.show', $booking->inquiry) }}">Go to inquiry chat</a>
                             <small class="booking-chat-note">This opens the conversation for this exact booking.</small>
                         @endif
-                        @if ($isClient)<a class="button button-ghost button-full" href="{{ route('profiles.show', $unit->host) }}">View host profile</a>@else<a class="button button-ghost button-full" href="{{ route('profiles.show', $booking->client) }}">View client profile</a>@endif
-                        @if ($isClient && in_array($booking->status, ['pending', 'pre_approved', 'payment_submitted', 'confirmed'], true) && $booking->end_at->isFuture())
+                        @if ($isClient)<a class="button button-ghost button-full" href="{{ route('profiles.show', $unit->host) }}">View host profile</a>@elseif(! $booking->isManualBooking())<a class="button button-ghost button-full" href="{{ route('profiles.show', $booking->client) }}">View client profile</a>@endif
+                        @if ($booking->isManualBooking() && $booking->status === 'confirmed')
+                            <form method="POST" action="{{ route('bookings.cancel', $booking) }}" onsubmit="return confirm('Cancel this outside booking and release its dates?')">@csrf @method('PATCH')<button class="booking-cancel-button" type="submit">Cancel outside booking & release dates</button></form>
+                        @elseif ($isClient && in_array($booking->status, ['pending', 'pre_approved', 'payment_submitted', 'confirmed'], true) && $booking->end_at->isFuture())
                             <form method="POST" action="{{ route('bookings.cancel', $booking) }}" onsubmit="return confirm('Cancel this booking?')">@csrf @method('PATCH')<button class="booking-cancel-button" type="submit">Cancel booking</button></form>
                         @elseif (! $isClient && $booking->status === 'pending')
                             <div class="booking-host-actions"><form method="POST" action="{{ route('bookings.status', $booking) }}">@csrf @method('PATCH')<input type="hidden" name="status" value="pre_approved"><button class="button button-primary" type="submit">Pre-approve</button></form><form method="POST" action="{{ route('bookings.status', $booking) }}">@csrf @method('PATCH')<input type="hidden" name="status" value="declined"><button class="booking-cancel-button" type="submit">Decline</button></form></div>
@@ -130,7 +140,7 @@
                     </section>
                 @endif
 
-                @if ($booking->status === 'confirmed' && $booking->end_at->isPast())
+                @if (! $booking->isManualBooking() && $booking->status === 'confirmed' && $booking->end_at->isPast())
                     <section class="booking-review-card">
                         <div class="booking-change-heading"><span>★</span><div><small>Completed booking</small><h2>Review {{ $reviewPartner->name }}</h2><p>Your rating and comment will appear on their {{ $isClient ? 'host' : 'client' }} profile.</p></div></div>
                         @if ($myBookingReview)

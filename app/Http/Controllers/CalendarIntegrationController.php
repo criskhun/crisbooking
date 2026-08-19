@@ -47,7 +47,8 @@ class CalendarIntegrationController extends Controller
     {
         return $user->is_admin
             || $booking->client_id === $user->id
-            || $booking->unit()->where('host_id', $user->id)->exists();
+            || $booking->unit()->where('host_id', $user->id)->exists()
+            || ($booking->isManualBooking() && $booking->affiliatePartnership()->where('marketer_id', $user->id)->exists());
     }
 
     private function calendarResponse(mixed $bookings, string $name, string $filename): Response
@@ -64,7 +65,10 @@ class CalendarIntegrationController extends Controller
 
         foreach ($bookings as $booking) {
             $summary = $booking->unit->name.' · '.$booking->statusLabel();
-            $description = "Booking #{$booking->id}\nClient: {$booking->client->name}\nHost: {$booking->unit->host->name}\nStatus: ".$booking->statusLabel();
+            $description = "Booking #{$booking->id}\nCustomer: {$booking->customerDisplayName()}\nHost: {$booking->unit->host->name}\nStatus: ".$booking->statusLabel();
+            if ($booking->isManualBooking()) {
+                $description .= "\nSales source: ".$booking->sourceDisplayLabel();
+            }
             $lines = [...$lines,
                 'BEGIN:VEVENT',
                 'UID:booking-'.$booking->id.'@davaorentzone.com',

@@ -1005,6 +1005,43 @@
             updateCarouselControls();
         });
 
+        document.querySelectorAll('[data-manual-booking-form]').forEach((form) => {
+            const unit = form.querySelector('[data-manual-booking-unit]');
+            const affiliate = form.querySelector('[data-manual-booking-affiliate]');
+            const start = form.querySelector('[data-manual-booking-start]');
+            const days = form.querySelector('[data-manual-booking-days]');
+            const duration = form.querySelector('[data-manual-booking-duration]');
+
+            const syncAffiliates = () => {
+                if (!unit || !affiliate) return;
+                const unitId = unit.value;
+                [...affiliate.options].slice(1).forEach((option) => {
+                    const assignedUnitIds = (option.dataset.unitIds || '').split(',').filter(Boolean);
+                    const available = unitId !== '' && assignedUnitIds.includes(unitId);
+                    option.hidden = !available;
+                    option.disabled = !available;
+                });
+                if (affiliate.selectedOptions[0]?.disabled) affiliate.value = '';
+            };
+            const syncDuration = () => {
+                if (!duration || !days) return;
+                const count = Math.max(1, Number(days.value) || 1);
+                let message = `${count} ${count === 1 ? 'day' : 'days'} will be blocked.`;
+                if (start?.value) {
+                    const departure = new Date(`${start.value}T12:00:00`);
+                    departure.setDate(departure.getDate() + count);
+                    message += ` Available again ${departure.toLocaleDateString('en-PH', {month: 'short', day: 'numeric', year: 'numeric'})}.`;
+                }
+                duration.textContent = message;
+            };
+
+            unit?.addEventListener('change', syncAffiliates);
+            start?.addEventListener('change', syncDuration);
+            days?.addEventListener('input', syncDuration);
+            syncAffiliates();
+            syncDuration();
+        });
+
         const calendarBookingDialog = document.querySelector('[data-calendar-booking-dialog]');
 
         if (calendarBookingDialog) {
@@ -1026,6 +1063,9 @@
                     setDialogText('[data-calendar-dialog-end]', bookingLink.dataset.end);
                     setDialogText('[data-calendar-dialog-party]', bookingLink.dataset.partySize);
                     setDialogText('[data-calendar-dialog-total]', bookingLink.dataset.total);
+                    setDialogText('[data-calendar-dialog-source]', bookingLink.dataset.source);
+                    const sourceWrap = calendarBookingDialog.querySelector('[data-calendar-dialog-source-wrap]');
+                    if (sourceWrap) sourceWrap.hidden = !bookingLink.dataset.source?.trim();
 
                     const status = calendarBookingDialog.querySelector('[data-calendar-dialog-status]');
                     if (status) {

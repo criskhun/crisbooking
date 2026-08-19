@@ -54,24 +54,26 @@
                         @php
                             $timelineStartColumn = (int) $month->copy()->startOfMonth()->diffInDays($timelineStart) + 2;
                             $timelineEndColumn = (int) $month->copy()->startOfMonth()->diffInDays($timelineEnd) + 3;
-                            $timelineLabel = $viewerCanManageBookings ? $timelineBooking->client->name : 'Reserved';
+                            $timelineCanOpenBooking = $viewerCanManageBookings || ($timelineBooking->isManualBooking() && $timelineBooking->affiliatePartnership?->marketer_id === auth()->id());
+                            $timelineLabel = $timelineCanOpenBooking ? ($timelineBooking->isManualBooking() ? $timelineBooking->sourceLabel() : $timelineBooking->customerDisplayName()) : 'Reserved';
                         @endphp
                         <a @class(['listing-timeline-booking', 'category-'.$unitMeta['theme'], 'status-'.($viewerCanManageBookings ? $timelineBooking->status : 'reserved')])
                            style="grid-column: {{ $timelineStartColumn }} / {{ $timelineEndColumn }}; grid-row: {{ $timelineRow }};"
                            data-booking-id="{{ $timelineBooking->id }}"
-                           @if($viewerCanManageBookings)
+                           @if($timelineCanOpenBooking)
                                data-calendar-booking-open data-unit="{{ $unit->name }}" data-category="{{ $unitMeta['label'] }}" data-category-icon="{{ $unitMeta['icon'] }}"
-                               data-client="{{ $timelineBooking->client->name }}" data-status="{{ $timelineBooking->statusLabel() }}" data-status-key="{{ $timelineBooking->status }}"
+                               data-client="{{ $timelineBooking->customerDisplayName() }}" data-status="{{ $timelineBooking->statusLabel() }}" data-status-key="{{ $timelineBooking->status }}"
                                data-start="{{ $timelineBooking->start_at->format('M j, Y · g:i A') }}" data-end="{{ $timelineBooking->end_at->format('M j, Y · g:i A') }}"
                                data-party-size="{{ number_format($timelineBooking->party_size) }}" data-total="₱{{ number_format($timelineBooking->total_amount, 2) }}"
+                               data-source="{{ $timelineBooking->isManualBooking() ? $timelineBooking->sourceDisplayLabel() : '' }}"
                                data-notes="{{ $timelineBooking->notes }}" data-booking-url="{{ route('bookings.show', $timelineBooking) }}"
                                href="{{ route('bookings.show', $timelineBooking) }}"
                            @else
                                aria-label="Reserved from {{ $timelineBooking->start_at->format('M j, g:i A') }} to {{ $timelineBooking->end_at->format('M j, g:i A') }}"
                            @endif
-                           title="{{ $viewerCanManageBookings ? $timelineBooking->statusLabel().': '.$timelineBooking->client->name : 'Reserved' }} · {{ $timelineBooking->start_at->format('M j, g:i A') }} to {{ $timelineBooking->end_at->format('M j, g:i A') }}">
-                            <span aria-hidden="true">{{ $viewerCanManageBookings ? $unitMeta['icon'] : '●' }}</span><strong>{{ $timelineLabel }}</strong>
-                            @if ($viewerCanManageBookings)<small>{{ $timelineBooking->start_at->format('M j') }}–{{ $timelineBooking->end_at->format('M j') }}</small>@endif
+                           title="{{ $timelineCanOpenBooking ? $timelineBooking->statusLabel().': '.$timelineBooking->customerDisplayName() : 'Reserved' }} · {{ $timelineBooking->start_at->format('M j, g:i A') }} to {{ $timelineBooking->end_at->format('M j, g:i A') }}">
+                            <span aria-hidden="true">{{ $timelineCanOpenBooking ? $unitMeta['icon'] : '●' }}</span><strong>{{ $timelineLabel }}</strong>
+                            @if ($timelineCanOpenBooking)<small>{{ $timelineBooking->start_at->format('M j') }}–{{ $timelineBooking->end_at->format('M j') }}</small>@endif
                         </a>
                     @endforeach
                 @endforeach

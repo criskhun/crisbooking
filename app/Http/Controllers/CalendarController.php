@@ -73,6 +73,16 @@ class CalendarController extends Controller
                 ->orderBy('name')
                 ->get();
         $scheduleCategories = $scheduleUnits->pluck('category')->filter()->unique()->sort()->values();
+        $manualBookingPartnerships = $bookingMode
+            ? collect()
+            : AffiliatePartnership::query()
+                ->with(['marketer:id,name', 'units:id'])
+                ->where('status', 'accepted')
+                ->when($user->isHost(), fn ($query) => $query->where('host_id', $user->id))
+                ->when($isAffiliateCalendar, fn ($query) => $query->where('marketer_id', $user->id))
+                ->whereHas('units', fn ($query) => $query->whereIn('units.id', $scheduleUnits->pluck('id')))
+                ->orderBy('id')
+                ->get();
 
         $units = Unit::query()
             ->with(['host.hostApplication', 'rates', 'images'])
@@ -98,12 +108,12 @@ class CalendarController extends Controller
             ->get();
 
         $bookings = Booking::query()
-            ->with(['unit:id,host_id,name,kind,category,property_details,wifi_details,wifi_qr_path', 'unit.host:id,name', 'client:id,name', 'inquiry:id', 'affiliatePartnership:id,marketer_id'])
+            ->with(['unit:id,host_id,name,kind,category,property_details,wifi_details,wifi_qr_path', 'unit.host:id,name', 'client:id,name', 'bookedBy:id,name', 'inquiry:id', 'affiliatePartnership:id,marketer_id'])
             ->where('start_at', '<', $gridEnd->copy()->addDay())
             ->where('end_at', '>', $gridStart)
             ->when(
                 $bookingMode,
-                fn ($query) => $query->where('client_id', $user->id),
+                fn ($query) => $query->where('client_id', $user->id)->where('booking_origin', 'platform'),
                 fn ($query) => $query->whereIn('unit_id', $units->pluck('id'))
             )
             ->orderBy('start_at')
@@ -200,6 +210,7 @@ class CalendarController extends Controller
             ? Booking::query()
                 ->with(['unit:id,host_id,name,category,property_details,wifi_details,wifi_qr_path', 'unit.host:id,name'])
                 ->where('client_id', $user->id)
+                ->where('booking_origin', 'platform')
                 ->where('end_at', '>', now())
                 ->orderBy('start_at')
                 ->get()
@@ -283,6 +294,8 @@ class CalendarController extends Controller
             'scheduleCategories' => $scheduleCategories,
             'scheduleCategory' => $scheduleCategory,
             'scheduleUnitId' => $scheduleUnitId,
+            'manualBookingPartnerships' => $manualBookingPartnerships,
+            'manualBookingSourceOptions' => Booking::MANUAL_SOURCE_OPTIONS,
         ]);
     }
 

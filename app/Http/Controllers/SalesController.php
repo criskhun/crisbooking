@@ -35,7 +35,7 @@ class SalesController extends Controller
             'pending_total' => $pending->sum('total_amount'),
             'pending_count' => $pending->count(),
             'average_sale' => $confirmed->count() ? $salesTotal / $confirmed->count() : 0,
-            'unique_clients' => $confirmed->pluck('client_id')->unique()->count(),
+            'unique_clients' => $confirmed->map(fn (Booking $booking) => $booking->customerDisplayName())->unique()->count(),
             'cancelled_count' => $cancelled->count(),
         ];
 

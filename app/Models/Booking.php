@@ -13,11 +13,27 @@ class Booking extends Model
 {
     use HasFactory;
 
+    public const MANUAL_SOURCE_OPTIONS = [
+        'direct' => 'Direct / Davao Rent Zone',
+        'airbnb' => 'Airbnb',
+        'booking_com' => 'Booking.com',
+        'agoda' => 'Agoda',
+        'facebook' => 'Facebook / social media',
+        'walk_in_phone' => 'Walk-in / phone',
+        'affiliate' => 'Affiliate offline sale',
+        'other' => 'Other source',
+    ];
+
     protected $fillable = [
         'unit_id',
         'inquiry_id',
         'unit_rate_id',
         'client_id',
+        'booked_by_user_id',
+        'booking_origin',
+        'source_channel',
+        'source_details',
+        'external_customer_name',
         'start_at',
         'end_at',
         'change_start_at',
@@ -84,6 +100,11 @@ class Booking extends Model
         return $this->belongsTo(User::class, 'client_id');
     }
 
+    public function bookedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'booked_by_user_id');
+    }
+
     public function rate(): BelongsTo
     {
         return $this->belongsTo(UnitRate::class, 'unit_rate_id');
@@ -117,6 +138,35 @@ class Booking extends Model
             'unavailable' => 'No longer available',
             default => ucfirst($this->status),
         };
+    }
+
+    public function isManualBooking(): bool
+    {
+        return $this->booking_origin === 'manual';
+    }
+
+    public function sourceLabel(): string
+    {
+        return self::MANUAL_SOURCE_OPTIONS[$this->source_channel] ?? 'Davao Rent Zone';
+    }
+
+    public function sourceDisplayLabel(): string
+    {
+        return $this->sourceLabel().($this->source_details ? ' · '.$this->source_details : '');
+    }
+
+    public function customerDisplayName(): string
+    {
+        if ($this->isManualBooking()) {
+            return $this->external_customer_name ?: 'External customer';
+        }
+
+        return $this->client?->name ?? 'Booking customer';
+    }
+
+    public function durationDays(): int
+    {
+        return max(1, (int) $this->start_at->copy()->startOfDay()->diffInDays($this->end_at->copy()->startOfDay()));
     }
 
     public function hasPendingChangeRequest(): bool
