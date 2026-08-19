@@ -6,6 +6,12 @@
         ? auth()->user()->hostApplication()->whereIn('status', ['needs_changes', 'rejected'])->exists()
         : false;
     $inquiryAttentionCount = auth()->user()->inquiryAttentionCount();
+    $hasAffiliateCalendar = ! auth()->user()->isHost()
+        && ! auth()->user()->is_admin
+        && auth()->user()->marketerAffiliatePartnerships()
+            ->where('status', 'accepted')
+            ->whereHas('units')
+            ->exists();
 @endphp
 <button class="sidebar-scrim" type="button" data-mobile-sidebar-close hidden aria-label="Close navigation menu"></button>
 <aside class="sidebar" data-mobile-sidebar>
@@ -19,9 +25,9 @@
     </a>
     <nav class="sidebar-nav" id="dashboard-navigation">
         <a @class(['active' => request()->routeIs('dashboard')]) href="{{ route('dashboard') }}"><span>⌂</span> Overview</a>
-        <a @class(['active' => request()->routeIs('calendar.*') && (request('mode') === 'book' || auth()->user()->isClient())]) href="{{ route('calendar.index', ['mode' => 'book']) }}"><span>⌕</span> Book now</a>
-        @if (auth()->user()->isHost() || auth()->user()->is_admin)
-            <a @class(['active' => request()->routeIs('calendar.*') && request('mode') !== 'book']) href="{{ route('calendar.index', ['mode' => 'manage']) }}"><span>□</span> Host calendar</a>
+        <a @class(['active' => request()->routeIs('calendar.*') && (request('mode') === 'book' || (auth()->user()->isClient() && request('mode') !== 'manage'))]) href="{{ route('calendar.index', ['mode' => 'book']) }}"><span>⌕</span> Book now</a>
+        @if (auth()->user()->isHost() || auth()->user()->is_admin || $hasAffiliateCalendar)
+            <a @class(['active' => request()->routeIs('calendar.*') && ($hasAffiliateCalendar ? request('mode') === 'manage' : request('mode') !== 'book')]) href="{{ route('calendar.index', ['mode' => 'manage']) }}"><span>□</span> {{ $hasAffiliateCalendar ? 'Affiliate calendar' : 'Host calendar' }}</a>
         @endif
         <a @class(['active' => request()->routeIs('inquiries.*')]) href="{{ route('inquiries.index') }}"><span>✦</span> Inquiries <b class="sidebar-notification-badge" data-inquiry-attention-count @if(!$inquiryAttentionCount) hidden @endif title="Inquiries need your attention">{{ $inquiryAttentionCount > 99 ? '99+' : $inquiryAttentionCount }}</b></a>
         <a @class(['active' => request()->routeIs('affiliates.*')]) href="{{ route('affiliates.index') }}"><span>％</span> {{ auth()->user()->isHost() || auth()->user()->is_admin ? 'Affiliate management' : 'Affiliates & sales' }}</a>

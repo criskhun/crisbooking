@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', $bookingMode ? 'Book now — Davao Rent Zone' : 'Booking calendar — Davao Rent Zone')
+@section('title', $bookingMode ? 'Book now — Davao Rent Zone' : ($isAffiliateCalendar ? 'Affiliate calendar — Davao Rent Zone' : 'Host calendar — Davao Rent Zone'))
 @section('body-class', 'dashboard-body')
 
 @section('content')
@@ -8,7 +8,7 @@
         @include('partials.dashboard-sidebar')
         <main class="dashboard-main">
             <header class="dashboard-header">
-                <div><span class="form-kicker">{{ $bookingMode ? 'Discover' : 'Schedule' }}</span><h1>{{ $bookingMode ? 'Book what you need' : 'Booking calendar' }}</h1></div>
+                <div><span class="form-kicker">{{ $bookingMode ? 'Discover' : 'Schedule' }}</span><h1>{{ $bookingMode ? 'Book what you need' : ($isAffiliateCalendar ? 'Affiliate calendar' : 'Host calendar') }}</h1></div>
                 @include('partials.user-badge')
             </header>
 
@@ -22,7 +22,7 @@
 
                 @if ($bookingMode)
                     @if ($canManageListings)
-                        <div class="calendar-mode-switch"><span>You are booking as {{ auth()->user()->name }}. Your own listings are excluded.</span><a class="button button-ghost button-small" href="{{ route('calendar.index', ['mode' => 'manage']) }}">Open host calendar</a></div>
+                        <div class="calendar-mode-switch"><span>You are booking as {{ auth()->user()->name }}. {{ $isAffiliateCalendar ? 'Your assigned affiliate listings are available in your calendar.' : 'Your own listings are excluded.' }}</span><a class="button button-ghost button-small" href="{{ route('calendar.index', ['mode' => 'manage']) }}">Open {{ $isAffiliateCalendar ? 'affiliate' : 'host' }} calendar</a></div>
                     @endif
                     @include('calendar.client-booking')
                 @else
@@ -38,6 +38,7 @@
                     ];
                     $calendarFilterQuery = array_filter([
                         'mode' => 'manage',
+                        'calendar_view' => $calendarView,
                         'schedule_category' => $scheduleCategory,
                         'schedule_unit' => $scheduleUnitId ?: null,
                     ]);
@@ -47,15 +48,22 @@
                         <span class="eyebrow">{{ $month->format('Y') }}</span>
                         <h2>{{ $month->format('F') }}</h2>
                     </div>
-                    <div class="calendar-navigation">
-                        <a aria-label="Previous month" href="{{ route('calendar.index', array_merge($calendarFilterQuery, ['month' => $month->copy()->subMonth()->format('Y-m')])) }}">←</a>
-                        <a class="calendar-today-link" href="{{ route('calendar.index', array_merge($calendarFilterQuery, ['month' => now()->format('Y-m'), 'date' => now()->format('Y-m-d')])) }}">Today</a>
-                        <a aria-label="Next month" href="{{ route('calendar.index', array_merge($calendarFilterQuery, ['month' => $month->copy()->addMonth()->format('Y-m')])) }}">→</a>
+                    <div class="calendar-toolbar-actions">
+                        <nav class="calendar-view-switch" aria-label="Calendar view">
+                            <a @class(['active' => $calendarView === 'month']) href="{{ route('calendar.index', array_merge($calendarFilterQuery, ['calendar_view' => 'month', 'month' => $month->format('Y-m'), 'date' => $selectedDate->format('Y-m-d')])) }}"><span aria-hidden="true">▦</span> Month</a>
+                            <a @class(['active' => $calendarView === 'listings']) href="{{ route('calendar.index', array_merge($calendarFilterQuery, ['calendar_view' => 'listings', 'month' => $month->format('Y-m'), 'date' => $selectedDate->format('Y-m-d')])) }}"><span aria-hidden="true">☷</span> Listings</a>
+                        </nav>
+                        <div class="calendar-navigation">
+                            <a aria-label="Previous month" href="{{ route('calendar.index', array_merge($calendarFilterQuery, ['month' => $month->copy()->subMonth()->format('Y-m')])) }}">←</a>
+                            <a class="calendar-today-link" href="{{ route('calendar.index', array_merge($calendarFilterQuery, ['month' => now()->format('Y-m'), 'date' => now()->format('Y-m-d')])) }}">Today</a>
+                            <a aria-label="Next month" href="{{ route('calendar.index', array_merge($calendarFilterQuery, ['month' => $month->copy()->addMonth()->format('Y-m')])) }}">→</a>
+                        </div>
                     </div>
                 </div>
 
                 <form class="calendar-filter-bar" method="GET" action="{{ route('calendar.index') }}">
                     <input type="hidden" name="mode" value="manage">
+                    <input type="hidden" name="calendar_view" value="{{ $calendarView }}">
                     <input type="hidden" name="month" value="{{ $month->format('Y-m') }}">
                     <input type="hidden" name="date" value="{{ $selectedDate->format('Y-m-d') }}">
                     <label><span>Category</span><select name="schedule_category">
@@ -72,7 +80,7 @@
                         @endforeach
                     </select></label>
                     <button class="button button-primary button-small" type="submit">Apply filters</button>
-                    <a class="calendar-filter-reset" href="{{ route('calendar.index', ['mode' => 'manage', 'month' => $month->format('Y-m'), 'date' => $selectedDate->format('Y-m-d')]) }}">Clear</a>
+                    <a class="calendar-filter-reset" href="{{ route('calendar.index', ['mode' => 'manage', 'calendar_view' => $calendarView, 'month' => $month->format('Y-m'), 'date' => $selectedDate->format('Y-m-d')]) }}">Clear</a>
                 </form>
 
                 <div class="calendar-category-legend" aria-label="Calendar category colors">
@@ -82,6 +90,9 @@
                     @endforeach
                 </div>
 
+                @if ($calendarView === 'listings')
+                    @include('calendar.listing-timeline')
+                @else
                 <div class="calendar-layout">
                     <div class="calendar-month-panel">
                         <div class="calendar-weekdays">
@@ -106,13 +117,16 @@
                                 <a @class(['calendar-booking-span', 'category-'.$eventMeta['theme'], 'status-'.$calendarBooking->status, 'starts-booking' => $segment['starts_booking'], 'ends-booking' => $segment['ends_booking'], 'continues-before' => $segment['continues_before'], 'continues-after' => $segment['continues_after']])
                                    style="grid-column: {{ $segment['start_column'] }} / {{ $segment['end_column'] }}; grid-row: {{ $segment['week'] }}; --calendar-lane: {{ $segment['lane'] }};"
                                    data-booking-id="{{ $calendarBooking->id }}" data-segment-start="{{ $segment['start_date'] }}" data-segment-end="{{ $segment['end_date'] }}"
-                                   data-calendar-booking-open
                                    data-unit="{{ $calendarBooking->unit->name }}" data-category="{{ $eventMeta['label'] }}" data-category-icon="{{ $eventMeta['icon'] }}"
-                                   data-client="{{ $calendarBooking->client->name }}" data-status="{{ ucfirst($calendarBooking->status) }}"
-                                   data-start="{{ $calendarBooking->start_at->format('M j, Y · g:i A') }}" data-end="{{ $calendarBooking->end_at->format('M j, Y · g:i A') }}"
-                                   data-party-size="{{ number_format($calendarBooking->party_size) }}" data-total="₱{{ number_format($calendarBooking->total_amount, 2) }}"
-                                   data-notes="{{ $calendarBooking->notes }}" data-booking-url="{{ route('bookings.show', $calendarBooking) }}"
-                                   href="{{ route('bookings.show', $calendarBooking) }}"
+                                   @if($viewerCanManageBookings)
+                                       data-calendar-booking-open data-client="{{ $calendarBooking->client->name }}" data-status="{{ $calendarBooking->statusLabel() }}" data-status-key="{{ $calendarBooking->status }}"
+                                       data-start="{{ $calendarBooking->start_at->format('M j, Y · g:i A') }}" data-end="{{ $calendarBooking->end_at->format('M j, Y · g:i A') }}"
+                                       data-party-size="{{ number_format($calendarBooking->party_size) }}" data-total="₱{{ number_format($calendarBooking->total_amount, 2) }}"
+                                       data-notes="{{ $calendarBooking->notes }}" data-booking-url="{{ route('bookings.show', $calendarBooking) }}"
+                                       href="{{ route('bookings.show', $calendarBooking) }}"
+                                   @else
+                                       aria-label="Reserved: {{ $calendarBooking->unit->name }}, {{ $calendarBooking->start_at->format('M j, g:i A') }} to {{ $calendarBooking->end_at->format('M j, g:i A') }}"
+                                   @endif
                                    title="{{ $calendarBooking->unit->name }}: {{ $calendarBooking->start_at->format('M j, g:i A') }} to {{ $calendarBooking->end_at->format('M j, g:i A') }}">
                                     @if ($segment['continues_before'])<span class="calendar-span-continuation">‹</span>@endif
                                     @if ($segment['starts_booking'])<time>{{ $calendarBooking->start_at->format('g:i A') }}</time>@endif
@@ -149,7 +163,9 @@
                         </div>
                     </aside>
                 </div>
+                @endif
 
+                @if ($viewerCanManageBookings)
                 <div class="booking-workspace">
                     <section class="day-bookings-card">
                         <div class="side-panel-title"><div><span class="eyebrow">Schedule</span><h2>Booking requests</h2></div></div>
@@ -221,6 +237,7 @@
                         <footer><button class="button button-ghost" type="button" data-calendar-dialog-close>Close</button><a class="button button-primary" href="#" data-calendar-dialog-link>Open full booking</a></footer>
                     </div>
                 </dialog>
+                @endif
                 @endif
             </section>
         </main>

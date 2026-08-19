@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AffiliatePartnership;
 use App\Models\Booking;
 use App\Models\Unit;
 use App\Models\User;
@@ -113,6 +114,78 @@ class CalendarPresentationTest extends TestCase
         foreach ($bookings as $booking) {
             $response->assertSee('data-booking-id="'.$booking->id.'"', false);
         }
+    }
+
+    public function test_host_can_switch_to_a_listing_timeline_with_one_row_per_listing(): void
+    {
+        $host = User::factory()->host()->create();
+        $client = User::factory()->create(['name' => 'Timeline Client']);
+        $start = now()->addMonth()->startOfMonth()->addDays(3)->setTime(14, 0);
+        $condo = $this->createUnit($host, 'Riverside Condo', 'condo', 'unit');
+        $car = $this->createUnit($host, 'City Touring Car', 'car', 'unit');
+        $booking = $this->createBooking($condo, $client, $start, 'Timeline booking details.');
+        $booking->update(['end_at' => $start->copy()->addDays(3)->setTime(10, 0), 'status' => 'confirmed']);
+
+        $response = $this->actingAs($host)->get(route('calendar.index', [
+            'mode' => 'manage',
+            'calendar_view' => 'listings',
+            'month' => $start->format('Y-m'),
+        ]));
+
+        $response->assertOk()
+            ->assertSee('Listing timeline')
+            ->assertSee('Compare every owned listing')
+            ->assertSee('Riverside Condo')
+            ->assertSee('City Touring Car')
+            ->assertSee('Timeline Client')
+            ->assertSee('data-booking-id="'.$booking->id.'"', false)
+            ->assertSee('grid-column: 5 / 9', false)
+            ->assertSee('data-calendar-booking-open', false)
+            ->assertSee(route('bookings.show', $booking), false);
+    }
+
+    public function test_accepted_affiliate_sees_only_assigned_listing_availability_without_private_booking_details(): void
+    {
+        $host = User::factory()->host()->create();
+        $affiliateUser = User::factory()->create();
+        $client = User::factory()->create(['name' => 'Private Booking Customer']);
+        $start = now()->addMonth()->startOfMonth()->addDays(6)->setTime(9, 0);
+        $assigned = $this->createUnit($host, 'Affiliate Assigned Condo', 'condo', 'unit');
+        $unassigned = $this->createUnit($host, 'Host Private Car', 'car', 'unit');
+        $partnership = AffiliatePartnership::create([
+            'marketer_id' => $affiliateUser->id,
+            'host_id' => $host->id,
+            'status' => 'accepted',
+            'commission_percentage' => 10,
+            'referral_code' => 'AFFILIATECALENDAR',
+            'application_message' => 'I will market these listings to qualified local renters.',
+            'reviewed_at' => now(),
+        ]);
+        $partnership->units()->attach($assigned);
+        $booking = $this->createBooking($assigned, $client, $start, 'Private notes must stay hidden.');
+
+        $response = $this->actingAs($affiliateUser)->get(route('calendar.index', [
+            'mode' => 'manage',
+            'calendar_view' => 'listings',
+            'month' => $start->format('Y-m'),
+        ]));
+
+        $response->assertOk()
+            ->assertSee('Affiliate calendar')
+            ->assertSee('Compare every assigned listing')
+            ->assertSee('Affiliate Assigned Condo')
+            ->assertDontSee('Host Private Car')
+            ->assertSee('Reserved')
+            ->assertSee('data-booking-id="'.$booking->id.'"', false)
+            ->assertDontSee('Private Booking Customer')
+            ->assertDontSee('Private notes must stay hidden.')
+            ->assertDontSee('data-calendar-booking-open', false)
+            ->assertDontSee(route('bookings.show', $booking), false);
+
+        $this->actingAs($affiliateUser)->get(route('calendar.index'))
+            ->assertOk()
+            ->assertSee('Book what you need')
+            ->assertDontSee('Listing timeline');
     }
 
     private function createUnit(User $host, string $name, string $category, string $kind): Unit

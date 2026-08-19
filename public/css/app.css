@@ -692,6 +692,10 @@ html[data-color-mode="dark"] .identity-missing-warning { border-color: #76504b; 
 .calendar-mode-switch span { color: var(--muted); font-size: .7rem; line-height: 1.45; }
 .calendar-mode-switch .button { flex: 0 0 auto; }
 .calendar-toolbar h2 { margin: .25rem 0 0; font: 800 1.55rem Manrope; }
+.calendar-toolbar-actions { display: flex; align-items: center; gap: .7rem; }
+.calendar-view-switch { display: flex; gap: .2rem; padding: .2rem; border: 1px solid var(--card-line); border-radius: 10px; background: var(--surface-soft); }
+.calendar-view-switch a { display: flex; align-items: center; gap: .3rem; min-height: 2rem; padding: 0 .65rem; border-radius: 7px; color: var(--muted); font-size: .6rem; font-weight: 800; text-decoration: none; }
+.calendar-view-switch a.active { color: white; background: var(--forest); box-shadow: 0 2px 6px rgba(23, 60, 52, .18); }
 .calendar-navigation { display: flex; align-items: center; gap: .4rem; }
 .calendar-navigation a { display: grid; place-items: center; min-width: 2.4rem; height: 2.4rem; padding: 0 .7rem; border: 1px solid var(--card-line); border-radius: 9px; background: var(--surface-soft); color: var(--ink); font-weight: 800; text-decoration: none; }
 .calendar-navigation .calendar-today-link { width: auto; font-size: .72rem; }
@@ -705,6 +709,33 @@ html[data-color-mode="dark"] .identity-missing-warning { border-color: #76504b; 
 .calendar-category-legend > span { display: inline-flex; align-items: center; gap: .3rem; color: var(--muted); font-size: .58rem; font-weight: 700; }
 .calendar-category-legend > span::before { width: .65rem; height: .38rem; border-radius: 99px; background: var(--calendar-event-border, #8a9f99); content: ''; }
 .calendar-category-legend b { font-size: .72rem; line-height: 1; }
+.listing-timeline-card { border: 1px solid var(--card-line); border-top: 0; border-radius: 0 0 16px 16px; overflow: hidden; background: var(--surface); box-shadow: var(--card-shadow); }
+.listing-timeline-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem; border-bottom: 1px solid var(--row-line); }
+.listing-timeline-heading h2 { margin: .2rem 0 0; font: 800 1rem Manrope; }
+.listing-timeline-heading p { margin: .25rem 0 0; color: var(--muted); font-size: .62rem; }
+.listing-timeline-heading > span { flex: 0 0 auto; padding: .35rem .55rem; border-radius: 99px; color: var(--forest); background: var(--mint); font-size: .56rem; font-weight: 800; }
+.listing-timeline-scroll { max-width: 100%; overflow: auto; overscroll-behavior-inline: contain; scrollbar-color: var(--forest) var(--surface-soft); }
+.listing-timeline-scroll:focus-visible { outline: 3px solid color-mix(in srgb, var(--forest) 45%, transparent); outline-offset: -3px; }
+.listing-timeline-grid { position: relative; display: grid; grid-template-columns: 240px repeat(var(--timeline-days), 52px); grid-template-rows: 62px repeat(var(--timeline-rows), 76px); width: max-content; min-width: 100%; background: var(--surface); }
+.listing-timeline-corner { position: sticky; z-index: 8; left: 0; top: 0; display: grid; align-content: center; gap: .15rem; padding: 0 .85rem; border-right: 1px solid var(--card-line); border-bottom: 1px solid var(--card-line); background: var(--surface-soft); box-shadow: 5px 0 10px rgba(23, 60, 52, .05); }
+.listing-timeline-corner strong { font-size: .7rem; }.listing-timeline-corner small { color: var(--muted); font-size: .52rem; }
+.listing-timeline-date { position: sticky; z-index: 6; top: 0; display: grid; place-content: center; gap: .17rem; border-right: 1px solid var(--row-line); border-bottom: 1px solid var(--card-line); color: var(--ink); background: var(--surface-soft); text-align: center; text-decoration: none; }
+.listing-timeline-date small { color: var(--muted); font-size: .45rem; font-weight: 800; text-transform: uppercase; }.listing-timeline-date strong { font-size: .68rem; }
+.listing-timeline-date.is-weekend, .listing-timeline-cell.is-weekend { background: color-mix(in srgb, var(--surface-tint) 70%, var(--surface)); }
+.listing-timeline-date.is-today strong { display: grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: 50%; color: white; background: var(--forest); }
+.listing-timeline-date.selected { box-shadow: inset 0 -3px var(--forest); }
+.listing-timeline-unit { position: sticky; z-index: 5; left: 0; display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; align-items: center; gap: .65rem; padding: .65rem .75rem; border-right: 1px solid var(--card-line); border-bottom: 1px solid var(--row-line); background: var(--surface); box-shadow: 5px 0 10px rgba(23, 60, 52, .05); }
+.listing-timeline-unit img, .listing-timeline-placeholder { width: 42px; height: 42px; border-radius: 9px; object-fit: cover; }
+.listing-timeline-placeholder { display: grid; place-items: center; background: var(--surface-tint); font-size: 1.15rem; }
+.listing-timeline-unit > div { display: grid; min-width: 0; gap: .18rem; }.listing-timeline-unit strong { overflow: hidden; font-size: .65rem; text-overflow: ellipsis; white-space: nowrap; }.listing-timeline-unit small { overflow: hidden; color: var(--muted); font-size: .48rem; text-overflow: ellipsis; white-space: nowrap; }
+.listing-timeline-unit > i { width: .5rem; height: .5rem; border-radius: 50%; background: #a4adaa; }.listing-timeline-unit > i.active { background: #31a375; box-shadow: 0 0 0 3px color-mix(in srgb, #31a375 18%, transparent); }
+.listing-timeline-cell { z-index: 1; border-right: 1px solid var(--row-line); border-bottom: 1px solid var(--row-line); background: var(--surface); text-decoration: none; }.listing-timeline-cell:hover { background: var(--surface-tint); }.listing-timeline-cell.is-today { background: color-mix(in srgb, var(--mint) 55%, var(--surface)); }.listing-timeline-cell.selected { box-shadow: inset 2px 0 var(--forest), inset -2px 0 var(--forest); }
+.listing-timeline-booking { z-index: 3; display: flex; align-self: center; align-items: center; gap: .38rem; height: 34px; min-width: 0; margin: 0 3px; padding: 0 .55rem; overflow: hidden; border: 1px solid var(--timeline-border, #3b8a70); border-left-width: 4px; border-radius: 8px; color: var(--timeline-ink, #215b49); background: var(--timeline-background, #dff1e8); box-shadow: 0 3px 9px rgba(23, 60, 52, .12); text-decoration: none; white-space: nowrap; }
+.listing-timeline-booking:hover { filter: brightness(.97); transform: translateY(-1px); }.listing-timeline-booking > span { flex: 0 0 auto; font-size: .62rem; }.listing-timeline-booking strong { min-width: 0; overflow: hidden; font-size: .56rem; text-overflow: ellipsis; }.listing-timeline-booking small { margin-left: auto; font-size: .45rem; font-weight: 800; }
+.listing-timeline-booking.status-pending { border-style: dashed; }.listing-timeline-booking.status-reserved { --timeline-border: #1a9a78; --timeline-ink: #155e50; --timeline-background: #d5f5e9; }
+.listing-timeline-booking.category-condo { --timeline-border: #2563eb; --timeline-ink: #1e3a8a; --timeline-background: #dbeafe; }.listing-timeline-booking.category-car { --timeline-border: #d97706; --timeline-ink: #7c2d12; --timeline-background: #ffedd5; }.listing-timeline-booking.category-cleaning { --timeline-border: #0f766e; --timeline-ink: #115e59; --timeline-background: #ccfbf1; }.listing-timeline-booking.category-driving { --timeline-border: #7c3aed; --timeline-ink: #5b21b6; --timeline-background: #ede9fe; }.listing-timeline-booking.category-massage { --timeline-border: #db2777; --timeline-ink: #9d174d; --timeline-background: #fce7f3; }.listing-timeline-booking.category-consultancy { --timeline-border: #475569; --timeline-ink: #334155; --timeline-background: #e2e8f0; }.listing-timeline-booking.category-pet-transport { --timeline-border: #65a30d; --timeline-ink: #3f6212; --timeline-background: #ecfccb; }.listing-timeline-booking.category-other { --timeline-border: #64748b; --timeline-ink: #334155; --timeline-background: #f1f5f9; }
+.listing-timeline-help { display: flex; align-items: center; gap: .4rem; margin: 0; padding: .65rem 1rem; border-top: 1px solid var(--row-line); color: var(--muted); background: var(--surface-soft); font-size: .54rem; }.listing-timeline-help span { color: var(--forest); font-size: .8rem; font-weight: 900; }
+.listing-timeline-empty { display: grid; justify-items: center; gap: .35rem; padding: 3rem 1rem; color: var(--muted); text-align: center; }.listing-timeline-empty > span { font-size: 1.8rem; }.listing-timeline-empty strong { color: var(--ink); font-size: .76rem; }.listing-timeline-empty p { margin: 0; font-size: .62rem; }
 .calendar-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; border: 1px solid var(--card-line); border-top: 0; border-radius: 0 0 16px 16px; overflow: hidden; background: var(--surface); box-shadow: var(--card-shadow); }
 .calendar-month-panel { min-width: 0; }
 .calendar-weekdays, .booking-calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
@@ -822,6 +853,8 @@ html[data-color-mode="dark"] .calendar-booking-span.category-massage { border-co
 html[data-color-mode="dark"] .calendar-booking-span.category-consultancy { border-color: #94a3b8; color: #e2e8f0; background: #1e293b; }
 html[data-color-mode="dark"] .calendar-booking-span.category-pet-transport { border-color: #a3e635; color: #d9f99d; background: #1a2e05; }
 html[data-color-mode="dark"] .calendar-booking-span.category-other { border-color: #94a3b8; color: #e2e8f0; background: #1e293b; }
+html[data-color-mode="dark"] .listing-timeline-booking { color: #b7e1cf; background: #203a31; }
+html[data-color-mode="dark"] .listing-timeline-booking.category-condo { color: #bfdbfe; background: #172554; } html[data-color-mode="dark"] .listing-timeline-booking.category-car { color: #fed7aa; background: #431407; } html[data-color-mode="dark"] .listing-timeline-booking.category-cleaning { color: #99f6e4; background: #042f2e; } html[data-color-mode="dark"] .listing-timeline-booking.category-driving { color: #ddd6fe; background: #2e1065; } html[data-color-mode="dark"] .listing-timeline-booking.category-massage { color: #fbcfe8; background: #500724; } html[data-color-mode="dark"] .listing-timeline-booking.category-consultancy, html[data-color-mode="dark"] .listing-timeline-booking.category-other { color: #e2e8f0; background: #1e293b; } html[data-color-mode="dark"] .listing-timeline-booking.category-pet-transport { color: #d9f99d; background: #1a2e05; }
 html[data-color-mode="dark"] .calendar-day.outside-month { color: #65736e; }
 
 @media (max-width: 980px) {
@@ -847,6 +880,10 @@ html[data-color-mode="dark"] .calendar-day.outside-month { color: #65736e; }
     .calendar-filter-bar .button { width: 100%; }
     .calendar-filter-reset { justify-self: start; }
     .calendar-category-legend { padding: .55rem .8rem; }
+    .calendar-toolbar { align-items: flex-start; }
+    .calendar-toolbar-actions { align-items: flex-end; flex-direction: column-reverse; }
+    .listing-timeline-grid { grid-template-columns: 190px repeat(var(--timeline-days), 46px); }
+    .listing-timeline-heading { align-items: flex-start; }
     .listing-form-grid { grid-template-columns: 1fr; }
     .listing-name-field, .listing-description-field { grid-column: auto; }
 }
@@ -892,6 +929,12 @@ html[data-color-mode="dark"] .agreed-price-note, html[data-color-mode="dark"] .n
     .listing-summary-bar > div:first-child { grid-column: 1 / -1; }
     .calendar-toolbar { padding: .85rem; }
     .calendar-toolbar h2 { font-size: 1.2rem; }
+    .calendar-toolbar { flex-direction: column; }
+    .calendar-toolbar-actions { width: 100%; align-items: stretch; }
+    .calendar-view-switch { display: grid; grid-template-columns: 1fr 1fr; }
+    .calendar-view-switch a { justify-content: center; }
+    .calendar-navigation { justify-content: space-between; }
+    .listing-timeline-heading > span { display: none; }
     .calendar-day { min-height: 58px; }
     .booking-calendar-grid { grid-template-rows: repeat(var(--calendar-weeks), minmax(calc(3rem + var(--calendar-lanes) * .48rem), auto)); }
     .calendar-day-bookings { display: none; }

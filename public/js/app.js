@@ -807,8 +807,8 @@
                     const status = calendarBookingDialog.querySelector('[data-calendar-dialog-status]');
                     if (status) {
                         status.textContent = bookingLink.dataset.status || 'Pending';
-                        status.classList.remove('status-pending', 'status-confirmed', 'status-cancelled');
-                        status.classList.add(`status-${(bookingLink.dataset.status || 'pending').toLowerCase()}`);
+                        status.classList.remove('status-pending', 'status-pre_approved', 'status-payment_submitted', 'status-confirmed', 'status-cancelled', 'status-declined', 'status-unavailable');
+                        status.classList.add(`status-${bookingLink.dataset.statusKey || 'pending'}`);
                     }
 
                     const notesWrap = calendarBookingDialog.querySelector('[data-calendar-dialog-notes-wrap]');

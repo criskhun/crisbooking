@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AffiliatePartnership;
 use App\Models\Booking;
 use App\Models\Unit;
 use Carbon\Carbon;
@@ -30,6 +31,7 @@ class CalendarController extends Controller
             'search' => ['nullable', 'boolean'],
             'selected_unit' => ['nullable', 'integer'],
             'mode' => ['nullable', Rule::in(['book', 'manage'])],
+            'calendar_view' => ['nullable', Rule::in(['month', 'listings'])],
             'schedule_category' => ['nullable', 'string', 'max:30', 'regex:/^[a-z0-9]+(?:_[a-z0-9]+)*$/'],
             'schedule_unit' => ['nullable', 'integer'],
         ]);
@@ -43,15 +45,31 @@ class CalendarController extends Controller
         $gridStart = $month->copy()->startOfWeek(Carbon::SUNDAY);
         $gridEnd = $month->copy()->endOfMonth()->endOfWeek(Carbon::SATURDAY);
         $user = $request->user();
-        $canManageListings = $user->isHost() || $user->is_admin;
-        $bookingMode = ! $canManageListings || ($validated['mode'] ?? null) === 'book';
+        $affiliateUnitIds = $user->isHost() || $user->is_admin
+            ? collect()
+            : AffiliatePartnership::query()
+                ->where('marketer_id', $user->id)
+                ->where('status', 'accepted')
+                ->with('units:id')
+                ->get()
+                ->flatMap->units
+                ->pluck('id')
+                ->unique()
+                ->values();
+        $isAffiliateCalendar = ! $user->isHost() && ! $user->is_admin && $affiliateUnitIds->isNotEmpty();
+        $canManageListings = $user->isHost() || $user->is_admin || $isAffiliateCalendar;
+        $bookingMode = ! $canManageListings
+            || ($validated['mode'] ?? null) === 'book'
+            || ($isAffiliateCalendar && ($validated['mode'] ?? null) !== 'manage');
+        $calendarView = $bookingMode ? 'month' : ($validated['calendar_view'] ?? 'month');
         $scheduleCategory = $bookingMode ? null : ($validated['schedule_category'] ?? null);
         $scheduleUnitId = $bookingMode ? null : (int) ($validated['schedule_unit'] ?? 0);
         $scheduleUnits = $bookingMode
             ? collect()
             : Unit::query()
                 ->select(['id', 'host_id', 'name', 'category'])
-                ->when(! $user->is_admin, fn ($query) => $query->where('host_id', $user->id))
+                ->when($user->isHost(), fn ($query) => $query->where('host_id', $user->id))
+                ->when($isAffiliateCalendar, fn ($query) => $query->whereIn('id', $affiliateUnitIds))
                 ->orderBy('name')
                 ->get();
         $scheduleCategories = $scheduleUnits->pluck('category')->filter()->unique()->sort()->values();
@@ -67,7 +85,9 @@ class CalendarController extends Controller
                         $bookable->whereNotIn('category', ['car', 'condo'])
                             ->orWhereHas('rates');
                     }),
-                fn ($query) => $query->when(! $user->is_admin, fn ($owned) => $owned->where('host_id', $user->id))
+                fn ($query) => $query
+                    ->when($user->isHost(), fn ($owned) => $owned->where('host_id', $user->id))
+                    ->when($isAffiliateCalendar, fn ($assigned) => $assigned->whereIn('id', $affiliateUnitIds))
             )
             ->when(! $bookingMode && $scheduleCategory, fn ($query) => $query->where('category', $scheduleCategory))
             ->when(! $bookingMode && $scheduleUnitId, fn ($query) => $query->whereKey($scheduleUnitId))
@@ -75,7 +95,7 @@ class CalendarController extends Controller
             ->get();
 
         $bookings = Booking::query()
-            ->with(['unit:id,host_id,name,kind,category,property_details,wifi_details,wifi_qr_path', 'unit.host:id,name', 'client:id,name', 'inquiry:id'])
+            ->with(['unit:id,host_id,name,kind,category,property_details,wifi_details,wifi_qr_path', 'unit.host:id,name', 'client:id,name', 'inquiry:id', 'affiliatePartnership:id,marketer_id'])
             ->where('start_at', '<', $gridEnd->copy()->addDay())
             ->where('end_at', '>', $gridStart)
             ->when(
@@ -238,11 +258,15 @@ class CalendarController extends Controller
             'selectedInquiry' => $selectedInquiry,
             'clientBookings' => $clientBookings,
             'locations' => $locations,
+            'timelineDays' => collect($month->daysUntil($month->copy()->endOfMonth())->toArray()),
             'calendarSegments' => $calendarSegments,
             'calendarWeekCount' => $calendarWeekCount,
             'calendarLaneCount' => $calendarLaneCount,
             'bookingMode' => $bookingMode,
             'canManageListings' => $canManageListings,
+            'calendarView' => $calendarView,
+            'isAffiliateCalendar' => $isAffiliateCalendar,
+            'viewerCanManageBookings' => $user->isHost() || $user->is_admin,
             'scheduleUnits' => $scheduleUnits,
             'scheduleCategories' => $scheduleCategories,
             'scheduleCategory' => $scheduleCategory,
