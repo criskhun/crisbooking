@@ -216,27 +216,33 @@ class CalendarController extends Controller
             : $units->when($category, fn ($availableUnits) => $availableUnits->where('category', $category))->values();
         $matchingMapUnits = $mapSourceUnits
             ->filter(fn (Unit $unit) => $unit->latitude !== null && $unit->longitude !== null)
-            ->map(fn (Unit $unit) => [
-                'id' => $unit->id,
-                'name' => $unit->name,
-                'latitude' => (float) $unit->latitude,
-                'longitude' => (float) $unit->longitude,
-                'location' => $unit->location,
-                'category' => $unit->category,
-                'capacity' => $unit->capacity,
-                'bedrooms' => $unit->property_details['bedrooms'] ?? null,
-                'starting_price' => (float) ($unit->isPackageRental() ? $unit->rates->min('price') : $unit->price),
-                'host_name' => $unit->host->name,
-                'business_name' => $unit->host->publicHostName(),
-                'host_avatar_url' => $unit->host->avatarUrl(),
-                'marker_image_url' => $unit->host->avatarUrl() ?: ($unit->primaryImagePath() ? Storage::disk('public')->url($unit->primaryImagePath()) : null),
-                'image_url' => $unit->primaryImagePath() ? Storage::disk('public')->url($unit->primaryImagePath()) : null,
-                'url' => route('listings.show', $unit),
-                'inquiry_url' => route('listings.inquire', $unit),
-                'host_url' => route('hosts.show', $unit->host),
-                'navigation_url' => 'https://www.google.com/maps/dir/?api=1&destination='.$unit->latitude.','.$unit->longitude,
-                'distance_km' => isset($unit->distance_km) ? round((float) $unit->distance_km, 1) : null,
-            ])
+            ->map(function (Unit $unit) {
+                $startingPrice = $unit->startingPrice();
+
+                return [
+                    'id' => $unit->id,
+                    'name' => $unit->name,
+                    'latitude' => (float) $unit->latitude,
+                    'longitude' => (float) $unit->longitude,
+                    'location' => $unit->location,
+                    'category' => $unit->category,
+                    'capacity' => $unit->capacity,
+                    'bedrooms' => $unit->property_details['bedrooms'] ?? null,
+                    'starting_price' => (float) $unit->discountedPrice($startingPrice),
+                    'original_price' => (float) $startingPrice,
+                    'sale_percentage' => (float) ($unit->sale_percentage ?? 0),
+                    'host_name' => $unit->host->name,
+                    'business_name' => $unit->host->publicHostName(),
+                    'host_avatar_url' => $unit->host->avatarUrl(),
+                    'marker_image_url' => $unit->host->avatarUrl() ?: ($unit->primaryImagePath() ? Storage::disk('public')->url($unit->primaryImagePath()) : null),
+                    'image_url' => $unit->primaryImagePath() ? Storage::disk('public')->url($unit->primaryImagePath()) : null,
+                    'url' => route('listings.show', $unit),
+                    'inquiry_url' => route('listings.inquire', $unit),
+                    'host_url' => route('hosts.show', $unit->host),
+                    'navigation_url' => 'https://www.google.com/maps/dir/?api=1&destination='.$unit->latitude.','.$unit->longitude,
+                    'distance_km' => isset($unit->distance_km) ? round((float) $unit->distance_km, 1) : null,
+                ];
+            })
             ->values();
         [$calendarSegments, $calendarWeekCount, $calendarLaneCount] = $this->buildCalendarSegments($bookings, $gridStart, $gridEnd);
 

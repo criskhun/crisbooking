@@ -2201,6 +2201,38 @@
             });
         });
 
+        document.querySelectorAll('[data-listing-view-switch]').forEach((viewShell) => {
+            const gridPanel = viewShell.querySelector('[data-listing-grid-panel]');
+            const mapPanel = viewShell.querySelector('[data-listing-map-panel]');
+            const buttons = [...viewShell.querySelectorAll('[data-listing-view-select]')];
+            if (!gridPanel || !mapPanel || buttons.length < 2) return;
+
+            const selectView = (view, remember = true) => {
+                const mapSelected = view === 'map';
+                gridPanel.hidden = mapSelected;
+                mapPanel.hidden = !mapSelected;
+                buttons.forEach((button) => {
+                    const active = button.dataset.listingViewSelect === view;
+                    button.setAttribute('aria-pressed', String(active));
+                });
+                if (remember) {
+                    try {
+                        localStorage.setItem('davao-listing-view', view);
+                    } catch (error) {}
+                }
+                if (mapSelected) {
+                    window.requestAnimationFrame(() => mapPanel.dispatchEvent(new CustomEvent('davao:listing-map-visible', {bubbles: true})));
+                }
+            };
+
+            buttons.forEach((button) => button.addEventListener('click', () => selectView(button.dataset.listingViewSelect)));
+            let preferredView = viewShell.dataset.defaultView || 'grid';
+            try {
+                preferredView = localStorage.getItem('davao-listing-view') || preferredView;
+            } catch (error) {}
+            selectView(preferredView === 'map' ? 'map' : 'grid', false);
+        });
+
         const accountType = document.querySelector('[data-host-account-type]');
         const businessFields = document.querySelector('[data-host-business-fields]');
         if (! accountType || ! businessFields) return;

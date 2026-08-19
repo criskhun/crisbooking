@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Unit;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -63,8 +64,39 @@ class AvailabilityController extends Controller
             ->orderBy('name')
             ->get();
 
+        $availableMapListings = $availableListings
+            ->filter(fn (Unit $listing) => $listing->latitude !== null && $listing->longitude !== null)
+            ->map(function (Unit $listing) {
+                $startingPrice = $listing->startingPrice();
+
+                return [
+                    'id' => $listing->id,
+                    'name' => $listing->name,
+                    'latitude' => (float) $listing->latitude,
+                    'longitude' => (float) $listing->longitude,
+                    'location' => $listing->location,
+                    'category' => $listing->category,
+                    'capacity' => $listing->capacity,
+                    'bedrooms' => $listing->property_details['bedrooms'] ?? null,
+                    'starting_price' => (float) $listing->discountedPrice($startingPrice),
+                    'original_price' => (float) $startingPrice,
+                    'sale_percentage' => (float) ($listing->sale_percentage ?? 0),
+                    'host_name' => $listing->host->name,
+                    'business_name' => $listing->host->publicHostName(),
+                    'host_avatar_url' => $listing->host->avatarUrl(),
+                    'marker_image_url' => $listing->host->avatarUrl() ?: ($listing->primaryImagePath() ? Storage::disk('public')->url($listing->primaryImagePath()) : null),
+                    'image_url' => $listing->primaryImagePath() ? Storage::disk('public')->url($listing->primaryImagePath()) : null,
+                    'url' => route('listings.show', $listing),
+                    'inquiry_url' => route('listings.inquire', $listing),
+                    'host_url' => route('hosts.show', $listing->host),
+                    'navigation_url' => 'https://www.google.com/maps/dir/?api=1&destination='.$listing->latitude.','.$listing->longitude,
+                ];
+            })
+            ->values();
+
         return view('availability.index', compact(
             'availableListings',
+            'availableMapListings',
             'startDate',
             'endDate',
             'selectedCategory',

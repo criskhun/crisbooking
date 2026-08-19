@@ -57,20 +57,27 @@
             <button class="button button-primary button-small" type="submit">Update results</button>
         </form>
 
-        <section class="availability-page-heading" aria-labelledby="available-listings-heading">
-            <div>
-                <span class="eyebrow">Available for your schedule</span>
-                <h1 id="available-listings-heading">{{ $availableListings->count() }} {{ Str::plural('listing', $availableListings->count()) }} found</h1>
-                <p>
-                    {{ $categoryLabels[$selectedCategory] }} ·
-                    {{ $startDate->isSameDay($endDate) ? $startDate->format('M j, Y') : $startDate->format('M j').' – '.$endDate->format('M j, Y') }}
-                    @if($selectedLocation !== '') · {{ $selectedLocation }} @endif
-                </p>
+        <section class="listing-view-shell" data-listing-view-switch data-default-view="grid" aria-labelledby="available-listings-heading">
+            <div class="availability-page-heading">
+                <div>
+                    <span class="eyebrow">Available for your schedule</span>
+                    <h1 id="available-listings-heading">{{ $availableListings->count() }} {{ Str::plural('listing', $availableListings->count()) }} found</h1>
+                    <p>
+                        {{ $categoryLabels[$selectedCategory] }} ·
+                        {{ $startDate->isSameDay($endDate) ? $startDate->format('M j, Y') : $startDate->format('M j').' – '.$endDate->format('M j, Y') }}
+                        @if($selectedLocation !== '') · {{ $selectedLocation }} @endif
+                    </p>
+                </div>
+                <div class="listing-view-heading-actions">
+                    <span class="availability-sort-note">Highest rated first</span>
+                    <div class="listing-view-toggle" role="group" aria-label="Choose listing view">
+                        <button type="button" data-listing-view-select="grid" aria-pressed="true"><span aria-hidden="true">▦</span> Grid</button>
+                        <button type="button" data-listing-view-select="map" aria-pressed="false"><span aria-hidden="true">⌖</span> Map</button>
+                    </div>
+                </div>
             </div>
-            <span class="availability-sort-note">Highest rated first</span>
-        </section>
 
-        <section class="available-unit-grid" aria-label="Available units">
+            <section class="available-unit-grid" aria-label="Available units" data-listing-grid-panel>
             @forelse($availableListings as $listing)
                 @php
                     $group = in_array($listing->category, ['car', 'condo', 'driving'], true) ? $listing->category : 'other';
@@ -124,6 +131,18 @@
                     <a href="{{ route('home', $homeFilters) }}" class="button button-ghost button-small">Return to calendar</a>
                 </div>
             @endforelse
+            </section>
+
+            <section class="listing-results-map-panel booking-map-explorer" aria-label="Available listings map" data-listing-map-panel data-overview-nearby-map data-default-radius-km="500" data-map-id="{{ config('services.google.maps_map_id') }}" hidden>
+                <div class="listing-map-heading">
+                    <div><span class="eyebrow">Map view</span><h2>Compare hosts by lowest price</h2><p>Each marker shows the host and the lowest available price for that listing.</p></div>
+                    <button class="map-action-button" type="button" data-map-use-location>Show near me</button>
+                </div>
+                <div class="google-map-canvas booking-discovery-map" data-map-canvas aria-label="Map of available listings and their lowest prices"></div>
+                @unless(config('services.google.maps_api_key'))<div class="map-setup-note"><strong>Google Map preview is not configured yet</strong><span>Add <code>GOOGLE_MAPS_API_KEY</code>. Grid view and listing cards remain available.</span></div>@endunless
+                <small class="map-status" data-map-status aria-live="polite"></small>
+                <script type="application/json" data-map-units>@json($availableMapListings)</script>
+            </section>
         </section>
     </main>
 

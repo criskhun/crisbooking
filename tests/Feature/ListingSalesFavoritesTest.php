@@ -119,7 +119,7 @@ class ListingSalesFavoritesTest extends TestCase
     {
         $host = User::factory()->host()->create();
         $client = User::factory()->create();
-        $unit = $this->unit($host, ['sale_percentage' => 20]);
+        $unit = $this->unit($host, ['sale_percentage' => 20, 'latitude' => 7.0731, 'longitude' => 125.6128]);
         $client->favoriteUnits()->attach($unit);
         $booking = Booking::create([
             'unit_id' => $unit->id,
@@ -149,6 +149,11 @@ class ListingSalesFavoritesTest extends TestCase
             ->assertSee('★ 5.0')
             ->assertSee('₱1,000.00')
             ->assertSee('₱800.00')
+            ->assertSee('data-listing-view-select="grid"', false)
+            ->assertSee('data-listing-view-select="map"', false)
+            ->assertSee('Compare hosts by lowest price')
+            ->assertSee('"starting_price":800', false)
+            ->assertSee('"original_price":1000', false)
             ->assertSee('aria-pressed="true"', false)
             ->assertSee('Excellent service and a very easy booking.');
     }

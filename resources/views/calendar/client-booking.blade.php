@@ -44,14 +44,6 @@
         </div>
     </section>
 
-    <section class="booking-step-card booking-map-explorer" data-overview-nearby-map data-default-radius-km="500" data-map-id="{{ config('services.google.maps_map_id') }}" data-guide-feature="booking-map">
-        <div class="step-heading"><span>⌖</span><div><h3>Explore bookable listings on the map</h3><p>Host photos mark each listing. Numbered circles group nearby options—tap one to zoom in, then choose a host to view, inquire, or navigate.</p></div><button class="map-action-button" type="button" data-map-use-location>Show near me</button></div>
-        <div class="google-map-canvas booking-discovery-map" data-map-canvas aria-label="Map of available rentals and services"></div>
-        @unless(config('services.google.maps_api_key'))<div class="map-setup-note"><strong>Google Map preview is not configured yet</strong><span>Add <code>GOOGLE_MAPS_API_KEY</code>. Search and listing cards remain available.</span></div>@endunless
-        <small class="map-status" data-map-status aria-live="polite"></small>
-        <script type="application/json" data-map-units>@json($matchingMapUnits)</script>
-    </section>
-
     @if ($category)
         <section class="booking-step-card" id="booking-details">
             <div class="step-heading"><span>Step 2</span><div><h3>Add your booking details</h3><p>We’ll check capacity and availability for your dates.</p></div></div>
@@ -85,11 +77,12 @@
     @endif
 
     @if ($searchSubmitted)
-        <section class="booking-step-card booking-results" id="booking-results">
+        <section class="booking-step-card booking-results" id="booking-results" data-listing-view-switch data-default-view="grid" data-guide-feature="booking-map">
             <div class="results-heading">
                 <div><span class="eyebrow">Step 3 · Available options</span><h3>{{ $matchingUnits->count() }} {{ Str::plural('match', $matchingUnits->count()) }} for your trip</h3><p>{{ $searchStart->format('M j, g:i A') }} – {{ $searchEnd->format('M j, g:i A') }} · {{ $partySize }} {{ Str::plural('person', $partySize) }}{{ request('location') ? ' · '.request('location') : '' }}</p></div>
+                <div class="listing-view-toggle" role="group" aria-label="Choose search results view"><button type="button" data-listing-view-select="grid" aria-pressed="true"><span aria-hidden="true">▦</span> Grid</button><button type="button" data-listing-view-select="map" aria-pressed="false"><span aria-hidden="true">⌖</span> Map</button></div>
             </div>
-            <div class="client-result-grid">
+            <div class="client-result-grid" data-listing-grid-panel>
                 @forelse ($matchingUnits as $unit)
                     @php
                         $isSelected = $selectedUnit?->id === $unit->id;
@@ -111,6 +104,7 @@
                     <div class="no-results"><span>⌕</span><h4>No exact matches yet</h4><p>Try a nearby location, fewer people, or different dates.</p><a href="#booking-details">Change search details</a></div>
                 @endforelse
             </div>
+            @include('partials.listing-results-map', ['mapUnits' => $matchingMapUnits, 'mapTitle' => 'See your matches by lowest price', 'mapAriaLabel' => 'Map of matching listings and their lowest prices'])
         </section>
     @endif
 
@@ -212,9 +206,9 @@
     @endif
 
     @unless ($searchSubmitted)
-    <section class="client-catalog">
-        <div class="catalog-heading"><div><span class="eyebrow">More options</span><h3>Browse all listings</h3><p>Compare photos and details, then view or inquire with the host.</p></div><span>{{ $units->count() }}</span></div>
-        <div class="catalog-list">
+    <section class="client-catalog" data-listing-view-switch data-default-view="grid" data-guide-feature="booking-map">
+        <div class="catalog-heading"><div><span class="eyebrow">More options</span><h3>Browse all listings</h3><p>Compare photos and details, then view or inquire with the host.</p></div><div class="catalog-heading-actions"><span>{{ $units->count() }}</span><div class="listing-view-toggle" role="group" aria-label="Choose catalog view"><button type="button" data-listing-view-select="grid" aria-pressed="true"><span aria-hidden="true">▦</span> Grid</button><button type="button" data-listing-view-select="map" aria-pressed="false"><span aria-hidden="true">⌖</span> Map</button></div></div></div>
+        <div class="catalog-list" data-listing-grid-panel>
             @foreach ($units as $unit)
                 @php
                     $startingPrice = $unit->startingPrice();
@@ -250,6 +244,7 @@
                 </article>
             @endforeach
         </div>
+        @include('partials.listing-results-map', ['mapUnits' => $matchingMapUnits, 'mapTitle' => 'Browse listings by lowest price', 'mapAriaLabel' => 'Map of all bookable listings and their lowest prices'])
     </section>
     @endunless
 

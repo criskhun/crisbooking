@@ -98,6 +98,7 @@ class ProfilePhotoDiscoveryTest extends TestCase
             'name' => 'Five Seat City Car',
             'category' => 'car',
             'capacity' => 5,
+            'sale_percentage' => 25,
             'latitude' => 7.0731,
             'longitude' => 125.6128,
             'photo_path' => 'listings/five-seat-city-car.jpg',
@@ -107,8 +108,13 @@ class ProfilePhotoDiscoveryTest extends TestCase
 
         $this->actingAs($client)->get(route('calendar.index', ['mode' => 'book']))
             ->assertOk()
-            ->assertSee('Explore bookable listings on the map')
+            ->assertSee('Browse listings by lowest price')
+            ->assertSee('data-listing-view-select="grid"', false)
+            ->assertSee('data-listing-view-select="map"', false)
+            ->assertSee('data-listing-map-panel', false)
             ->assertSee('Maria Davao Rentals')
+            ->assertSee('"starting_price":2400', false)
+            ->assertSee('"original_price":3200', false)
             ->assertSee('"url":'.json_encode(route('listings.show', $active)), false)
             ->assertSee('"inquiry_url":'.json_encode(route('listings.inquire', $active)), false)
             ->assertSee('"marker_image_url":'.json_encode(Storage::disk('public')->url('profiles/maria-host.jpg')), false)

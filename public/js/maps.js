@@ -155,6 +155,15 @@
 
         const initialsFor = (unit) => (unit.business_name || unit.host_name || 'Host')
             .split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
+        const priceFor = (unit) => {
+            const price = Number(unit.starting_price);
+            if (!Number.isFinite(price)) return null;
+
+            return `₱${price.toLocaleString('en-PH', {
+                minimumFractionDigits: Number.isInteger(price) ? 0 : 2,
+                maximumFractionDigits: 2,
+            })}`;
+        };
         const actionLink = (href, label, className = '') => {
             const link = document.createElement('a');
             link.href = href;
@@ -196,7 +205,8 @@
             const factParts = [];
             if (unit.bedrooms) factParts.push(`${unit.bedrooms} BR`);
             if (unit.capacity) factParts.push(`Up to ${unit.capacity}`);
-            if (unit.starting_price !== null && unit.starting_price !== undefined) factParts.push(`From ₱${Number(unit.starting_price).toLocaleString('en-PH', {minimumFractionDigits: 2})}`);
+            const lowestPrice = priceFor(unit);
+            if (lowestPrice) factParts.push(`Lowest price ${lowestPrice}`);
             facts.textContent = factParts.join(' · ');
             if (factParts.length) content.append(facts);
             if (unit.distance_km !== null && unit.distance_km !== undefined) {
@@ -225,17 +235,28 @@
             const button = document.createElement('button');
             button.type = 'button';
             button.className = 'map-profile-marker';
-            button.title = `${unit.name} — ${unit.business_name || unit.host_name || 'Host'}`;
-            button.setAttribute('aria-label', `View ${unit.name} hosted by ${unit.business_name || unit.host_name || 'host'}`);
+            const lowestPrice = priceFor(unit);
+            button.title = `${unit.name} — ${unit.business_name || unit.host_name || 'Host'}${lowestPrice ? ` — lowest price ${lowestPrice}` : ''}`;
+            button.setAttribute('aria-label', `View ${unit.name} hosted by ${unit.business_name || unit.host_name || 'host'}${lowestPrice ? `, lowest price ${lowestPrice}` : ''}`);
+            const avatar = document.createElement('span');
+            avatar.className = 'map-profile-marker-avatar';
             const initials = document.createElement('span');
+            initials.className = 'map-profile-marker-initials';
             initials.textContent = initialsFor(unit);
-            button.append(initials);
+            avatar.append(initials);
             if (unit.marker_image_url) {
                 const image = document.createElement('img');
                 image.src = unit.marker_image_url;
                 image.alt = '';
                 image.addEventListener('error', () => image.remove());
-                button.append(image);
+                avatar.append(image);
+            }
+            button.append(avatar);
+            if (lowestPrice) {
+                const price = document.createElement('strong');
+                price.className = 'map-profile-marker-price';
+                price.textContent = lowestPrice;
+                button.append(price);
             }
             button.addEventListener('click', () => showUnit(unit));
             return button;
@@ -273,7 +294,7 @@
             const projection = manager.getProjection();
             if (!projection) return;
             clearRendered();
-            const shouldCluster = (map.getZoom() || 0) < 17;
+            const shouldCluster = (map.getZoom() || 0) < 12;
             const clusters = [];
             mappedUnits.forEach((unit) => {
                 const pixel = projection.fromLatLngToDivPixel(unit.position);
@@ -449,7 +470,12 @@
         });
 
         container.querySelector('[data-map-use-location]')?.addEventListener('click', centerOnCurrentLocation);
-        centerOnCurrentLocation();
+        const mapPanel = container.closest('[data-listing-map-panel]');
+        container.addEventListener('davao:listing-map-visible', () => {
+            google.maps.event.trigger(map, 'resize');
+            if (units.length > 0) map.fitBounds(bounds, 55);
+        });
+        if (!mapPanel?.hidden) centerOnCurrentLocation();
     };
 
     const initializeMaps = () => {
