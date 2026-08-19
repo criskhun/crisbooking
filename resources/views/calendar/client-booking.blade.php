@@ -97,7 +97,7 @@
                         $startingPrice = $unit->startingPrice();
                     @endphp
                     <article @class(['client-result-card', 'selected' => $isSelected])>
-                        <div class="result-photo">@if ($unit->primaryImagePath())<img src="{{ Storage::disk('public')->url($unit->primaryImagePath()) }}" alt="{{ $unit->name }}">@else<span>{{ $categories[$unit->category]['icon'] ?? '◇' }}</span>@endif @if($unit->hasSale())<span class="listing-sale-badge">{{ number_format((float) $unit->sale_percentage, 0) }}% off</span>@endif @include('partials.listing-favorite', ['favoriteUnit' => $unit])</div>
+                        <div class="result-photo">@include('partials.listing-card-carousel', ['carouselUnit' => $unit, 'carouselLinkUrl' => $selectUrl, 'carouselPlaceholder' => $categories[$unit->category]['icon'] ?? '◇']) @if($unit->hasSale())<span class="listing-sale-badge">{{ number_format((float) $unit->sale_percentage, 0) }}% off</span>@endif @include('partials.listing-favorite', ['favoriteUnit' => $unit])</div>
                         <div class="result-card-body">
                             <div class="result-card-kicker"><span>{{ $categories[$unit->category]['label'] ?? ucfirst($unit->kind) }}</span>@if($unit->listing_reviews_count)<strong>★ {{ number_format((float) $unit->listing_reviews_avg_rating, 1) }} <small>({{ $unit->listing_reviews_count }})</small></strong>@else<small>New listing</small>@endif</div>
                             <h4>{{ $unit->name }}</h4>
@@ -227,9 +227,7 @@
                         })->filter();
                 @endphp
                 <article class="catalog-card">
-                    <div class="catalog-media"><a class="catalog-photo" href="{{ route('listings.show', $unit) }}" aria-label="View {{ $unit->name }}">
-                            @if ($unit->primaryImagePath())<img src="{{ Storage::disk('public')->url($unit->primaryImagePath()) }}" alt="{{ $unit->name }}">@else<span aria-hidden="true">{{ $categories[$unit->category]['icon'] ?? '◇' }}</span>@endif
-                        </a>@if($unit->hasSale())<span class="listing-sale-badge">{{ number_format((float) $unit->sale_percentage, 0) }}% off</span>@endif @include('partials.listing-favorite', ['favoriteUnit' => $unit])</div>
+                    <div class="catalog-media">@include('partials.listing-card-carousel', ['carouselUnit' => $unit, 'carouselLinkClass' => 'catalog-photo', 'carouselPlaceholder' => $categories[$unit->category]['icon'] ?? '◇'])@if($unit->hasSale())<span class="listing-sale-badge">{{ number_format((float) $unit->sale_percentage, 0) }}% off</span>@endif @include('partials.listing-favorite', ['favoriteUnit' => $unit])</div>
                     <div class="catalog-card-body">
                         <div class="catalog-card-category"><span>{{ $categories[$unit->category]['label'] ?? str($unit->category)->replace('_', ' ')->title() }}</span>@if($unit->listing_reviews_count)<strong>★ {{ number_format((float) $unit->listing_reviews_avg_rating, 1) }} <small>({{ $unit->listing_reviews_count }})</small></strong>@else<small>New listing</small>@endif</div>
                         <h4><a href="{{ route('listings.show', $unit) }}">{{ $unit->name }}</a></h4>

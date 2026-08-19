@@ -82,13 +82,7 @@
                 @endphp
                 <article class="available-unit-card">
                     <div class="available-unit-media">
-                        <a class="available-unit-photo" href="{{ route('listings.show', $listing) }}" aria-label="View {{ $listing->name }}">
-                            @if($listing->primaryImagePath())
-                                <img src="{{ Storage::disk('public')->url($listing->primaryImagePath()) }}" alt="{{ $listing->name }}">
-                            @else
-                                <span aria-hidden="true">{{ $categoryIcons[$group] }}</span>
-                            @endif
-                        </a>
+                        @include('partials.listing-card-carousel', ['carouselUnit' => $listing, 'carouselLinkClass' => 'available-unit-photo', 'carouselPlaceholder' => $categoryIcons[$group]])
                         @if($listing->hasSale())<span class="listing-sale-badge">{{ number_format((float) $listing->sale_percentage, $listing->sale_percentage == (int) $listing->sale_percentage ? 0 : 1) }}% off</span>@endif
                         @include('partials.listing-favorite', ['favoriteUnit' => $listing])
                     </div>

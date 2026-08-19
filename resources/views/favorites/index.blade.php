@@ -28,9 +28,7 @@
                         @endphp
                         <article class="favorite-listing-card" data-favorite-card>
                             <div class="favorite-listing-media">
-                                <a href="{{ route('listings.show', $unit) }}" aria-label="View {{ $unit->name }}">
-                                    @if($unit->primaryImagePath())<img src="{{ Storage::disk('public')->url($unit->primaryImagePath()) }}" alt="{{ $unit->name }}">@else<span aria-hidden="true">{{ $categoryIcon }}</span>@endif
-                                </a>
+                                @include('partials.listing-card-carousel', ['carouselUnit' => $unit, 'carouselPlaceholder' => $categoryIcon])
                                 @if($unit->hasSale())<span class="listing-sale-badge">{{ number_format((float) $unit->sale_percentage, 0) }}% off</span>@endif
                                 @include('partials.listing-favorite', ['favoriteUnit' => $unit])
                             </div>

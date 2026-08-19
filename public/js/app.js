@@ -928,6 +928,50 @@
             });
         }
 
+        document.querySelectorAll('[data-listing-carousel]').forEach((carousel) => {
+            const slides = Array.from(carousel.querySelectorAll('[data-listing-carousel-slide]'));
+            if (slides.length < 2) return;
+
+            const dots = Array.from(carousel.querySelectorAll('[data-listing-carousel-dot]'));
+            const status = carousel.querySelector('[data-listing-carousel-status]');
+            const previous = carousel.querySelector('[data-listing-carousel-previous]');
+            const next = carousel.querySelector('[data-listing-carousel-next]');
+            let activeIndex = Math.max(0, Number(carousel.dataset.carouselIndex) || 0);
+
+            const showSlide = (requestedIndex) => {
+                activeIndex = (requestedIndex + slides.length) % slides.length;
+                carousel.dataset.carouselIndex = String(activeIndex);
+                slides.forEach((slide, index) => {
+                    const isActive = index === activeIndex;
+                    slide.classList.toggle('is-active', isActive);
+                    slide.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+                });
+                dots.forEach((dot, index) => dot.classList.toggle('is-active', index === activeIndex));
+                if (status) status.textContent = `Photo ${activeIndex + 1} of ${slides.length}`;
+            };
+
+            previous?.addEventListener('click', (event) => {
+                event.stopPropagation();
+                showSlide(activeIndex - 1);
+            });
+            next?.addEventListener('click', (event) => {
+                event.stopPropagation();
+                showSlide(activeIndex + 1);
+            });
+            carousel.addEventListener('keydown', (event) => {
+                if (event.key === 'ArrowLeft') {
+                    event.preventDefault();
+                    showSlide(activeIndex - 1);
+                }
+                if (event.key === 'ArrowRight') {
+                    event.preventDefault();
+                    showSlide(activeIndex + 1);
+                }
+            });
+
+            showSlide(activeIndex);
+        });
+
         const calendarBookingDialog = document.querySelector('[data-calendar-booking-dialog]');
 
         if (calendarBookingDialog) {

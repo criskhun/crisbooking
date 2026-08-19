@@ -32,12 +32,7 @@
                         @endphp
                         <article class="listing-card">
                             <div class="listing-photo">
-                                @if ($unit->primaryImagePath())
-                                    <img src="{{ Storage::disk('public')->url($unit->primaryImagePath()) }}" alt="{{ $unit->name }}">
-                                    @if ($unit->images->count() > 1)<small class="photo-count">▧ {{ $unit->images->count() }} photos</small>@endif
-                                @else
-                                    <span>{{ $icons[$unit->category] ?? '◇' }}</span>
-                                @endif
+                                @include('partials.listing-card-carousel', ['carouselUnit' => $unit, 'carouselLinkUrl' => route('units.edit', $unit), 'carouselPlaceholder' => $icons[$unit->category] ?? '◇'])
                                 @if($unit->hasSale())<span class="listing-sale-badge">{{ number_format((float) $unit->sale_percentage, 0) }}% sale</span>@endif
                             </div>
                             <div class="listing-card-top">
