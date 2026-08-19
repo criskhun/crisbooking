@@ -31,8 +31,17 @@
     @if($carouselCount > 1)
         <button class="listing-card-carousel-nav previous" type="button" data-listing-carousel-previous aria-label="Previous photo of {{ $carouselUnit->name }}">‹</button>
         <button class="listing-card-carousel-nav next" type="button" data-listing-carousel-next aria-label="Next photo of {{ $carouselUnit->name }}">›</button>
-        <div class="listing-card-carousel-dots" aria-hidden="true">
-            @foreach($carouselImages as $index => $imagePath)<span @class(['is-active' => $index === 0]) data-listing-carousel-dot></span>@endforeach
+        <div class="listing-card-carousel-dots" role="group" aria-label="Choose a photo of {{ $carouselUnit->name }}">
+            @foreach($carouselImages as $index => $imagePath)
+                <button
+                    type="button"
+                    @class(['is-active' => $index === 0])
+                    data-listing-carousel-dot
+                    data-carousel-index="{{ $index }}"
+                    aria-label="Show photo {{ $index + 1 }} of {{ $carouselCount }} for {{ $carouselUnit->name }}"
+                    aria-pressed="{{ $index === 0 ? 'true' : 'false' }}"
+                ></button>
+            @endforeach
         </div>
         <span class="sr-only" role="status" aria-live="polite" data-listing-carousel-status>Photo 1 of {{ $carouselCount }}</span>
     @endif

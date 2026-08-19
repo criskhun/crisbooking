@@ -937,39 +937,72 @@
             const previous = carousel.querySelector('[data-listing-carousel-previous]');
             const next = carousel.querySelector('[data-listing-carousel-next]');
             let activeIndex = Math.max(0, Number(carousel.dataset.carouselIndex) || 0);
+            let transitionTimer = null;
 
-            const showSlide = (requestedIndex) => {
-                activeIndex = (requestedIndex + slides.length) % slides.length;
+            const updateCarouselControls = () => {
                 carousel.dataset.carouselIndex = String(activeIndex);
-                slides.forEach((slide, index) => {
+                dots.forEach((dot, index) => {
                     const isActive = index === activeIndex;
-                    slide.classList.toggle('is-active', isActive);
-                    slide.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+                    dot.classList.toggle('is-active', isActive);
+                    dot.setAttribute('aria-pressed', isActive ? 'true' : 'false');
                 });
-                dots.forEach((dot, index) => dot.classList.toggle('is-active', index === activeIndex));
                 if (status) status.textContent = `Photo ${activeIndex + 1} of ${slides.length}`;
+            };
+
+            const showSlide = (requestedIndex, requestedDirection = null) => {
+                const nextIndex = (requestedIndex + slides.length) % slides.length;
+                if (nextIndex === activeIndex) {
+                    updateCarouselControls();
+                    return;
+                }
+
+                window.clearTimeout(transitionTimer);
+                const direction = requestedDirection || (nextIndex > activeIndex ? 'next' : 'previous');
+                const outgoing = slides[activeIndex];
+                const incoming = slides[nextIndex];
+                const transitionClasses = ['is-entering-next', 'is-entering-previous', 'is-leaving-next', 'is-leaving-previous'];
+
+                slides.forEach((slide, index) => {
+                    slide.classList.remove(...transitionClasses);
+                    slide.classList.toggle('is-active', index === activeIndex);
+                });
+                incoming.classList.add(direction === 'next' ? 'is-entering-next' : 'is-entering-previous');
+                incoming.getBoundingClientRect();
+                outgoing.classList.add(direction === 'next' ? 'is-leaving-next' : 'is-leaving-previous');
+                outgoing.classList.remove('is-active');
+                incoming.classList.add('is-active');
+                incoming.classList.remove('is-entering-next', 'is-entering-previous');
+
+                activeIndex = nextIndex;
+                slides.forEach((slide, index) => slide.setAttribute('aria-hidden', index === activeIndex ? 'false' : 'true'));
+                updateCarouselControls();
+                transitionTimer = window.setTimeout(() => outgoing.classList.remove('is-leaving-next', 'is-leaving-previous'), 460);
             };
 
             previous?.addEventListener('click', (event) => {
                 event.stopPropagation();
-                showSlide(activeIndex - 1);
+                showSlide(activeIndex - 1, 'previous');
             });
             next?.addEventListener('click', (event) => {
                 event.stopPropagation();
-                showSlide(activeIndex + 1);
+                showSlide(activeIndex + 1, 'next');
             });
+            dots.forEach((dot) => dot.addEventListener('click', (event) => {
+                event.stopPropagation();
+                showSlide(Number(dot.dataset.carouselIndex));
+            }));
             carousel.addEventListener('keydown', (event) => {
                 if (event.key === 'ArrowLeft') {
                     event.preventDefault();
-                    showSlide(activeIndex - 1);
+                    showSlide(activeIndex - 1, 'previous');
                 }
                 if (event.key === 'ArrowRight') {
                     event.preventDefault();
-                    showSlide(activeIndex + 1);
+                    showSlide(activeIndex + 1, 'next');
                 }
             });
 
-            showSlide(activeIndex);
+            updateCarouselControls();
         });
 
         const calendarBookingDialog = document.querySelector('[data-calendar-booking-dialog]');

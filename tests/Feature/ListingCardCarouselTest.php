@@ -32,6 +32,8 @@ class ListingCardCarouselTest extends TestCase
             ->assertSee('data-listing-carousel-next', false)
             ->assertSee('Previous photo of Carousel Driving Service')
             ->assertSee('Next photo of Carousel Driving Service')
+            ->assertSee('data-listing-carousel-dot', false)
+            ->assertSee('Show photo 2 of 3 for Carousel Driving Service')
             ->assertSee('Photo 1 of 3')
             ->assertSeeInOrder([
                 'carousel-one.jpg',
