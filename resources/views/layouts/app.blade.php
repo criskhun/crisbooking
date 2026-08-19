@@ -46,8 +46,17 @@
         <script async src="https://maps.googleapis.com/maps/api/js?key={{ urlencode(config('services.google.maps_api_key')) }}&loading=async&libraries=geometry,places&callback=initDavaoRentZoneGoogleMaps"></script>
     @endif
 </head>
-<body class="@yield('body-class', 'site-body')">
+<body class="@yield('body-class', 'site-body') is-booting">
     @yield('content')
+
+    <div class="global-loading-overlay" data-global-loader aria-hidden="true">
+        <div class="global-loading-card" role="status" aria-live="polite" aria-atomic="true">
+            <span class="global-loading-brand" aria-hidden="true"><img src="{{ asset('images/davao-rent-zone-logo-mark.svg') }}" alt=""></span>
+            <span class="global-loading-spinner" aria-hidden="true"></span>
+            <strong data-global-loader-title>Loading your workspace</strong>
+            <small data-global-loader-message>Please wait while the page gets ready.</small>
+        </div>
+    </div>
 
     <aside class="pwa-install-banner" data-pwa-install-banner hidden aria-labelledby="pwa-install-title">
         <div class="pwa-install-icon" aria-hidden="true">

@@ -62,6 +62,152 @@
 
         syncControls();
 
+        const globalLoader = document.querySelector('[data-global-loader]');
+        const globalLoaderTitle = globalLoader?.querySelector('[data-global-loader-title]');
+        const globalLoaderMessage = globalLoader?.querySelector('[data-global-loader-message]');
+        let globalLoaderTimer = null;
+
+        const showGlobalLoader = (message = 'Please wait while the page gets ready.', delay = 180, title = 'Loading your workspace') => {
+            window.clearTimeout(globalLoaderTimer);
+            if (globalLoaderTitle) globalLoaderTitle.textContent = title;
+            if (globalLoaderMessage) globalLoaderMessage.textContent = message;
+            globalLoaderTimer = window.setTimeout(() => {
+                document.body.classList.add('is-loading');
+                globalLoader?.setAttribute('aria-hidden', 'false');
+            }, Math.max(0, delay));
+        };
+
+        const hideGlobalLoader = () => {
+            window.clearTimeout(globalLoaderTimer);
+            document.body.classList.remove('is-booting', 'is-loading');
+            globalLoader?.setAttribute('aria-hidden', 'true');
+        };
+
+        const loadingLabelFor = (form, submitter) => {
+            const explicitLabel = submitter?.dataset.loadingLabel || form.dataset.loadingLabel;
+            if (explicitLabel) return explicitLabel;
+            const hasUpload = [...form.querySelectorAll('input[type="file"]')].some((input) => input.files?.length);
+            if (hasUpload) return 'Uploading…';
+            const buttonText = (submitter?.textContent || submitter?.value || '').trim().toLowerCase();
+            if (buttonText.includes('log in') || buttonText.includes('sign in')) return 'Signing in…';
+            if (buttonText.includes('search') || buttonText.includes('show') || form.method.toLowerCase() === 'get') return 'Loading…';
+            if (buttonText.includes('save') || buttonText.includes('update') || buttonText.includes('edit')) return 'Saving…';
+            if (buttonText.includes('upload')) return 'Uploading…';
+            if (buttonText.includes('delete') || buttonText.includes('remove')) return 'Removing…';
+            return 'Submitting…';
+        };
+
+        const markSubmitButtonLoading = (form, submitter, label) => {
+            if (!submitter || submitter.dataset.submitLoading === 'true') return;
+            submitter.dataset.submitLoading = 'true';
+            submitter.setAttribute('aria-busy', 'true');
+            submitter.setAttribute('aria-disabled', 'true');
+            submitter.style.minWidth = `${Math.ceil(submitter.getBoundingClientRect().width)}px`;
+            submitter.classList.add('is-submit-loading');
+            if (submitter instanceof HTMLInputElement) {
+                submitter.dataset.submitOriginalValue = submitter.value;
+                submitter.value = label;
+            } else {
+                submitter.dataset.submitOriginalHtml = submitter.innerHTML;
+                const loadingContent = document.createElement('span');
+                const loadingSpinner = document.createElement('span');
+                const loadingText = document.createElement('span');
+                loadingContent.className = 'submit-loading-content';
+                loadingSpinner.className = 'submit-loading-spinner';
+                loadingSpinner.setAttribute('aria-hidden', 'true');
+                loadingText.textContent = label;
+                loadingContent.append(loadingSpinner, loadingText);
+                submitter.replaceChildren(loadingContent);
+            }
+            form.classList.add('is-form-submitting');
+            form.setAttribute('aria-busy', 'true');
+        };
+
+        const restoreSubmitButton = (submitter) => {
+            if (!submitter || submitter.dataset.submitLoading !== 'true') return;
+            if (submitter instanceof HTMLInputElement) {
+                submitter.value = submitter.dataset.submitOriginalValue || submitter.value;
+            } else if (submitter.dataset.submitOriginalHtml !== undefined) {
+                submitter.innerHTML = submitter.dataset.submitOriginalHtml;
+            }
+            submitter.style.minWidth = '';
+            submitter.classList.remove('is-submit-loading');
+            submitter.removeAttribute('aria-busy');
+            submitter.removeAttribute('aria-disabled');
+            delete submitter.dataset.submitLoading;
+            delete submitter.dataset.submitOriginalHtml;
+            delete submitter.dataset.submitOriginalValue;
+            const form = submitter.form;
+            if (form && !form.querySelector('[data-submit-loading="true"]')) {
+                form.classList.remove('is-form-submitting');
+                form.removeAttribute('aria-busy');
+            }
+        };
+
+        const restoreSubmitButtons = () => {
+            document.querySelectorAll('[data-submit-loading="true"]').forEach(restoreSubmitButton);
+            document.querySelectorAll('.is-form-submitting').forEach((form) => {
+                form.classList.remove('is-form-submitting');
+                form.removeAttribute('aria-busy');
+            });
+        };
+
+        window.DavaoRentZoneLoading = {
+            show: (message, delay = 0, title = 'Loading your workspace') => showGlobalLoader(message, delay, title),
+            hide: hideGlobalLoader,
+        };
+
+        window.addEventListener('load', hideGlobalLoader, {once: true});
+        window.addEventListener('pageshow', () => {
+            hideGlobalLoader();
+            restoreSubmitButtons();
+        });
+
+        document.addEventListener('submit', (event) => {
+            const form = event.target;
+            if (!(form instanceof HTMLFormElement)) return;
+            if (form.classList.contains('is-form-submitting')) {
+                event.preventDefault();
+                return;
+            }
+            if (event.defaultPrevented || form.dataset.noLoading !== undefined || form.target === '_blank' || form.method.toLowerCase() === 'dialog') return;
+            const submitter = event.submitter || form.querySelector('button[type="submit"], input[type="submit"]');
+            if (submitter?.formTarget === '_blank' || submitter?.formMethod === 'dialog') return;
+            const label = loadingLabelFor(form, submitter);
+            markSubmitButtonLoading(form, submitter, label);
+            const uploading = label === 'Uploading…';
+            showGlobalLoader(
+                uploading ? 'Your files are being uploaded securely. Keep this page open.' : 'Your request is being processed. Please keep this page open.',
+                180,
+                uploading ? 'Uploading files' : 'Working on your request',
+            );
+        });
+
+        document.addEventListener('click', (event) => {
+            if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+            const link = event.target.closest('a[href]');
+            if (!link || link.dataset.noLoading !== undefined || (link.target && link.target !== '_self')) return;
+            const destination = new URL(link.href, window.location.href);
+            if (!['http:', 'https:'].includes(destination.protocol)) return;
+            const isDownload = link.hasAttribute('download') || /\.(?:ics|pdf|zip|csv|xlsx?|docx?)$/i.test(destination.pathname);
+            if (isDownload) {
+                window.queueMicrotask(() => {
+                    if (event.defaultPrevented) return;
+                    showGlobalLoader('Your download is being prepared. You can keep using this page when it is ready.', 180, 'Preparing download');
+                    window.setTimeout(hideGlobalLoader, 2600);
+                });
+                return;
+            }
+            const sameDocumentHash = destination.origin === window.location.origin
+                && destination.pathname === window.location.pathname
+                && destination.search === window.location.search
+                && destination.hash;
+            if (sameDocumentHash) return;
+            window.queueMicrotask(() => {
+                if (!event.defaultPrevented) showGlobalLoader('Opening the next page…', 180, 'Loading page');
+            });
+        });
+
         const mobileSidebar = document.querySelector('[data-mobile-sidebar]');
         const mobileSidebarToggle = document.querySelector('[data-mobile-sidebar-toggle]');
         const mobileSidebarLabel = document.querySelector('[data-mobile-sidebar-label]');
@@ -1002,7 +1148,7 @@
                 }
 
                 sendButton.disabled = true;
-                sendButton.textContent = 'Sending…';
+                markSubmitButtonLoading(composer, sendButton, hasAttachment ? 'Uploading…' : 'Sending…');
 
                 try {
                     const response = await fetch(composer.action, {
@@ -1021,7 +1167,7 @@
                     if (errorText) { errorText.textContent = error.message; errorText.hidden = false; }
                 } finally {
                     sendButton.disabled = false;
-                    sendButton.textContent = 'Send';
+                    restoreSubmitButton(sendButton);
                 }
             });
 
@@ -1933,6 +2079,8 @@
                 if (!button || button.disabled) return;
 
                 button.disabled = true;
+                button.setAttribute('aria-busy', 'true');
+                icon?.classList.add('favorite-icon-loading');
                 try {
                     const response = await fetch(form.action, {
                         method: 'POST',
@@ -1960,12 +2108,18 @@
                             sidebarCount.textContent = remaining > 99 ? '99+' : String(remaining);
                             sidebarCount.hidden = remaining === 0;
                         }
-                        if (remaining === 0) window.location.reload();
+                        if (remaining === 0) {
+                            window.DavaoRentZoneLoading?.show('Refreshing your favorites…', 0, 'Updating favorites');
+                            window.location.reload();
+                        }
                     }
                 } catch (error) {
+                    window.DavaoRentZoneLoading?.show('Saving your favorite…', 0, 'Updating favorites');
                     HTMLFormElement.prototype.submit.call(form);
                 } finally {
                     button.disabled = false;
+                    button.removeAttribute('aria-busy');
+                    icon?.classList.remove('favorite-icon-loading');
                 }
             });
         });
