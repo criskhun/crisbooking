@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\AdminBookingController;
 use App\Http\Controllers\AdminHostApplicationController;
+use App\Http\Controllers\AdminSupportReportController;
 use App\Http\Controllers\AffiliateController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\FacebookAuthController;
@@ -28,6 +30,7 @@ use App\Http\Controllers\ProfileLocationController;
 use App\Http\Controllers\PublicListingController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\SalesController;
+use App\Http\Controllers\SupportReportController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\WorkspaceController;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
@@ -142,6 +145,8 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     Route::post('/bookings/{booking}/reviews', [ReviewController::class, 'booking'])->name('bookings.reviews.store');
     Route::get('/workspace/clients', [WorkspaceController::class, 'clients'])->name('workspace.clients');
     Route::get('/sales', [SalesController::class, 'index'])->name('sales.index');
+    Route::get('/support', [SupportReportController::class, 'index'])->name('support.index');
+    Route::post('/support', [SupportReportController::class, 'store'])->name('support.store');
 });
 
 Route::middleware(['auth', 'active', 'verified', 'host'])->group(function () {
@@ -155,6 +160,11 @@ Route::middleware(['auth', 'active', 'verified', 'admin'])->group(function () {
     Route::get('/admin/host-applications', [AdminHostApplicationController::class, 'index'])->name('admin.host-applications.index');
     Route::get('/admin/host-applications/{hostApplication}', [AdminHostApplicationController::class, 'show'])->name('admin.host-applications.show');
     Route::patch('/admin/host-applications/{hostApplication}', [AdminHostApplicationController::class, 'review'])->name('admin.host-applications.review');
+    Route::get('/admin/bookings', [AdminBookingController::class, 'index'])->name('admin.bookings.index');
+    Route::delete('/admin/bookings/{booking}', [AdminBookingController::class, 'destroy'])->name('admin.bookings.destroy');
+    Route::get('/admin/reports', [AdminSupportReportController::class, 'index'])->name('admin.support-reports.index');
+    Route::get('/admin/reports/{supportReport}', [AdminSupportReportController::class, 'show'])->name('admin.support-reports.show');
+    Route::patch('/admin/reports/{supportReport}', [AdminSupportReportController::class, 'update'])->name('admin.support-reports.update');
     Route::get('/accounts', [AccountController::class, 'index'])->name('accounts.index');
     Route::get('/accounts/{account}/edit', [AccountController::class, 'edit'])->name('accounts.edit');
     Route::put('/accounts/{account}', [AccountController::class, 'update'])->name('accounts.update');

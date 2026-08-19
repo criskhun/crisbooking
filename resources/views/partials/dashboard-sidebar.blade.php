@@ -2,6 +2,9 @@
     $pendingHostReviewCount = auth()->user()->is_admin
         ? \App\Models\HostApplication::query()->whereIn('status', ['submitted', 'under_review'])->count()
         : 0;
+    $openSupportReportCount = auth()->user()->is_admin
+        ? \App\Models\SupportReport::query()->whereIn('status', ['open', 'in_progress'])->count()
+        : 0;
     $hostApplicationAttention = auth()->user()->isClient()
         ? auth()->user()->hostApplication()->whereIn('status', ['needs_changes', 'rejected'])->exists()
         : false;
@@ -45,7 +48,11 @@
         @endif
         @if (auth()->user()->is_admin)
             <a @class(['active' => request()->routeIs('admin.host-applications.*')]) href="{{ route('admin.host-applications.index') }}"><span>✓</span> Host applications @if($pendingHostReviewCount)<b class="sidebar-notification-badge" title="{{ $pendingHostReviewCount }} applications need review">{{ $pendingHostReviewCount > 99 ? '99+' : $pendingHostReviewCount }}</b>@endif</a>
+            <a @class(['active' => request()->routeIs('admin.bookings.*')]) href="{{ route('admin.bookings.index') }}"><span>▦</span> Booking records</a>
+            <a @class(['active' => request()->routeIs('admin.support-reports.*')]) href="{{ route('admin.support-reports.index') }}"><span>!</span> Admin reports @if($openSupportReportCount)<b class="sidebar-notification-badge attention" title="{{ $openSupportReportCount }} reports need attention">{{ $openSupportReportCount > 99 ? '99+' : $openSupportReportCount }}</b>@endif</a>
             <a @class(['active' => request()->routeIs('accounts.*')]) href="{{ route('accounts.index') }}"><span>♙</span> Users</a>
+        @else
+            <a @class(['active' => request()->routeIs('support.*')]) href="{{ route('support.index') }}"><span>!</span> Contact admin</a>
         @endif
         <span class="sidebar-label">Workspace</span>
         @if (auth()->user()->isHost() || auth()->user()->is_admin)

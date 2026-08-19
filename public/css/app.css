@@ -1500,3 +1500,81 @@ html[data-color-mode="dark"] .global-loading-overlay { background: rgba(12,18,15
 @media (max-width: 740px) {
     .application-intro-card, .application-status-card, .host-application-prompt { align-items: flex-start; flex-direction: column; }.application-status-card { display: grid; grid-template-columns: auto 1fr; }.application-status-card > .button { grid-column: 1 / -1; width: 100%; }.application-profile-grid, .application-detail-list, .business-fields { grid-template-columns: 1fr; }.application-profile-grid .wide, .application-detail-list .wide, .business-fields .verification-wide { grid-column: auto; }.profile-required-inline { grid-template-columns: 1fr; }.profile-required-inline .button { grid-column: auto; grid-row: auto; }.host-application-prompt .button { width: 100%; }.application-filter-bar { align-items: stretch; flex-direction: column; }.application-filter-bar .button { width: 100%; }
 }
+/* Administrator booking controls and support reports */
+.admin-booking-summary { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin:0 0 18px; }
+.admin-booking-summary > div { background:var(--surface,#fff); border:1px solid var(--line,#dfe5e2); border-radius:16px; padding:18px 20px; box-shadow:0 8px 24px rgba(23,60,52,.05); }
+.admin-booking-summary small { display:block; color:var(--muted,#6f7975); font-size:.74rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+.admin-booking-summary strong { display:block; margin-top:5px; color:var(--ink,#17231f); font-family:Manrope,sans-serif; font-size:1.65rem; }
+.admin-records-section,.deletion-ledger-section,.admin-reports-section { margin-bottom:20px; }
+.admin-booking-filters { display:grid; grid-template-columns:1.35fr repeat(5,minmax(130px,1fr)); gap:12px; margin:18px 0; padding:16px; border:1px solid var(--line,#dfe5e2); border-radius:16px; background:#f8faf8; }
+.admin-booking-filters label { display:grid; gap:6px; min-width:0; }
+.admin-booking-filters label > span,.admin-booking-actions label > span { color:#53605b; font-size:.72rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase; }
+.admin-booking-filters input,.admin-booking-filters select { width:100%; min-height:44px; border:1px solid #d7dfdb; border-radius:10px; background:#fff; padding:0 11px; }
+.admin-filter-actions { display:flex; align-items:end; gap:12px; grid-column:1/-1; }
+.admin-filter-actions a { color:#285e51; font-weight:700; }
+.admin-bookings-table { min-width:1120px; }
+.admin-booking-actions { display:flex; align-items:flex-start; gap:10px; }
+.admin-booking-actions > a,.admin-booking-actions summary { color:#24594c; cursor:pointer; font-weight:800; white-space:nowrap; }
+.admin-booking-actions details { position:relative; }
+.admin-booking-actions summary { list-style:none; color:#a13b34; }
+.admin-booking-actions summary::-webkit-details-marker { display:none; }
+.admin-booking-actions details[open] form { display:grid; gap:10px; }
+.admin-booking-actions form { position:absolute; z-index:8; right:0; top:28px; display:none; width:300px; padding:14px; border:1px solid #e2c8c5; border-radius:14px; background:#fff; box-shadow:0 18px 48px rgba(57,26,23,.18); }
+.admin-booking-actions form label { display:grid; gap:6px; }
+.admin-booking-actions textarea { width:100%; resize:vertical; border:1px solid #d9deda; border-radius:10px; padding:10px; font:inherit; }
+.button-danger { border-color:#a8453d!important; background:#a8453d!important; color:#fff!important; }
+.deletion-ledger-section .accounts-table { min-width:900px; }
+.support-layout { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(300px,.75fr); gap:20px; align-items:start; }
+.support-compose-card,.support-history-card,.support-report-detail-card,.support-response-card { border:1px solid var(--line,#dfe5e2); border-radius:20px; background:var(--surface,#fff); padding:24px; box-shadow:0 10px 30px rgba(23,60,52,.06); }
+.support-report-form { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.support-report-form .field-group { display:grid; gap:7px; }
+.support-report-form input,.support-report-form select,.support-report-form textarea,.support-response-card select,.support-response-card textarea { width:100%; border:1px solid #d7dfdb; border-radius:12px; background:#fff; padding:12px 13px; font:inherit; }
+.support-message-field,.support-submit-row { grid-column:1/-1; }
+.support-report-form textarea,.support-response-card textarea { resize:vertical; }
+.support-submit-row { display:flex; justify-content:space-between; align-items:center; gap:20px; padding-top:4px; }
+.support-submit-row p,.support-response-card form > p { margin:0; color:#6a746f; font-size:.87rem; }
+.support-history-card { position:sticky; top:18px; }
+.support-report-list { display:grid; gap:12px; }
+.support-report-list > article { padding:16px; border:1px solid #e3e8e5; border-radius:14px; background:#fbfcfb; }
+.support-report-list article header { display:flex; justify-content:space-between; gap:10px; align-items:center; }
+.support-report-list time,.support-report-list article > small { color:#78817d; font-size:.78rem; }
+.support-report-list h3 { margin:12px 0 6px; font-size:1rem; }
+.support-report-list article > p { margin:0 0 10px; color:#55615c; white-space:pre-wrap; }
+.support-status { display:inline-flex; align-items:center; width:max-content; border-radius:999px; padding:5px 9px; background:#edf2ef; color:#52605a; font-size:.7rem; font-weight:800; letter-spacing:.05em; text-transform:uppercase; }
+.support-status.status-open { background:#fff1cf; color:#8a6200; }
+.support-status.status-in_progress { background:#dfeefc; color:#245f8d; }
+.support-status.status-resolved { background:#ddf2e6; color:#226b48; }
+.support-status.status-closed { background:#eaedeb; color:#59615d; }
+.support-admin-response { margin-top:14px; padding:12px; border-left:3px solid #2c6959; border-radius:0 10px 10px 0; background:#eef6f2; }
+.support-admin-response p { margin:5px 0; white-space:pre-wrap; }
+.support-summary { margin-top:0; }
+.admin-report-review-layout { display:grid; grid-template-columns:minmax(0,1.4fr) minmax(300px,.7fr); gap:20px; align-items:start; }
+.support-report-detail-card > header { display:flex; align-items:center; gap:10px; margin-bottom:20px; color:#6c7671; font-size:.85rem; }
+.support-report-detail-card .account-identity { padding:16px; border-radius:14px; background:#f4f7f5; }
+.support-report-meta { display:grid; grid-template-columns:1fr 1fr; gap:1px; margin:20px 0; overflow:hidden; border:1px solid #e1e6e3; border-radius:14px; background:#e1e6e3; }
+.support-report-meta > div { padding:14px; background:#fff; }
+.support-report-meta dt { color:#77817c; font-size:.72rem; font-weight:800; letter-spacing:.05em; text-transform:uppercase; }
+.support-report-meta dd { margin:4px 0 0; font-weight:700; }
+.support-report-message { margin:18px 0; padding:18px; border-radius:14px; background:#f8faf8; }
+.support-report-message p { margin:9px 0 0; white-space:pre-wrap; }
+.support-response-card { position:sticky; top:18px; }
+.support-response-card h2 { margin:5px 0 18px; }
+.support-response-card form { display:grid; gap:15px; }
+.support-response-card .field-group { display:grid; gap:7px; }
+.support-reviewed-by { display:block; margin-top:14px; color:#77817c; }
+
+@media (max-width: 1100px) {
+    .admin-booking-filters { grid-template-columns:repeat(3,minmax(0,1fr)); }
+    .support-layout,.admin-report-review-layout { grid-template-columns:1fr; }
+    .support-history-card,.support-response-card { position:static; }
+}
+
+@media (max-width: 680px) {
+    .admin-booking-summary { grid-template-columns:1fr 1fr; }
+    .admin-booking-filters,.support-report-form { grid-template-columns:1fr; }
+    .admin-booking-filters label,.support-message-field,.support-submit-row { grid-column:auto; }
+    .support-submit-row { align-items:stretch; flex-direction:column; }
+    .support-submit-row .button { width:100%; }
+    .support-compose-card,.support-history-card,.support-report-detail-card,.support-response-card { padding:18px; border-radius:16px; }
+    .support-report-meta { grid-template-columns:1fr; }
+}

@@ -108,6 +108,11 @@
                             <small class="booking-chat-note">This opens the conversation for this exact booking.</small>
                         @endif
                         @if ($isClient)<a class="button button-ghost button-full" href="{{ route('profiles.show', $unit->host) }}">View host profile</a>@elseif(! $booking->isManualBooking())<a class="button button-ghost button-full" href="{{ route('profiles.show', $booking->client) }}">View client profile</a>@endif
+                        @if(auth()->user()->is_admin)
+                            <a class="button button-ghost button-full" href="{{ route('admin.bookings.index', ['search' => $booking->id]) }}">Manage this record</a>
+                        @else
+                            <a class="button button-ghost button-full" href="{{ route('support.index', ['category' => 'booking_issue', 'unit_id' => $unit->id, 'booking_id' => $booking->id]) }}">Report this booking to admin</a>
+                        @endif
                         @if ($booking->isManualBooking() && $booking->status === 'confirmed')
                             <form method="POST" action="{{ route('bookings.cancel', $booking) }}" onsubmit="return confirm('Cancel this outside booking and release its dates?')">@csrf @method('PATCH')<button class="booking-cancel-button" type="submit">Cancel outside booking & release dates</button></form>
                         @elseif ($isClient && in_array($booking->status, ['pending', 'pre_approved', 'payment_submitted', 'confirmed'], true) && $booking->end_at->isFuture())
