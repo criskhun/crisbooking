@@ -112,6 +112,8 @@ class ProfilePhotoDiscoveryTest extends TestCase
             ->assertSee('data-listing-view-select="grid"', false)
             ->assertSee('data-listing-view-select="map"', false)
             ->assertSee('data-listing-map-panel', false)
+            ->assertSee('data-default-radius-km="100"', false)
+            ->assertSee('data-nearby-radius-km="50"', false)
             ->assertSee('Maria Davao Rentals')
             ->assertSee('"starting_price":2400', false)
             ->assertSee('"original_price":3200', false)

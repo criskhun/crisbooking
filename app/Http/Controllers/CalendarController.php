@@ -130,7 +130,7 @@ class CalendarController extends Controller
         $partySize = (int) ($validated['party_size'] ?? 1);
         $searchLatitude = isset($validated['search_latitude']) ? (float) $validated['search_latitude'] : null;
         $searchLongitude = isset($validated['search_longitude']) ? (float) $validated['search_longitude'] : null;
-        $radiusKm = (float) ($validated['radius_km'] ?? 500);
+        $radiusKm = (float) ($validated['radius_km'] ?? 100);
         $hasRadiusSearch = $searchLatitude !== null && $searchLongitude !== null;
         $searchSubmitted = $bookingMode && (bool) ($validated['search'] ?? false);
         $matchingUnits = collect();

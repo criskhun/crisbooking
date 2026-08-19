@@ -1,4 +1,4 @@
-<section class="listing-results-map-panel booking-map-explorer" aria-label="{{ $mapAriaLabel ?? 'Available listings map' }}" data-listing-map-panel data-overview-nearby-map data-default-radius-km="500" data-map-id="{{ config('services.google.maps_map_id') }}" hidden>
+<section class="listing-results-map-panel booking-map-explorer" aria-label="{{ $mapAriaLabel ?? 'Available listings map' }}" data-listing-map-panel data-overview-nearby-map data-default-radius-km="100" data-nearby-radius-km="50" data-map-id="{{ config('services.google.maps_map_id') }}" hidden>
     <div class="listing-map-heading">
         <div>
             <span class="eyebrow">Map view</span>

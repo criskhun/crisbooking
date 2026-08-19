@@ -1470,8 +1470,8 @@ class BookingCalendarTest extends TestCase
             ->assertOk()
             ->assertSee('name="radius_km"', false)
             ->assertSee('max="1000"', false)
-            ->assertSee('value="500"', false)
-            ->assertSee('500 km');
+            ->assertSee('value="100"', false)
+            ->assertSee('100 km');
     }
 
     public function test_listing_coordinates_must_be_submitted_as_a_valid_pair(): void

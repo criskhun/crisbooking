@@ -41,7 +41,7 @@
                         @endforeach
                     </div>
 
-                    <section class="overview-section nearby-map-section" data-overview-nearby-map data-default-radius-km="500" data-map-id="{{ config('services.google.maps_map_id') }}">
+                    <section class="overview-section nearby-map-section" data-overview-nearby-map data-default-radius-km="100" data-nearby-radius-km="50" data-map-id="{{ config('services.google.maps_map_id') }}">
                         <div class="overview-section-heading"><div><span class="eyebrow">Explore nearby</span><h2>What can I book near me?</h2><p>See map-pinned listings from verified hosts and center the map on your current position.</p></div><div class="map-toolbar"><button class="map-action-button" type="button" data-map-use-location>Use my location</button><a href="{{ route('calendar.index') }}">Search with a radius →</a></div></div>
                         <div class="google-map-canvas overview-map-canvas" data-map-canvas aria-label="Map of nearby bookable listings"></div>
                         @unless(config('services.google.maps_api_key'))<div class="map-setup-note"><strong>Google Map preview is ready for an API key</strong><span>Add <code>GOOGLE_MAPS_API_KEY</code> to show nearby listings here.</span></div>@endunless

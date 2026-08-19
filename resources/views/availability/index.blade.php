@@ -133,7 +133,7 @@
             @endforelse
             </section>
 
-            <section class="listing-results-map-panel booking-map-explorer" aria-label="Available listings map" data-listing-map-panel data-overview-nearby-map data-default-radius-km="500" data-map-id="{{ config('services.google.maps_map_id') }}" hidden>
+            <section class="listing-results-map-panel booking-map-explorer" aria-label="Available listings map" data-listing-map-panel data-overview-nearby-map data-default-radius-km="100" data-nearby-radius-km="50" data-map-id="{{ config('services.google.maps_map_id') }}" hidden>
                 <div class="listing-map-heading">
                     <div><span class="eyebrow">Map view</span><h2>Compare hosts by lowest price</h2><p>Each marker shows the host and the lowest available price for that listing.</p></div>
                     <button class="map-action-button" type="button" data-map-use-location>Show near me</button>

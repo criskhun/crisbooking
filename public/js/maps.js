@@ -450,10 +450,12 @@
     const initializeOverviewMap = (container) => {
         const canvas = container.querySelector('[data-map-canvas]');
         const units = readUnits(container);
-        const map = new google.maps.Map(canvas, mapOptions(container, defaultCenter, 6));
+        const defaultRadiusKm = Number(container.dataset.defaultRadiusKm || 100);
+        const defaultZoom = defaultRadiusKm <= 100 ? 8 : 6;
+        const map = new google.maps.Map(canvas, mapOptions(container, defaultCenter, defaultZoom));
         const bounds = addUnitMarkers(map, units);
-        const defaultRadiusKm = Number(container.dataset.defaultRadiusKm || 500);
-        const nearbyCircle = new google.maps.Circle({map: null, center: defaultCenter, radius: defaultRadiusKm * 1000, fillColor: '#3e7b70', fillOpacity: .1, strokeColor: '#245f50', strokeOpacity: .65, strokeWeight: 2});
+        const nearbyRadiusKm = Number(container.dataset.nearbyRadiusKm || 50);
+        const nearbyCircle = new google.maps.Circle({map: null, center: defaultCenter, radius: nearbyRadiusKm * 1000, fillColor: '#3e7b70', fillOpacity: .1, strokeColor: '#245f50', strokeOpacity: .65, strokeWeight: 2});
         if (units.length > 0) map.fitBounds(bounds, 55);
         else setStatus(container, 'No hosts have pinned a public listing location yet.');
 
@@ -466,7 +468,7 @@
             else map.panTo(position);
             if (userMarker) userMarker.setPosition(position);
             else userMarker = new google.maps.Marker({map, position, title: 'Your location', icon: {path: google.maps.SymbolPath.CIRCLE, scale: 7, fillColor: '#173c34', fillOpacity: 1, strokeColor: '#ffffff', strokeWeight: 3}});
-            setStatus(container, `Map centered on your location with a ${defaultRadiusKm} km nearby area.`);
+            setStatus(container, `Map centered on your location with a ${nearbyRadiusKm} km nearby area.`);
         });
 
         container.querySelector('[data-map-use-location]')?.addEventListener('click', centerOnCurrentLocation);

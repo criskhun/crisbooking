@@ -151,6 +151,8 @@ class ListingSalesFavoritesTest extends TestCase
             ->assertSee('₱800.00')
             ->assertSee('data-listing-view-select="grid"', false)
             ->assertSee('data-listing-view-select="map"', false)
+            ->assertSee('data-default-radius-km="100"', false)
+            ->assertSee('data-nearby-radius-km="50"', false)
             ->assertSee('Compare hosts by lowest price')
             ->assertSee('"starting_price":800', false)
             ->assertSee('"original_price":1000', false)
