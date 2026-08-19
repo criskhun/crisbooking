@@ -86,6 +86,6 @@ class GoogleAuthController extends Controller
         Auth::login($user, true);
         $request->session()->regenerate();
 
-        return redirect()->route('dashboard')->with('status', 'You are signed in with Google.');
+        return redirect()->intended(route('dashboard'))->with('status', 'You are signed in with Google.');
     }
 }

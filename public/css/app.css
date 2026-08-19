@@ -1384,6 +1384,34 @@ html[data-color-mode="dark"] .application-status-card.status-approved { backgrou
     .listing-favorite-control { width: 2.6rem; height: 2.6rem; }
 }
 
+/* Saved listings */
+.favorites-section { padding: 1.2rem; border: 1px solid var(--card-line); border-radius: 18px; background: var(--surface); box-shadow: var(--card-shadow); }
+.favorites-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--row-line); }
+.favorites-heading h2 { margin: .3rem 0 .25rem; font: 800 1.25rem Manrope; }
+.favorites-heading p { margin: 0; color: var(--muted); font-size: .66rem; }
+.favorites-heading > span { padding: .4rem .6rem; border-radius: 99px; color: var(--forest); background: var(--mint); font-size: .58rem; font-weight: 900; }
+.favorite-listing-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-top: 1rem; }
+.favorite-listing-card { min-width: 0; overflow: hidden; border: 1px solid var(--row-line); border-radius: 15px; background: var(--surface-soft); }
+.favorite-listing-media { position: relative; height: 205px; overflow: hidden; background: var(--surface-tint); }
+.favorite-listing-media > a { display: grid; place-items: center; width: 100%; height: 100%; color: var(--forest); text-decoration: none; }
+.favorite-listing-media img { width: 100%; height: 100%; object-fit: cover; transition: transform .25s; }
+.favorite-listing-card:hover .favorite-listing-media img { transform: scale(1.025); }
+.favorite-listing-media > a > span { font-size: 2.5rem; }
+.favorite-listing-copy { display: flex; min-height: 245px; flex-direction: column; padding: .9rem; }
+.favorite-listing-meta { display: flex; align-items: center; justify-content: space-between; gap: .5rem; color: var(--muted); font-size: .54rem; font-weight: 800; text-transform: uppercase; }
+.favorite-listing-meta strong { color: #9a7318; font-size: .58rem; }.favorite-listing-meta strong small { color: var(--muted); }
+.favorite-listing-copy h3 { margin: .45rem 0 .25rem; font: 800 .9rem Manrope; }.favorite-listing-copy h3 a { color: var(--ink); text-decoration: none; }
+.favorite-listing-copy > p, .favorite-listing-copy > small { margin: 0; color: var(--muted); font-size: .6rem; line-height: 1.5; }
+.favorite-listing-copy > small { margin-top: .35rem; }
+.favorite-listing-copy footer { display: flex; align-items: end; justify-content: space-between; gap: .65rem; padding-top: .75rem; margin-top: auto; border-top: 1px solid var(--row-line); }
+.favorite-listing-copy footer > span { display: grid; gap: .1rem; }.favorite-listing-copy footer > span small, .favorite-listing-copy footer del { color: var(--muted); font-size: .5rem; }.favorite-listing-copy footer strong { font: 800 .78rem Manrope; }.favorite-listing-copy footer em { color: #2f785d; font-size: .5rem; font-style: normal; font-weight: 800; }
+.favorite-listing-copy footer > div { display: flex; gap: .35rem; }.favorite-listing-copy footer .button { min-height: 2.15rem; padding: .48rem .58rem; font-size: .54rem; }
+.favorites-empty { grid-column: 1 / -1; display: grid; justify-items: center; padding: 4rem 1rem; border: 1px dashed var(--card-line); border-radius: 15px; text-align: center; }
+.favorites-empty > span { display: grid; place-items: center; width: 3.2rem; height: 3.2rem; border-radius: 50%; color: var(--forest); background: var(--mint); font-size: 1.8rem; }.favorites-empty h2 { margin: .8rem 0 .25rem; font: 800 1.1rem Manrope; }.favorites-empty p { margin: 0 0 1rem; color: var(--muted); font-size: .68rem; }
+
+@media (max-width: 1040px) { .favorite-listing-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 680px) { .favorites-page-body .dashboard-header { padding-left: 3.5rem; }.favorites-section { padding: .85rem; }.favorites-heading { align-items: flex-start; flex-direction: column; }.favorite-listing-grid { grid-template-columns: 1fr; }.favorite-listing-copy footer { align-items: stretch; flex-direction: column; }.favorite-listing-copy footer > div { display: grid; grid-template-columns: 1fr 1fr; }.favorite-listing-copy footer .button { width: 100%; } }
+
 @media (max-width: 960px) {
     .admin-application-layout { grid-template-columns: 1fr; }.application-review-panel { position: static; }.application-admin-summary { grid-template-columns: repeat(2, 1fr); }
 }

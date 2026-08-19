@@ -86,11 +86,13 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'read'])->name('notifications.read');
     Route::post('/push-subscriptions', [NotificationController::class, 'subscribe'])->name('push-subscriptions.store');
     Route::delete('/push-subscriptions', [NotificationController::class, 'unsubscribe'])->name('push-subscriptions.destroy');
+    Route::get('/listings/{unit}/favorite-after-login', [FavoriteUnitController::class, 'afterLogin'])->name('listings.favorite.after-login');
 });
 
 Route::middleware(['auth', 'active', 'verified'])->group(function () {
     Route::get('/listings/{unit}/inquire', [PublicListingController::class, 'inquire'])->name('listings.inquire');
     Route::post('/listings/{unit}/favorite', FavoriteUnitController::class)->name('listings.favorite');
+    Route::get('/favorites', [FavoriteUnitController::class, 'index'])->name('favorites.index');
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
     Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar.index');
     Route::post('/calendar/integration', [CalendarIntegrationController::class, 'refresh'])->name('calendar.integration.refresh');

@@ -31,6 +31,65 @@ class ListingSalesFavoritesTest extends TestCase
         $this->assertDatabaseMissing('favorite_units', ['user_id' => $client->id, 'unit_id' => $unit->id]);
     }
 
+    public function test_guest_heart_returns_to_the_listing_and_saves_it_after_login(): void
+    {
+        $host = User::factory()->host()->create();
+        $client = User::factory()->create(['email' => 'favorite-client@example.test']);
+        $unit = $this->unit($host);
+        $afterLoginUrl = route('listings.favorite.after-login', $unit);
+
+        $this->get($afterLoginUrl)
+            ->assertRedirect(route('login'))
+            ->assertSessionHas('url.intended', $afterLoginUrl);
+
+        $this->post(route('login'), [
+            'email' => $client->email,
+            'password' => 'password',
+        ])->assertRedirect($afterLoginUrl);
+
+        $this->get($afterLoginUrl)
+            ->assertRedirect(route('listings.show', $unit))
+            ->assertSessionHas('status', 'Listing saved to your favorites.');
+        $this->assertDatabaseHas('favorite_units', ['user_id' => $client->id, 'unit_id' => $unit->id]);
+    }
+
+    public function test_guest_inquiry_returns_to_the_same_listing_after_login(): void
+    {
+        $host = User::factory()->host()->create();
+        $client = User::factory()->create(['email' => 'inquiry-client@example.test']);
+        $unit = $this->unit($host);
+        $inquiryUrl = route('listings.inquire', $unit);
+
+        $this->get($inquiryUrl)
+            ->assertRedirect(route('login'))
+            ->assertSessionHas('url.intended', $inquiryUrl);
+
+        $this->post(route('login'), [
+            'email' => $client->email,
+            'password' => 'password',
+        ])->assertRedirect($inquiryUrl);
+
+        $this->get($inquiryUrl)->assertRedirect(route('listings.show', $unit).'#listing-inquiry');
+    }
+
+    public function test_client_has_a_favorites_page_for_saved_active_listings(): void
+    {
+        $host = User::factory()->host()->create();
+        $client = User::factory()->create();
+        $saved = $this->unit($host, ['name' => 'Saved Davao Listing', 'sale_percentage' => 10]);
+        $inactive = $this->unit($host, ['name' => 'Unavailable Saved Listing', 'is_active' => false]);
+        $client->favoriteUnits()->attach([$saved->id, $inactive->id]);
+
+        $this->actingAs($client)->get(route('favorites.index'))
+            ->assertOk()
+            ->assertSee('Favorites')
+            ->assertSee('1 favorite listing')
+            ->assertSee('Saved Davao Listing')
+            ->assertSee('10% off')
+            ->assertSee('aria-pressed="true"', false)
+            ->assertDontSee('Unavailable Saved Listing');
+    }
+
     public function test_host_can_set_a_sale_percentage_but_not_more_than_ninety_percent(): void
     {
         $host = User::factory()->host()->create();

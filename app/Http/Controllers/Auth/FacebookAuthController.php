@@ -76,6 +76,6 @@ class FacebookAuthController extends Controller
         Auth::login($user, true);
         $request->session()->regenerate();
 
-        return redirect()->route('dashboard')->with('status', 'You are signed in with Facebook.');
+        return redirect()->intended(route('dashboard'))->with('status', 'You are signed in with Facebook.');
     }
 }

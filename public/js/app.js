@@ -1947,6 +1947,21 @@
                     button.setAttribute('aria-label', label);
                     button.title = label;
                     if (icon) icon.textContent = result.favorited ? '♥' : '♡';
+                    const favoriteCard = form.closest('[data-favorite-card]');
+                    if (favoriteCard && !result.favorited) {
+                        favoriteCard.remove();
+                        const remaining = document.querySelectorAll('[data-favorite-card]').length;
+                        const heading = document.querySelector('[data-favorites-heading]');
+                        const count = document.querySelector('[data-favorites-count]');
+                        const sidebarCount = document.querySelector('[data-sidebar-favorite-count]');
+                        if (heading) heading.textContent = `${remaining} favorite ${remaining === 1 ? 'listing' : 'listings'}`;
+                        if (count) count.textContent = `${remaining} saved`;
+                        if (sidebarCount) {
+                            sidebarCount.textContent = remaining > 99 ? '99+' : String(remaining);
+                            sidebarCount.hidden = remaining === 0;
+                        }
+                        if (remaining === 0) window.location.reload();
+                    }
                 } catch (error) {
                     HTMLFormElement.prototype.submit.call(form);
                 } finally {

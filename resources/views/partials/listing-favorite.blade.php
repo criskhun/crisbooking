@@ -14,9 +14,9 @@
                 </button>
             </form>
         @else
-            <a class="listing-favorite-control {{ $favoriteClass ?? '' }}" href="{{ route('verification.notice') }}" aria-label="Verify your email to save this listing" title="Verify your email to save this listing"><span aria-hidden="true">♡</span></a>
+            <a class="listing-favorite-control {{ $favoriteClass ?? '' }}" href="{{ route('listings.favorite.after-login', $favoriteUnit) }}" aria-label="Verify your email to save this listing" title="Verify your email to save this listing"><span aria-hidden="true">♡</span></a>
         @endif
     @else
-        <a class="listing-favorite-control {{ $favoriteClass ?? '' }}" href="{{ route('login') }}" aria-label="Log in to save this listing" title="Log in to save this listing"><span aria-hidden="true">♡</span></a>
+        <a class="listing-favorite-control {{ $favoriteClass ?? '' }}" href="{{ route('listings.favorite.after-login', $favoriteUnit) }}" aria-label="Log in to save this listing" title="Log in to save this listing"><span aria-hidden="true">♡</span></a>
     @endauth
 @endif

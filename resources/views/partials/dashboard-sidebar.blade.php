@@ -6,6 +6,10 @@
         ? auth()->user()->hostApplication()->whereIn('status', ['needs_changes', 'rejected'])->exists()
         : false;
     $inquiryAttentionCount = auth()->user()->inquiryAttentionCount();
+    $favoriteCount = auth()->user()->favoriteUnits()
+        ->where('units.is_active', true)
+        ->whereHas('host', fn ($host) => $host->whereNotNull('profile_completed_at'))
+        ->count();
     $hasAffiliateCalendar = ! auth()->user()->isHost()
         && ! auth()->user()->is_admin
         && auth()->user()->marketerAffiliatePartnerships()
@@ -26,6 +30,7 @@
     <nav class="sidebar-nav" id="dashboard-navigation">
         <a @class(['active' => request()->routeIs('dashboard')]) href="{{ route('dashboard') }}"><span>⌂</span> Overview</a>
         <a @class(['active' => request()->routeIs('calendar.*') && (request('mode') === 'book' || (auth()->user()->isClient() && request('mode') !== 'manage'))]) href="{{ route('calendar.index', ['mode' => 'book']) }}"><span>⌕</span> Book now</a>
+        <a @class(['active' => request()->routeIs('favorites.*')]) href="{{ route('favorites.index') }}"><span>♥</span> Favorites @if($favoriteCount)<b class="sidebar-notification-badge favorite-count" data-sidebar-favorite-count title="{{ $favoriteCount }} saved {{ Str::plural('listing', $favoriteCount) }}">{{ $favoriteCount > 99 ? '99+' : $favoriteCount }}</b>@endif</a>
         @if (auth()->user()->isHost() || auth()->user()->is_admin || $hasAffiliateCalendar)
             <a @class(['active' => request()->routeIs('calendar.*') && ($hasAffiliateCalendar ? request('mode') === 'manage' : request('mode') !== 'book')]) href="{{ route('calendar.index', ['mode' => 'manage']) }}"><span>□</span> {{ $hasAffiliateCalendar ? 'Affiliate calendar' : 'Host calendar' }}</a>
         @endif
