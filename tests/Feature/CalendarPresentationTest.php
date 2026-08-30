@@ -211,6 +211,42 @@ class CalendarPresentationTest extends TestCase
         $this->assertGreaterThanOrEqual(2, count(array_unique($matches[1])));
     }
 
+    public function test_host_can_assign_a_solid_or_gradient_calendar_color_to_a_listing(): void
+    {
+        $host = User::factory()->host()->create();
+        $unit = $this->createUnit($host, 'Custom Color Cleaning', 'cleaning', 'service');
+        $unit->update(['photo_path' => 'listings/custom-color.jpg']);
+
+        $this->actingAs($host)->put(route('units.update', $unit), [
+            'name' => $unit->name,
+            'kind' => 'service',
+            'category' => 'cleaning',
+            'location' => 'Davao City',
+            'rules' => 'Respect the listing rules.',
+            'price' => 1500,
+            'pricing_unit' => 'session',
+            'calendar_color_enabled' => 1,
+            'calendar_color' => '#1A2B3C',
+            'calendar_use_gradient' => 1,
+            'calendar_secondary_color' => '#D4E5F6',
+            'is_active' => 1,
+        ])->assertRedirect(route('units.index'));
+
+        $unit->refresh();
+        $this->assertSame('#1a2b3c', $unit->calendar_color);
+        $this->assertSame('#d4e5f6', $unit->calendar_secondary_color);
+        $this->assertTrue($unit->calendar_use_gradient);
+
+        $this->actingAs($host)->get(route('units.edit', $unit))
+            ->assertOk()
+            ->assertSee('name="calendar_color" type="color" value="#1a2b3c"', false)
+            ->assertSee('name="calendar_secondary_color" type="color" value="#d4e5f6"', false);
+
+        $this->actingAs($host)->get(route('calendar.index', ['mode' => 'manage']))
+            ->assertOk()
+            ->assertSee('--unit-fill: linear-gradient(135deg, #1a2b3c, #d4e5f6)', false);
+    }
+
     private function createUnit(User $host, string $name, string $category, string $kind): Unit
     {
         return Unit::create([

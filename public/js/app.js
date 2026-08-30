@@ -62,6 +62,42 @@
 
         syncControls();
 
+        document.querySelectorAll('[data-calendar-color-picker]').forEach((picker) => {
+            const enabled = picker.querySelector('[data-calendar-color-enabled]');
+            const gradient = picker.querySelector('[data-calendar-gradient-enabled]');
+            const primary = picker.querySelector('[data-calendar-color-primary]');
+            const secondary = picker.querySelector('[data-calendar-color-secondary]');
+            const controls = picker.querySelector('[data-calendar-color-controls]');
+            const secondaryWrap = picker.querySelector('[data-calendar-secondary-wrap]');
+            const preview = picker.querySelector('[data-calendar-color-preview]');
+            const primaryValue = picker.querySelector('[data-calendar-color-primary-value]');
+            const secondaryValue = picker.querySelector('[data-calendar-color-secondary-value]');
+            if (!enabled || !gradient || !primary || !secondary || !controls || !secondaryWrap || !preview) return;
+
+            const syncCalendarColorPicker = () => {
+                const isEnabled = enabled.checked;
+                const isGradient = isEnabled && gradient.checked;
+                controls.classList.toggle('is-disabled', !isEnabled);
+                controls.setAttribute('aria-disabled', String(!isEnabled));
+                primary.disabled = !isEnabled;
+                gradient.disabled = !isEnabled;
+                secondary.disabled = !isGradient;
+                secondaryWrap.hidden = !isGradient;
+                preview.style.background = isEnabled
+                    ? (isGradient ? `linear-gradient(135deg, ${primary.value}, ${secondary.value})` : primary.value)
+                    : 'linear-gradient(135deg, #dbe7e2, #eef3f1)';
+                preview.classList.toggle('is-automatic', !isEnabled);
+                if (primaryValue) primaryValue.textContent = primary.value.toUpperCase();
+                if (secondaryValue) secondaryValue.textContent = secondary.value.toUpperCase();
+            };
+
+            [enabled, gradient, primary, secondary].forEach((input) => {
+                input.addEventListener('input', syncCalendarColorPicker);
+                input.addEventListener('change', syncCalendarColorPicker);
+            });
+            syncCalendarColorPicker();
+        });
+
         const globalLoader = document.querySelector('[data-global-loader]');
         const globalLoaderTitle = globalLoader?.querySelector('[data-global-loader-title]');
         const globalLoaderMessage = globalLoader?.querySelector('[data-global-loader-message]');

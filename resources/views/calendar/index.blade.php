@@ -95,7 +95,7 @@
                         @php
                             $profileStyle = $calendarUnitStyles[$profileUnit->id] ?? null;
                         @endphp
-                        <a href="{{ route('calendar.index', array_merge($calendarFilterQuery, ['schedule_unit' => $profileUnit->id])) }}" style="--unit-accent: {{ $profileStyle['accent'] ?? '#64748b' }}; --unit-soft: {{ $profileStyle['soft'] ?? '#f1f5f9' }};">
+                        <a href="{{ route('calendar.index', array_merge($calendarFilterQuery, ['schedule_unit' => $profileUnit->id])) }}" style="--unit-accent: {{ $profileStyle['accent'] ?? '#64748b' }}; --unit-soft: {{ $profileStyle['soft'] ?? '#f1f5f9' }}; --unit-fill: {{ $profileStyle['fill'] ?? '#f1f5f9' }}; --unit-ink: {{ $profileStyle['ink'] ?? '#334155' }};">
                             @if($profileUnit->primaryImagePath())<img src="{{ Storage::disk('public')->url($profileUnit->primaryImagePath()) }}" alt="">@else<span>{{ $calendarCategoryMeta[$profileUnit->category]['icon'] ?? '✦' }}</span>@endif
                             <span><strong>{{ $profileUnit->name }}</strong><small>{{ str($profileUnit->category)->replace('_', ' ')->title() }} · unique listing shade</small></span>
                         </a>
@@ -130,7 +130,7 @@
                                     $calendarProfileUnit = $units->firstWhere('id', $calendarBooking->unit_id);
                                 @endphp
                                 <a @class(['calendar-booking-span', 'category-'.$eventMeta['theme'], 'status-'.$calendarBooking->status, 'starts-booking' => $segment['starts_booking'], 'ends-booking' => $segment['ends_booking'], 'continues-before' => $segment['continues_before'], 'continues-after' => $segment['continues_after']])
-                                   style="grid-column: {{ $segment['start_column'] }} / {{ $segment['end_column'] }}; grid-row: {{ $segment['week'] }}; --calendar-lane: {{ $segment['lane'] }}; --unit-accent: {{ $unitStyle['accent'] ?? '#64748b' }}; --unit-soft: {{ $unitStyle['soft'] ?? '#f1f5f9' }}; --unit-ink: {{ $unitStyle['ink'] ?? '#334155' }};"
+                                   style="grid-column: {{ $segment['start_column'] }} / {{ $segment['end_column'] }}; grid-row: {{ $segment['week'] }}; --calendar-lane: {{ $segment['lane'] }}; --unit-accent: {{ $unitStyle['accent'] ?? '#64748b' }}; --unit-soft: {{ $unitStyle['soft'] ?? '#f1f5f9' }}; --unit-fill: {{ $unitStyle['fill'] ?? '#f1f5f9' }}; --unit-ink: {{ $unitStyle['ink'] ?? '#334155' }};"
                                    data-booking-id="{{ $calendarBooking->id }}" data-segment-start="{{ $segment['start_date'] }}" data-segment-end="{{ $segment['end_date'] }}"
                                    data-unit="{{ $calendarBooking->unit->name }}" data-category="{{ $eventMeta['label'] }}" data-category-icon="{{ $eventMeta['icon'] }}"
                                    @if($calendarCanOpenBooking)

@@ -306,16 +306,46 @@ class CalendarController extends Controller
         $categoryHues = ['car' => 28, 'condo' => 220, 'cleaning' => 174, 'driving' => 267, 'massage' => 326, 'consultancy' => 215, 'pet_transport' => 82];
 
         return $units->mapWithKeys(function (Unit $unit) use ($categoryHues) {
+            if (preg_match('/^#[0-9a-fA-F]{6}$/', (string) $unit->calendar_color)) {
+                $primary = strtolower($unit->calendar_color);
+                $secondary = $unit->calendar_use_gradient
+                    && preg_match('/^#[0-9a-fA-F]{6}$/', (string) $unit->calendar_secondary_color)
+                        ? strtolower($unit->calendar_secondary_color)
+                        : null;
+
+                return [$unit->id => [
+                    'accent' => $primary,
+                    'soft' => $primary,
+                    'fill' => $secondary ? "linear-gradient(135deg, {$primary}, {$secondary})" : $primary,
+                    'ink' => $this->calendarTextColor($primary, $secondary),
+                ]];
+            }
+
             $hue = ($categoryHues[$unit->category] ?? 210) + (($unit->id * 37) % 15) - 7;
             $saturation = 58 + (($unit->id * 11) % 18);
             $lightness = 36 + (($unit->id * 7) % 18);
+            $soft = "hsl({$hue} ".min(88, $saturation + 10)."% 92%)";
 
             return [$unit->id => [
                 'accent' => "hsl({$hue} {$saturation}% {$lightness}%)",
-                'soft' => "hsl({$hue} ".min(88, $saturation + 10)."% 92%)",
+                'soft' => $soft,
+                'fill' => $soft,
                 'ink' => "hsl({$hue} {$saturation}% 25%)",
             ]];
         })->all();
+    }
+
+    private function calendarTextColor(string $primary, ?string $secondary = null): string
+    {
+        $brightness = collect(array_filter([$primary, $secondary]))->average(function (string $color) {
+            $red = hexdec(substr($color, 1, 2));
+            $green = hexdec(substr($color, 3, 2));
+            $blue = hexdec(substr($color, 5, 2));
+
+            return (($red * 299) + ($green * 587) + ($blue * 114)) / 1000;
+        });
+
+        return $brightness >= 150 ? '#17231f' : '#ffffff';
     }
 
     private function distanceInKilometres(float $fromLatitude, float $fromLongitude, float $toLatitude, float $toLongitude): float

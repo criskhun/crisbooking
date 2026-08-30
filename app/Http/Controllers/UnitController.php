@@ -415,6 +415,10 @@ class UnitController extends Controller
             'price' => [Rule::requiredIf(! $isRental), 'nullable', 'numeric', 'min:0', 'max:9999999999.99'],
             'pricing_unit' => [Rule::requiredIf(! $isRental), 'nullable', Rule::in(['hour', 'day', 'session'])],
             'sale_percentage' => ['nullable', 'numeric', 'min:0', 'max:90'],
+            'calendar_color_enabled' => ['nullable', 'boolean'],
+            'calendar_color' => [Rule::requiredIf($request->boolean('calendar_color_enabled')), 'nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'calendar_use_gradient' => ['nullable', 'boolean'],
+            'calendar_secondary_color' => [Rule::requiredIf($request->boolean('calendar_color_enabled') && $request->boolean('calendar_use_gradient')), 'nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'offered_rates' => [$isProperty ? 'required' : 'nullable', 'array', 'min:1'],
             'offered_rates.*' => [Rule::in(['12_hours', 'day', 'week', 'month'])],
             'rates' => ['nullable', 'array'],
@@ -496,6 +500,19 @@ class UnitController extends Controller
         $validated['sale_percentage'] = (float) ($validated['sale_percentage'] ?? 0) > 0
             ? round((float) $validated['sale_percentage'], 2)
             : null;
+
+        if (! $request->boolean('calendar_color_enabled')) {
+            $validated['calendar_color'] = null;
+            $validated['calendar_secondary_color'] = null;
+            $validated['calendar_use_gradient'] = false;
+        } else {
+            $validated['calendar_color'] = Str::lower($validated['calendar_color']);
+            $validated['calendar_use_gradient'] = $request->boolean('calendar_use_gradient');
+            $validated['calendar_secondary_color'] = $validated['calendar_use_gradient']
+                ? Str::lower($validated['calendar_secondary_color'])
+                : null;
+        }
+        unset($validated['calendar_color_enabled']);
 
         if ($unit) {
             $removedCount = collect($validated['remove_images'] ?? [])->unique()->count();

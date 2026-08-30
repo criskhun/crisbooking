@@ -41,6 +41,9 @@ class Unit extends Model
         'price',
         'pricing_unit',
         'sale_percentage',
+        'calendar_color',
+        'calendar_secondary_color',
+        'calendar_use_gradient',
         'is_active',
     ];
 
@@ -52,6 +55,7 @@ class Unit extends Model
             'longitude' => 'decimal:7',
             'is_active' => 'boolean',
             'sale_percentage' => 'decimal:2',
+            'calendar_use_gradient' => 'boolean',
             'car_details' => 'array',
             'gps_details' => 'encrypted:array',
             'wifi_details' => 'encrypted:array',

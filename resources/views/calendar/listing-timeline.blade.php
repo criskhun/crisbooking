@@ -59,7 +59,7 @@
                             $timelineLabel = $timelineCanOpenBooking ? ($timelineBooking->isManualBooking() ? $timelineBooking->sourceLabel() : $timelineBooking->customerDisplayName()) : 'Reserved';
                         @endphp
                         <a @class(['listing-timeline-booking', 'category-'.$unitMeta['theme'], 'status-'.($viewerCanManageBookings ? $timelineBooking->status : 'reserved')])
-                           style="grid-column: {{ $timelineStartColumn }} / {{ $timelineEndColumn }}; grid-row: {{ $timelineRow }}; --unit-accent: {{ $unitStyle['accent'] ?? '#64748b' }}; --unit-soft: {{ $unitStyle['soft'] ?? '#f1f5f9' }}; --unit-ink: {{ $unitStyle['ink'] ?? '#334155' }};"
+                           style="grid-column: {{ $timelineStartColumn }} / {{ $timelineEndColumn }}; grid-row: {{ $timelineRow }}; --unit-accent: {{ $unitStyle['accent'] ?? '#64748b' }}; --unit-soft: {{ $unitStyle['soft'] ?? '#f1f5f9' }}; --unit-fill: {{ $unitStyle['fill'] ?? '#f1f5f9' }}; --unit-ink: {{ $unitStyle['ink'] ?? '#334155' }};"
                            data-booking-id="{{ $timelineBooking->id }}"
                            @if($timelineCanOpenBooking)
                                data-calendar-booking-open data-unit="{{ $unit->name }}" data-category="{{ $unitMeta['label'] }}" data-category-icon="{{ $unitMeta['icon'] }}"

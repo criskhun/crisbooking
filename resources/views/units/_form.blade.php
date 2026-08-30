@@ -64,6 +64,10 @@
         $customCategoryDefault = '';
     }
     $customCategory = old('custom_category', $customCategoryDefault);
+    $customCalendarColor = (bool) old('calendar_color_enabled', filled($unit->calendar_color ?? null));
+    $calendarColor = old('calendar_color', $unit->calendar_color ?? '#2563eb');
+    $calendarUseGradient = (bool) old('calendar_use_gradient', $unit->calendar_use_gradient ?? false);
+    $calendarSecondaryColor = old('calendar_secondary_color', $unit->calendar_secondary_color ?? '#7c3aed');
 @endphp
 
 <div class="listing-form-grid">
@@ -145,6 +149,47 @@
         <small class="field-help">Enter the service category when it is not listed above.</small>
         @error('custom_category')<p class="error-text">{{ $message }}</p>@enderror
     </div>
+
+    <section class="listing-calendar-color-field" data-calendar-color-picker>
+        <div class="listing-calendar-color-heading">
+            <div>
+                <span class="eyebrow">Calendar appearance</span>
+                <strong>Choose this listing's color</strong>
+                <small>Use a solid shade or blend two shades with a gradient. Leave this off to keep the automatic category-based unit color.</small>
+            </div>
+            <div class="listing-calendar-color-preview" data-calendar-color-preview aria-label="Calendar color preview">
+                <span>Booking preview</span>
+            </div>
+        </div>
+
+        <input type="hidden" name="calendar_color_enabled" value="0">
+        <label class="listing-calendar-color-toggle">
+            <input type="checkbox" name="calendar_color_enabled" value="1" @checked($customCalendarColor) data-calendar-color-enabled>
+            <span><strong>Use my selected color</strong><small>Override the automatic shade for this unit.</small></span>
+        </label>
+
+        <div class="listing-calendar-color-controls" data-calendar-color-controls>
+            <label class="listing-calendar-color-choice" for="calendar_color">
+                <span>Primary shade</span>
+                <input id="calendar_color" name="calendar_color" type="color" value="{{ $calendarColor }}" data-calendar-color-primary>
+                <output data-calendar-color-primary-value>{{ $calendarColor }}</output>
+            </label>
+
+            <input type="hidden" name="calendar_use_gradient" value="0">
+            <label class="listing-calendar-color-toggle compact">
+                <input type="checkbox" name="calendar_use_gradient" value="1" @checked($calendarUseGradient) data-calendar-gradient-enabled>
+                <span><strong>Gradient color</strong><small>Blend a second shade into the booking bar.</small></span>
+            </label>
+
+            <label class="listing-calendar-color-choice" for="calendar_secondary_color" data-calendar-secondary-wrap>
+                <span>Second shade</span>
+                <input id="calendar_secondary_color" name="calendar_secondary_color" type="color" value="{{ $calendarSecondaryColor }}" data-calendar-color-secondary>
+                <output data-calendar-color-secondary-value>{{ $calendarSecondaryColor }}</output>
+            </label>
+        </div>
+        @error('calendar_color')<p class="error-text">{{ $message }}</p>@enderror
+        @error('calendar_secondary_color')<p class="error-text">{{ $message }}</p>@enderror
+    </section>
 
     <div class="field-group listing-location-field" data-listing-location-map data-map-id="{{ config('services.google.maps_map_id') }}">
         <div class="map-field-heading"><div><label for="location">Listing location <span class="optional-label">Optional</span></label><small>Search an address, use your position, or click the map to pin the unit.</small></div><span data-map-coordinate-label>{{ $latitudeValue !== null && $longitudeValue !== null ? number_format((float) $latitudeValue, 5).', '.number_format((float) $longitudeValue, 5) : 'No map pin yet' }}</span></div>
