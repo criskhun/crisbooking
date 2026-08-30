@@ -120,8 +120,16 @@ class ManualBookingTest extends TestCase
             ->assertSee('Add an outside booking')
             ->assertSee('Airbnb')
             ->assertSee('External Airbnb Guest')
+            ->assertSee('<strong>External Airbnb Guest · Airbnb</strong>', false)
             ->assertSee('AIR-48291')
             ->assertSee('data-calendar-booking-open', false);
+
+        $this->actingAs($host)->get(route('calendar.index', [
+            'mode' => 'manage',
+            'calendar_view' => 'month',
+            'month' => $start->format('Y-m'),
+        ]))->assertOk()
+            ->assertSee('External Airbnb Guest · Airbnb Harbor Condo · Airbnb');
 
         $this->actingAs($affiliate)->get(route('calendar.index', [
             'mode' => 'manage',

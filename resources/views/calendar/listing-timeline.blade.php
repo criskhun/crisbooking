@@ -56,7 +56,9 @@
                             $timelineStartColumn = (int) $month->copy()->startOfMonth()->diffInDays($timelineStart) + 2;
                             $timelineEndColumn = (int) $month->copy()->startOfMonth()->diffInDays($timelineEnd) + 3;
                             $timelineCanOpenBooking = $viewerCanManageBookings || ($timelineBooking->isManualBooking() && $timelineBooking->affiliatePartnership?->marketer_id === auth()->id());
-                            $timelineLabel = $timelineCanOpenBooking ? ($timelineBooking->isManualBooking() ? $timelineBooking->sourceLabel() : $timelineBooking->customerDisplayName()) : 'Reserved';
+                            $timelineLabel = $timelineCanOpenBooking
+                                ? $timelineBooking->customerDisplayName().($timelineBooking->isManualBooking() ? ' · '.$timelineBooking->sourceLabel() : '')
+                                : 'Reserved';
                         @endphp
                         <a @class(['listing-timeline-booking', 'category-'.$unitMeta['theme'], 'status-'.($viewerCanManageBookings ? $timelineBooking->status : 'reserved')])
                            style="grid-column: {{ $timelineStartColumn }} / {{ $timelineEndColumn }}; grid-row: {{ $timelineRow }}; --unit-accent: {{ $unitStyle['accent'] ?? '#64748b' }}; --unit-soft: {{ $unitStyle['soft'] ?? '#f1f5f9' }}; --unit-fill: {{ $unitStyle['fill'] ?? '#f1f5f9' }}; --unit-ink: {{ $unitStyle['ink'] ?? '#334155' }};"

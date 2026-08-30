@@ -16,7 +16,7 @@ class CalendarPresentationTest extends TestCase
     public function test_host_calendar_uses_category_markers_and_exposes_a_quick_view_for_each_booking(): void
     {
         $host = User::factory()->host()->create();
-        $client = User::factory()->create();
+        $client = User::factory()->create(['name' => 'Calendar Guest']);
         $start = now()->addMonth()->startOfMonth()->addDays(4)->setTime(9, 0);
         $condo = $this->createUnit($host, 'Harbor Condo', 'condo', 'unit');
         $car = $this->createUnit($host, 'Airport Car', 'car', 'unit');
@@ -38,6 +38,8 @@ class CalendarPresentationTest extends TestCase
             ->assertSee('data-calendar-booking-open', false)
             ->assertSee('data-booking-id="'.$condoBooking->id.'"', false)
             ->assertSee('data-booking-id="'.$carBooking->id.'"', false)
+            ->assertSee('Calendar Guest · Harbor Condo')
+            ->assertSee('Calendar Guest · Airport Car')
             ->assertSee('data-notes="Please prepare one parking slot."', false)
             ->assertSee('data-booking-url="'.route('bookings.show', $condoBooking).'"', false)
             ->assertSee('Open full booking');
@@ -138,6 +140,7 @@ class CalendarPresentationTest extends TestCase
             ->assertSee('Riverside Condo')
             ->assertSee('City Touring Car')
             ->assertSee('Timeline Client')
+            ->assertSee('<strong>Timeline Client</strong>', false)
             ->assertSee('data-booking-id="'.$booking->id.'"', false)
             ->assertSee('grid-column: 5 / 9', false)
             ->assertSee('data-calendar-booking-open', false)

@@ -128,6 +128,9 @@
                                     $calendarCanOpenBooking = $viewerCanManageBookings || ($calendarBooking->isManualBooking() && $calendarBooking->affiliatePartnership?->marketer_id === auth()->id());
                                     $unitStyle = $calendarUnitStyles[$calendarBooking->unit_id] ?? null;
                                     $calendarProfileUnit = $units->firstWhere('id', $calendarBooking->unit_id);
+                                    $calendarBookingLabel = $calendarCanOpenBooking
+                                        ? $calendarBooking->customerDisplayName().' · '.$calendarBooking->unit->name.($calendarBooking->isManualBooking() ? ' · '.$calendarBooking->sourceLabel() : '')
+                                        : 'Reserved';
                                 @endphp
                                 <a @class(['calendar-booking-span', 'category-'.$eventMeta['theme'], 'status-'.$calendarBooking->status, 'starts-booking' => $segment['starts_booking'], 'ends-booking' => $segment['ends_booking'], 'continues-before' => $segment['continues_before'], 'continues-after' => $segment['continues_after']])
                                    style="grid-column: {{ $segment['start_column'] }} / {{ $segment['end_column'] }}; grid-row: {{ $segment['week'] }}; --calendar-lane: {{ $segment['lane'] }}; --unit-accent: {{ $unitStyle['accent'] ?? '#64748b' }}; --unit-soft: {{ $unitStyle['soft'] ?? '#f1f5f9' }}; --unit-fill: {{ $unitStyle['fill'] ?? '#f1f5f9' }}; --unit-ink: {{ $unitStyle['ink'] ?? '#334155' }};"
@@ -148,7 +151,7 @@
                                     @if ($segment['starts_booking'])<time>{{ $calendarBooking->start_at->format('g:i A') }}</time>@endif
                                     @if($calendarProfileUnit?->primaryImagePath())<img class="calendar-listing-avatar" src="{{ Storage::disk('public')->url($calendarProfileUnit->primaryImagePath()) }}" alt="">@endif
                                     <span class="calendar-event-icon" aria-hidden="true">{{ $eventMeta['icon'] }}</span>
-                                    <strong>{{ $calendarBooking->unit->name }}{{ $calendarBooking->isManualBooking() ? ' · '.$calendarBooking->sourceLabel() : '' }}</strong>
+                                    <strong>{{ $calendarBookingLabel }}</strong>
                                     @if ($segment['ends_booking'])<time>→ {{ $calendarBooking->end_at->format('g:i A') }}</time>@elseif ($segment['continues_after'])<span class="calendar-span-continuation">›</span>@endif
                                 </a>
                             @endforeach
