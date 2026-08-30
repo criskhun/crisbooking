@@ -214,6 +214,7 @@ class CalendarPresentationTest extends TestCase
     public function test_host_can_assign_a_solid_or_gradient_calendar_color_to_a_listing(): void
     {
         $host = User::factory()->host()->create();
+        $client = User::factory()->create();
         $unit = $this->createUnit($host, 'Custom Color Cleaning', 'cleaning', 'service');
         $unit->update(['photo_path' => 'listings/custom-color.jpg']);
 
@@ -236,15 +237,24 @@ class CalendarPresentationTest extends TestCase
         $this->assertSame('#1a2b3c', $unit->calendar_color);
         $this->assertSame('#d4e5f6', $unit->calendar_secondary_color);
         $this->assertTrue($unit->calendar_use_gradient);
+        $bookingStart = now()->startOfMonth()->addDays(2)->setTime(9, 0);
+        $booking = $this->createBooking($unit, $client, $bookingStart, 'Custom color calendar booking.');
 
         $this->actingAs($host)->get(route('units.edit', $unit))
             ->assertOk()
             ->assertSee('name="calendar_color" type="color" value="#1a2b3c"', false)
             ->assertSee('name="calendar_secondary_color" type="color" value="#d4e5f6"', false);
 
-        $this->actingAs($host)->get(route('calendar.index', ['mode' => 'manage']))
+        $this->actingAs($host)->get(route('calendar.index', ['mode' => 'manage', 'month' => $bookingStart->format('Y-m')]))
             ->assertOk()
+            ->assertSee('class="category-cleaning"', false)
+            ->assertSee('data-booking-id="'.$booking->id.'"', false)
             ->assertSee('--unit-fill: linear-gradient(135deg, #1a2b3c, #d4e5f6)', false);
+
+        $calendarCss = file_get_contents(public_path('css/app.css'));
+        $this->assertStringContainsString('.calendar-booking-span.calendar-booking-span[style*="--unit-fill"]', $calendarCss);
+        $this->assertStringContainsString('border-left:4px solid var(--calendar-event-border,var(--unit-accent))', $calendarCss);
+        $this->assertStringContainsString('transform: scale(1.035)', $calendarCss);
     }
 
     private function createUnit(User $host, string $name, string $category, string $kind): Unit

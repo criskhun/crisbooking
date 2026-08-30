@@ -95,7 +95,7 @@
                         @php
                             $profileStyle = $calendarUnitStyles[$profileUnit->id] ?? null;
                         @endphp
-                        <a href="{{ route('calendar.index', array_merge($calendarFilterQuery, ['schedule_unit' => $profileUnit->id])) }}" style="--unit-accent: {{ $profileStyle['accent'] ?? '#64748b' }}; --unit-soft: {{ $profileStyle['soft'] ?? '#f1f5f9' }}; --unit-fill: {{ $profileStyle['fill'] ?? '#f1f5f9' }}; --unit-ink: {{ $profileStyle['ink'] ?? '#334155' }};">
+                        <a class="category-{{ $calendarCategoryMeta[$profileUnit->category]['theme'] ?? 'other' }}" href="{{ route('calendar.index', array_merge($calendarFilterQuery, ['schedule_unit' => $profileUnit->id])) }}" style="--unit-accent: {{ $profileStyle['accent'] ?? '#64748b' }}; --unit-soft: {{ $profileStyle['soft'] ?? '#f1f5f9' }}; --unit-fill: {{ $profileStyle['fill'] ?? '#f1f5f9' }}; --unit-ink: {{ $profileStyle['ink'] ?? '#334155' }};">
                             @if($profileUnit->primaryImagePath())<img src="{{ Storage::disk('public')->url($profileUnit->primaryImagePath()) }}" alt="">@else<span>{{ $calendarCategoryMeta[$profileUnit->category]['icon'] ?? '✦' }}</span>@endif
                             <span><strong>{{ $profileUnit->name }}</strong><small>{{ str($profileUnit->category)->replace('_', ' ')->title() }} · unique listing shade</small></span>
                         </a>
