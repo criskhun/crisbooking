@@ -10,8 +10,12 @@ return new class extends Migration
     {
         Schema::create('booking_financial_entry_revisions', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('booking_financial_entry_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('edited_by_user_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('booking_financial_entry_id');
+            $table->foreign('booking_financial_entry_id', 'financial_revision_entry_fk')
+                ->references('id')->on('booking_financial_entries')->cascadeOnDelete();
+            $table->foreignId('edited_by_user_id')->nullable();
+            $table->foreign('edited_by_user_id', 'financial_revision_editor_fk')
+                ->references('id')->on('users')->nullOnDelete();
             $table->json('before_values');
             $table->json('after_values');
             $table->string('reason', 500);
