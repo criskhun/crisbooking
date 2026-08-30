@@ -13,6 +13,63 @@ class ManualBookingTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_host_can_record_a_past_outside_booking_in_the_calendar_and_sales(): void
+    {
+        $host = User::factory()->host()->create();
+        $unit = $this->unit($host, 'Historical Direct Rental', 'condo');
+        $start = today()->subMonths(2)->startOfMonth()->addDays(5);
+
+        $this->actingAs($host)->get(route('calendar.index', [
+            'mode' => 'manage',
+            'month' => $start->format('Y-m'),
+            'date' => $start->format('Y-m-d'),
+        ]))->assertOk()
+            ->assertSee('value="'.$start->format('Y-m-d').'"', false)
+            ->assertDontSee('name="start_date" type="date" min=', false)
+            ->assertSee('Past dates are available only for recording outside bookings that already happened.');
+
+        $response = $this->actingAs($host)->post(route('calendar.manual-bookings.store'), [
+            'unit_id' => $unit->id,
+            'start_date' => $start->toDateString(),
+            'number_of_days' => 2,
+            'source_channel' => 'direct',
+            'external_customer_name' => 'Previous Walk-in Customer',
+            'total_amount' => 7500,
+            'party_size' => 2,
+        ]);
+
+        $response->assertRedirect(route('calendar.index', [
+            'mode' => 'manage',
+            'month' => $start->format('Y-m'),
+            'date' => $start->format('Y-m-d'),
+        ]));
+        $this->assertDatabaseHas('bookings', [
+            'unit_id' => $unit->id,
+            'booking_origin' => 'manual',
+            'status' => 'confirmed',
+            'total_amount' => 7500,
+        ]);
+
+        $this->actingAs($host)->from(route('calendar.index', ['mode' => 'manage']))
+            ->post(route('calendar.manual-bookings.store'), [
+                'unit_id' => $unit->id,
+                'start_date' => $start->copy()->addDay()->toDateString(),
+                'number_of_days' => 1,
+                'source_channel' => 'other',
+                'total_amount' => 1000,
+                'party_size' => 1,
+            ])->assertRedirect(route('calendar.index', ['mode' => 'manage']))
+            ->assertSessionHasErrors([
+                'start_date' => 'The selected listing already has a booking during part of that date range.',
+            ]);
+        $this->assertDatabaseCount('bookings', 1);
+
+        $this->actingAs($host)->get(route('sales.index'))
+            ->assertOk()
+            ->assertSee('₱7,500.00')
+            ->assertSee('Previous Walk-in Customer');
+    }
+
     public function test_host_can_block_own_listing_and_record_external_sale_with_affiliate_credit(): void
     {
         $host = User::factory()->host()->create();

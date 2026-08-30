@@ -3,7 +3,7 @@
         <span aria-hidden="true">＋</span>
         <div>
             <strong>Add an outside booking</strong>
-            <small>Block an owned or assigned listing and record where the sale came from.</small>
+            <small>Block an owned or assigned listing and include the sale in your records.</small>
         </div>
         <b>Add booking</b>
     </summary>
@@ -11,7 +11,7 @@
         @csrf
         <div class="manual-booking-intro">
             <span>{{ $isAffiliateCalendar ? 'Affiliate entry' : 'Host entry' }}</span>
-            <p>Use this for Airbnb, Booking.com, Agoda, direct, vehicle, service, or offline affiliate sales. It immediately blocks the selected dates everywhere availability is shown.</p>
+            <p>Use this for Airbnb, Booking.com, Agoda, direct, vehicle, service, or offline affiliate sales. Current and previous dates are allowed here, and the amount is included in your sales dashboard.</p>
         </div>
         <div class="field-group manual-booking-wide">
             <label for="manual_unit_id">Listing, vehicle, or service</label>
@@ -25,7 +25,8 @@
         </div>
         <div class="field-group">
             <label for="manual_start_date">First occupied date</label>
-            <input id="manual_start_date" name="start_date" type="date" min="{{ today()->toDateString() }}" value="{{ old('start_date', $selectedDate->isBefore(today()) ? today()->toDateString() : $selectedDate->toDateString()) }}" required data-manual-booking-start>
+            <input id="manual_start_date" name="start_date" type="date" value="{{ old('start_date', $selectedDate->toDateString()) }}" required data-manual-booking-start>
+            <small class="field-help">Past dates are available only for recording outside bookings that already happened.</small>
             @error('start_date')<p class="error-text">{{ $message }}</p>@enderror
         </div>
         <div class="field-group">

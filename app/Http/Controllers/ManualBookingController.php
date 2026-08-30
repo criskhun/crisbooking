@@ -19,7 +19,9 @@ class ManualBookingController extends Controller
     {
         $validated = $request->validate([
             'unit_id' => ['required', 'integer', 'exists:units,id'],
-            'start_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
+            // Outside bookings may be entered after the fact so historical sales can
+            // be reflected in both the calendar and the sales dashboard.
+            'start_date' => ['required', 'date_format:Y-m-d'],
             'number_of_days' => ['required', 'integer', 'min:1', 'max:365'],
             'source_channel' => ['required', Rule::in(array_keys(Booking::MANUAL_SOURCE_OPTIONS))],
             'source_details' => ['nullable', 'string', 'max:160'],
@@ -62,7 +64,7 @@ class ManualBookingController extends Controller
 
             if ($conflict) {
                 throw ValidationException::withMessages([
-                    'start_date' => 'This listing is already occupied during part of that date range.',
+                    'start_date' => 'The selected listing already has a booking during part of that date range.',
                 ]);
             }
 
