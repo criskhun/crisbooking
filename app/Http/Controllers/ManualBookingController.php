@@ -28,6 +28,10 @@ class ManualBookingController extends Controller
             'source_details' => ['nullable', 'string', 'max:160'],
             'external_customer_name' => ['nullable', 'string', 'max:120'],
             'total_amount' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
+            'payment_option' => ['nullable', Rule::in(['fully_paid', 'downpayment', 'unpaid'])],
+            'initial_payment_amount' => ['nullable', 'required_if:payment_option,downpayment', 'numeric', 'min:0.01', 'lte:total_amount'],
+            'security_deposit_amount' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
+            'security_deposit_collected' => ['nullable', 'boolean'],
             'party_size' => ['nullable', 'integer', 'min:1', 'max:10000'],
             'affiliate_partnership_id' => ['nullable', 'integer', 'exists:affiliate_partnerships,id'],
             'notes' => ['nullable', 'string', 'max:1000'],
@@ -96,6 +100,7 @@ class ManualBookingController extends Controller
                 'rate_period' => 'day',
                 'rate_quantity' => $days,
                 'total_amount' => $totalAmount,
+                'security_deposit_amount' => round((float) ($validated['security_deposit_amount'] ?? 0), 2),
                 'party_size' => $partySize,
                 'notes' => $validated['notes'] ?? null,
                 'affiliate_partnership_id' => $affiliatePartnership?->id,
@@ -104,6 +109,32 @@ class ManualBookingController extends Controller
                     ? round($totalAmount * (float) $commissionPercentage / 100, 2)
                     : null,
             ]);
+
+            $paymentOption = $validated['payment_option'] ?? 'unpaid';
+            $initialPayment = match ($paymentOption) {
+                'fully_paid' => $totalAmount,
+                'downpayment' => round((float) $validated['initial_payment_amount'], 2),
+                default => 0,
+            };
+            if ($initialPayment > 0) {
+                $booking->financialEntries()->create([
+                    'recorded_by_user_id' => $actor->id,
+                    'kind' => 'payment',
+                    'category' => $paymentOption === 'fully_paid' ? 'full_payment' : 'downpayment',
+                    'amount' => $initialPayment,
+                    'occurred_at' => now(),
+                ]);
+            }
+            $depositAmount = round((float) ($validated['security_deposit_amount'] ?? 0), 2);
+            if ($depositAmount > 0 && ! empty($validated['security_deposit_collected'])) {
+                $booking->financialEntries()->create([
+                    'recorded_by_user_id' => $actor->id,
+                    'kind' => 'deposit',
+                    'category' => 'security_deposit',
+                    'amount' => $depositAmount,
+                    'occurred_at' => now(),
+                ]);
+            }
 
             $conflictingRequests = $unit->bookings()
                 ->whereKeyNot($booking->id)

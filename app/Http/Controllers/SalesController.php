@@ -21,7 +21,7 @@ class SalesController extends Controller
         }
 
         $bookings = Booking::query()
-            ->with(['unit:id,host_id,name,category', 'client:id,name'])
+            ->with(['unit:id,host_id,name,category', 'client:id,name', 'financialEntries'])
             ->when(! $request->user()->is_admin, fn ($query) => $query->whereHas('unit', fn ($units) => $units->where('host_id', $request->user()->id)))
             ->when($selectedCategory, fn ($query) => $query->whereHas('unit', fn ($units) => $units->where('category', $selectedCategory)))
             ->latest('start_at')->get();

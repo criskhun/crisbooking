@@ -17,6 +17,7 @@ use App\Http\Controllers\AvailabilityController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\CalendarIntegrationController;
+use App\Http\Controllers\BookingFinancialEntryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FavoriteUnitController;
 use App\Http\Controllers\HomeController;
@@ -107,6 +108,7 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     Route::get('/bookings/{booking}/calendar.ics', [CalendarIntegrationController::class, 'booking'])->name('bookings.calendar');
     Route::get('/units/{unit}/wifi-qr', [UnitController::class, 'wifiQr'])->name('units.wifi-qr');
     Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('bookings.show');
+    Route::post('/bookings/{booking}/financial-entries', [BookingFinancialEntryController::class, 'store'])->name('bookings.financial-entries.store');
     Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
     Route::patch('/bookings/{booking}/status', [BookingController::class, 'updateStatus'])->name('bookings.status');
     Route::post('/bookings/{booking}/payment-proof', [BookingController::class, 'submitPaymentProof'])->name('bookings.payment-proof.store');

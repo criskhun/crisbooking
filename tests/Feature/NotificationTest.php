@@ -220,6 +220,31 @@ class NotificationTest extends TestCase
         $this->assertDatabaseHas('user_notifications', ['user_id' => $customer->id, 'type' => 'review_reminder']);
     }
 
+    public function test_outside_booking_balance_and_arrival_departure_reminders_notify_the_host(): void
+    {
+        Mail::fake();
+        $host = User::factory()->host()->create();
+        $unit = $this->unit($host);
+        $arrival = Booking::create([
+            'unit_id' => $unit->id, 'client_id' => $host->id, 'booking_origin' => 'manual',
+            'external_customer_name' => 'Outside Guest', 'start_at' => now()->addMinutes(30),
+            'end_at' => now()->addHours(3), 'status' => 'confirmed', 'total_amount' => 2500,
+        ]);
+        $departure = Booking::create([
+            'unit_id' => $unit->id, 'client_id' => $host->id, 'booking_origin' => 'manual',
+            'external_customer_name' => 'Returning Guest', 'start_at' => now()->subHour(),
+            'end_at' => now()->addMinutes(30), 'status' => 'confirmed', 'total_amount' => 1000,
+        ]);
+
+        $this->artisan('notifications:generate-reminders')->assertSuccessful();
+        $this->artisan('notifications:generate-reminders')->assertSuccessful();
+
+        $this->assertDatabaseHas('user_notifications', ['user_id' => $host->id, 'type' => 'booking_reminder', 'dedupe_key' => "booking:{$arrival->id}:start-reminder:host"]);
+        $this->assertDatabaseHas('user_notifications', ['user_id' => $host->id, 'type' => 'balance_collection_reminder']);
+        $this->assertDatabaseHas('user_notifications', ['user_id' => $host->id, 'type' => 'checkout_reminder', 'dedupe_key' => "booking:{$departure->id}:checkout-reminder:host"]);
+        Mail::assertSent(UnseenNotificationMail::class, fn ($mail) => $mail->hasTo($host->email));
+    }
+
     public function test_authenticated_web_request_updates_user_activity(): void
     {
         $user = User::factory()->create(['last_seen_at' => now()->subHour()]);

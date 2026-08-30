@@ -90,6 +90,17 @@
                         <span class="category-{{ $legendMeta['theme'] }}"><b aria-hidden="true">{{ $legendMeta['icon'] }}</b>{{ $legendMeta['label'] }}</span>
                     @endforeach
                 </div>
+                <div class="calendar-unit-legend" aria-label="Individual listing colors">
+                    @foreach($units as $profileUnit)
+                        @php
+                            $profileStyle = $calendarUnitStyles[$profileUnit->id] ?? null;
+                        @endphp
+                        <a href="{{ route('calendar.index', array_merge($calendarFilterQuery, ['schedule_unit' => $profileUnit->id])) }}" style="--unit-accent: {{ $profileStyle['accent'] ?? '#64748b' }}; --unit-soft: {{ $profileStyle['soft'] ?? '#f1f5f9' }};">
+                            @if($profileUnit->primaryImagePath())<img src="{{ Storage::disk('public')->url($profileUnit->primaryImagePath()) }}" alt="">@else<span>{{ $calendarCategoryMeta[$profileUnit->category]['icon'] ?? '✦' }}</span>@endif
+                            <span><strong>{{ $profileUnit->name }}</strong><small>{{ str($profileUnit->category)->replace('_', ' ')->title() }} · unique listing shade</small></span>
+                        </a>
+                    @endforeach
+                </div>
 
                 @if ($calendarView === 'listings')
                     @include('calendar.listing-timeline')
@@ -115,9 +126,11 @@
                                     $calendarBooking = $segment['booking'];
                                     $eventMeta = $calendarCategoryMeta[$calendarBooking->unit->category] ?? ['theme' => 'other', 'icon' => '✦', 'label' => str($calendarBooking->unit->category)->replace('_', ' ')->title()];
                                     $calendarCanOpenBooking = $viewerCanManageBookings || ($calendarBooking->isManualBooking() && $calendarBooking->affiliatePartnership?->marketer_id === auth()->id());
+                                    $unitStyle = $calendarUnitStyles[$calendarBooking->unit_id] ?? null;
+                                    $calendarProfileUnit = $units->firstWhere('id', $calendarBooking->unit_id);
                                 @endphp
                                 <a @class(['calendar-booking-span', 'category-'.$eventMeta['theme'], 'status-'.$calendarBooking->status, 'starts-booking' => $segment['starts_booking'], 'ends-booking' => $segment['ends_booking'], 'continues-before' => $segment['continues_before'], 'continues-after' => $segment['continues_after']])
-                                   style="grid-column: {{ $segment['start_column'] }} / {{ $segment['end_column'] }}; grid-row: {{ $segment['week'] }}; --calendar-lane: {{ $segment['lane'] }};"
+                                   style="grid-column: {{ $segment['start_column'] }} / {{ $segment['end_column'] }}; grid-row: {{ $segment['week'] }}; --calendar-lane: {{ $segment['lane'] }}; --unit-accent: {{ $unitStyle['accent'] ?? '#64748b' }}; --unit-soft: {{ $unitStyle['soft'] ?? '#f1f5f9' }}; --unit-ink: {{ $unitStyle['ink'] ?? '#334155' }};"
                                    data-booking-id="{{ $calendarBooking->id }}" data-segment-start="{{ $segment['start_date'] }}" data-segment-end="{{ $segment['end_date'] }}"
                                    data-unit="{{ $calendarBooking->unit->name }}" data-category="{{ $eventMeta['label'] }}" data-category-icon="{{ $eventMeta['icon'] }}"
                                    @if($calendarCanOpenBooking)
@@ -133,6 +146,7 @@
                                    title="{{ $calendarBooking->unit->name }}: {{ $calendarBooking->start_at->format('M j, g:i A') }} to {{ $calendarBooking->end_at->format('M j, g:i A') }}">
                                     @if ($segment['continues_before'])<span class="calendar-span-continuation">‹</span>@endif
                                     @if ($segment['starts_booking'])<time>{{ $calendarBooking->start_at->format('g:i A') }}</time>@endif
+                                    @if($calendarProfileUnit?->primaryImagePath())<img class="calendar-listing-avatar" src="{{ Storage::disk('public')->url($calendarProfileUnit->primaryImagePath()) }}" alt="">@endif
                                     <span class="calendar-event-icon" aria-hidden="true">{{ $eventMeta['icon'] }}</span>
                                     <strong>{{ $calendarBooking->unit->name }}{{ $calendarBooking->isManualBooking() ? ' · '.$calendarBooking->sourceLabel() : '' }}</strong>
                                     @if ($segment['ends_booking'])<time>→ {{ $calendarBooking->end_at->format('g:i A') }}</time>@elseif ($segment['continues_after'])<span class="calendar-span-continuation">›</span>@endif

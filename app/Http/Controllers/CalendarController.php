@@ -256,6 +256,7 @@ class CalendarController extends Controller
             })
             ->values();
         [$calendarSegments, $calendarWeekCount, $calendarLaneCount] = $this->buildCalendarSegments($bookings, $gridStart, $gridEnd);
+        $calendarUnitStyles = $this->calendarUnitStyles($units);
 
         return view('calendar.index', [
             'month' => $month,
@@ -296,7 +297,25 @@ class CalendarController extends Controller
             'scheduleUnitId' => $scheduleUnitId,
             'manualBookingPartnerships' => $manualBookingPartnerships,
             'manualBookingSourceOptions' => Booking::MANUAL_SOURCE_OPTIONS,
+            'calendarUnitStyles' => $calendarUnitStyles,
         ]);
+    }
+
+    private function calendarUnitStyles(mixed $units): array
+    {
+        $categoryHues = ['car' => 28, 'condo' => 220, 'cleaning' => 174, 'driving' => 267, 'massage' => 326, 'consultancy' => 215, 'pet_transport' => 82];
+
+        return $units->mapWithKeys(function (Unit $unit) use ($categoryHues) {
+            $hue = ($categoryHues[$unit->category] ?? 210) + (($unit->id * 37) % 15) - 7;
+            $saturation = 58 + (($unit->id * 11) % 18);
+            $lightness = 36 + (($unit->id * 7) % 18);
+
+            return [$unit->id => [
+                'accent' => "hsl({$hue} {$saturation}% {$lightness}%)",
+                'soft' => "hsl({$hue} ".min(88, $saturation + 10)."% 92%)",
+                'ink' => "hsl({$hue} {$saturation}% 25%)",
+            ]];
+        })->all();
     }
 
     private function distanceInKilometres(float $fromLatitude, float $fromLongitude, float $toLatitude, float $toLongitude): float

@@ -1013,6 +1013,8 @@
             const startTimeHelp = form.querySelector('[data-manual-booking-time-help]');
             const days = form.querySelector('[data-manual-booking-days]');
             const duration = form.querySelector('[data-manual-booking-duration]');
+            const paymentOption = form.querySelector('[data-manual-payment-option]');
+            const downpayment = form.querySelector('[data-manual-downpayment]');
             let flexibleStartTime = startTime?.value || '12:00';
             const formatClockTime = (value) => new Date(`2000-01-01T${value}:00`).toLocaleTimeString('en-PH', {
                 hour: 'numeric',
@@ -1069,6 +1071,12 @@
                 syncUnitTimes();
                 syncDuration();
             };
+            const syncPayment = () => {
+                if (!paymentOption || !downpayment) return;
+                const visible = paymentOption.value === 'downpayment';
+                downpayment.hidden = !visible;
+                downpayment.querySelector('input')?.toggleAttribute('required', visible);
+            };
 
             unit?.addEventListener('change', syncUnit);
             start?.addEventListener('change', syncDuration);
@@ -1077,9 +1085,11 @@
                 syncDuration();
             });
             days?.addEventListener('input', syncDuration);
+            paymentOption?.addEventListener('change', syncPayment);
             syncUnitTimes();
             syncAffiliates();
             syncDuration();
+            syncPayment();
         });
 
         const calendarBookingDialog = document.querySelector('[data-calendar-booking-dialog]');

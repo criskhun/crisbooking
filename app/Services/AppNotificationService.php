@@ -36,6 +36,31 @@ class AppNotificationService
         return $notification;
     }
 
+    public function sendWithEmail(
+        User $user,
+        string $type,
+        string $title,
+        string $body,
+        string $url,
+        string $dedupeKey,
+    ): UserNotification {
+        $notification = $this->send($user, $type, $title, $body, $url, $dedupeKey);
+
+        if ($notification->wasRecentlyCreated && filled($user->email)) {
+            try {
+                Mail::to($user->email)->send(new UnseenNotificationMail($user, $notification));
+                $notification->update(['email_sent_at' => now()]);
+            } catch (\Throwable $exception) {
+                Log::warning('Time-sensitive booking reminder email could not be sent.', [
+                    'notification_id' => $notification->id,
+                    'exception' => $exception->getMessage(),
+                ]);
+            }
+        }
+
+        return $notification;
+    }
+
     /**
      * Create time-sensitive reminders. Dedupe keys make repeated scheduler runs safe.
      *
@@ -49,7 +74,6 @@ class AppNotificationService
         Booking::query()
             ->with(['unit.host', 'client'])
             ->where('status', 'confirmed')
-            ->where('booking_origin', 'platform')
             ->where('start_at', '>', now())
             ->where('start_at', '<=', now()->addDay())
             ->oldest('start_at')
@@ -57,10 +81,10 @@ class AppNotificationService
             ->get()
             ->each(function (Booking $booking) use (&$created): void {
                 $start = $booking->start_at->format('M j, Y \a\t g:i A');
-                $recipients = [
-                    [$booking->client, 'client'],
-                    [$booking->unit->host, 'host'],
-                ];
+                $recipients = [[$booking->unit->host, 'host']];
+                if (! $booking->isManualBooking()) {
+                    $recipients[] = [$booking->client, 'client'];
+                }
 
                 foreach ($recipients as [$recipient, $role]) {
                     $notification = $this->send(
@@ -73,6 +97,55 @@ class AppNotificationService
                     );
                     $created += (int) $notification->wasRecentlyCreated;
                 }
+            });
+
+        Booking::query()
+            ->with(['unit.host', 'client'])
+            ->where('status', 'confirmed')
+            ->where('end_at', '>', now())
+            ->where('end_at', '<=', now()->addHour())
+            ->oldest('end_at')
+            ->limit($limit)
+            ->get()
+            ->each(function (Booking $booking) use (&$created): void {
+                $end = $booking->end_at->format('M j, Y \a\t g:i A');
+                $recipients = [[$booking->unit->host, 'host']];
+                if (! $booking->isManualBooking()) {
+                    $recipients[] = [$booking->client, 'client'];
+                }
+                foreach ($recipients as [$recipient, $role]) {
+                    $notification = $this->send(
+                        $recipient,
+                        'checkout_reminder',
+                        'Return or check-out within 1 hour',
+                        $booking->unit->name.' is scheduled to end '.$end.'.',
+                        route('bookings.show', $booking),
+                        "booking:{$booking->id}:checkout-reminder:{$role}",
+                    );
+                    $created += (int) $notification->wasRecentlyCreated;
+                }
+            });
+
+        Booking::query()
+            ->with(['unit.host', 'financialEntries'])
+            ->where('status', 'confirmed')
+            ->where('booking_origin', 'manual')
+            ->where('start_at', '>', now())
+            ->where('start_at', '<=', now()->addHour())
+            ->oldest('start_at')
+            ->limit($limit)
+            ->get()
+            ->filter(fn (Booking $booking) => $booking->outstandingBalance() > 0)
+            ->each(function (Booking $booking) use (&$created): void {
+                $notification = $this->sendWithEmail(
+                    $booking->unit->host,
+                    'balance_collection_reminder',
+                    'Collect outstanding balance before check-in',
+                    $booking->customerDisplayName().' still owes ₱'.number_format($booking->outstandingBalance(), 2).' for '.$booking->unit->name.'.',
+                    route('bookings.show', $booking),
+                    "booking:{$booking->id}:balance-reminder:host",
+                );
+                $created += (int) $notification->wasRecentlyCreated;
             });
 
         Booking::query()

@@ -27,6 +27,7 @@
                         $timelineRow = $loop->index + 2;
                         $unitMeta = $calendarCategoryMeta[$unit->category] ?? ['theme' => 'other', 'icon' => '✦', 'label' => str($unit->category)->replace('_', ' ')->title()];
                         $unitBookings = $bookings->where('unit_id', $unit->id)->whereIn('status', ['pending', 'pre_approved', 'payment_submitted', 'confirmed']);
+                        $unitStyle = $calendarUnitStyles[$unit->id] ?? null;
                     @endphp
                     <div class="listing-timeline-unit" style="grid-column: 1; grid-row: {{ $timelineRow }};">
                         @if ($unit->primaryImagePath())
@@ -48,7 +49,7 @@
                     @foreach ($unitBookings as $timelineBooking)
                         @php
                             $timelineStart = $timelineBooking->start_at->copy()->startOfDay()->max($month->copy()->startOfMonth());
-                            $timelineEnd = $timelineBooking->end_at->copy()->subSecond()->startOfDay()->min($month->copy()->endOfMonth());
+                            $timelineEnd = $timelineBooking->end_at->copy()->startOfDay()->min($month->copy()->endOfMonth());
                         @endphp
                         @continue($timelineEnd->lt($timelineStart))
                         @php
@@ -58,7 +59,7 @@
                             $timelineLabel = $timelineCanOpenBooking ? ($timelineBooking->isManualBooking() ? $timelineBooking->sourceLabel() : $timelineBooking->customerDisplayName()) : 'Reserved';
                         @endphp
                         <a @class(['listing-timeline-booking', 'category-'.$unitMeta['theme'], 'status-'.($viewerCanManageBookings ? $timelineBooking->status : 'reserved')])
-                           style="grid-column: {{ $timelineStartColumn }} / {{ $timelineEndColumn }}; grid-row: {{ $timelineRow }};"
+                           style="grid-column: {{ $timelineStartColumn }} / {{ $timelineEndColumn }}; grid-row: {{ $timelineRow }}; --unit-accent: {{ $unitStyle['accent'] ?? '#64748b' }}; --unit-soft: {{ $unitStyle['soft'] ?? '#f1f5f9' }}; --unit-ink: {{ $unitStyle['ink'] ?? '#334155' }};"
                            data-booking-id="{{ $timelineBooking->id }}"
                            @if($timelineCanOpenBooking)
                                data-calendar-booking-open data-unit="{{ $unit->name }}" data-category="{{ $unitMeta['label'] }}" data-category-icon="{{ $unitMeta['icon'] }}"

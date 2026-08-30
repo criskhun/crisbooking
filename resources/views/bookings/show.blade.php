@@ -21,6 +21,7 @@
         $requestedPackageTotal = $requestedPackages->sum('subtotal');
         $myBookingReview = $booking->reviews->firstWhere('reviewer_id', auth()->id());
         $reviewPartner = $booking->isManualBooking() ? null : ($isClient ? $unit->host : $booking->client);
+        $canManageFinances = auth()->user()->is_admin || $unit->host_id === auth()->id();
         $statusCopy = [
             'pending' => [$isClient ? 'Waiting for host' : 'Action required', $isClient ? 'The host must pre-approve or decline your request.' : 'Review this request and either pre-approve or decline it.'],
             'pre_approved' => ['Pre-approved — payment required', $isClient ? 'Upload your proof of payment so the host can complete confirmation.' : 'The client can now submit proof of payment.'],
@@ -127,6 +128,32 @@
                         @endif
                     </aside>
                 </div>
+
+                @if ($booking->isManualBooking())
+                    <section class="booking-finance-card">
+                        <div class="booking-finance-heading"><div><span class="eyebrow">Payments & collections</span><h2>Booking financial ledger</h2><p>Track rental payments separately from refundable deposits, damage fees, and residence penalties.</p></div><span class="booking-status {{ $booking->outstandingBalance() > 0 ? 'status-payment_submitted' : 'status-confirmed' }}">{{ $booking->paymentStatusLabel() }}</span></div>
+                        <div class="booking-finance-metrics">
+                            <div><small>Booking and charges</small><strong>₱{{ number_format($booking->revenueAmount(), 2) }}</strong></div>
+                            <div><small>Payments collected</small><strong>₱{{ number_format($booking->paymentTotal(), 2) }}</strong></div>
+                            <div class="{{ $booking->outstandingBalance() > 0 ? 'attention' : '' }}"><small>Outstanding balance</small><strong>₱{{ number_format($booking->outstandingBalance(), 2) }}</strong></div>
+                            <div><small>Security deposit held</small><strong>₱{{ number_format($booking->securityDepositHeld(), 2) }}</strong><span>Required: ₱{{ number_format($booking->securityDepositRequired(), 2) }}</span></div>
+                        </div>
+                        <div class="booking-finance-ledger">
+                            @forelse($booking->financialEntries as $entry)
+                                <div class="kind-{{ $entry->kind }}"><span><strong>{{ $entry->label() }}</strong><small>{{ $entry->occurred_at->format('M j, Y · g:i A') }}{{ $entry->recordedBy ? ' · '.$entry->recordedBy->name : '' }}</small>@if($entry->notes)<em>{{ $entry->notes }}</em>@endif</span><b>{{ in_array($entry->kind, ['charge', 'deposit'], true) ? '+' : '−' }}₱{{ number_format($entry->amount, 2) }}</b></div>
+                            @empty
+                                <p>No payments, deposits, or charges have been recorded.</p>
+                            @endforelse
+                        </div>
+                        @if($canManageFinances)
+                            <div class="booking-finance-forms">
+                                <form method="POST" action="{{ route('bookings.financial-entries.store', $booking) }}">@csrf<input type="hidden" name="kind" value="payment"><input type="hidden" name="category" value="balance_payment"><strong>Record a collection</strong><label><span>Amount</span><div class="money-input"><span>₱</span><input name="amount" type="number" min="0.01" step="0.01" max="{{ max(.01, $booking->outstandingBalance()) }}" required></div></label><label><span>Reference or note</span><input name="notes" maxlength="500" placeholder="Cash, transfer reference…"></label><button class="button button-primary button-small" type="submit">Add payment</button></form>
+                                <form method="POST" action="{{ route('bookings.financial-entries.store', $booking) }}">@csrf<input type="hidden" name="kind" value="charge"><strong>Add damage or penalty</strong><label><span>Type</span><select name="category" required><option value="damage">Damage fee</option>@if($unit->category === 'condo')<option value="late_checkout">Late check-out</option><option value="smoking">Smoking penalty</option><option value="excessive_cleaning">Garbage / excessive cleaning</option>@endif<option value="other_penalty">Other charge</option></select></label><label><span>Amount</span><div class="money-input"><span>₱</span><input name="amount" type="number" min="0.01" step="0.01" required></div></label><label><span>Details</span><input name="notes" maxlength="500" required placeholder="Describe the damage or violation"></label><button class="button button-primary button-small" type="submit">Add charge</button></form>
+                                <form method="POST" action="{{ route('bookings.financial-entries.store', $booking) }}">@csrf<strong>Security deposit</strong><label><span>Action</span><select name="kind" required><option value="deposit">Record deposit collected</option><option value="deposit_refund">Return deposit</option><option value="deposit_application">Apply deposit to charges</option></select></label><label><span>Amount</span><div class="money-input"><span>₱</span><input name="amount" type="number" min="0.01" step="0.01" required></div></label><label><span>Note</span><input name="notes" maxlength="500" placeholder="Return method or damage reference"></label><button class="button button-primary button-small" type="submit">Record deposit action</button></form>
+                            </div>
+                        @endif
+                    </section>
+                @endif
 
                 @if ($isClient && in_array($booking->status, ['pre_approved', 'payment_submitted'], true))
                     <section class="booking-change-card payment-proof-card">

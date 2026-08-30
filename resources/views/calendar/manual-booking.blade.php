@@ -1,4 +1,4 @@
-<details class="manual-booking-card" data-manual-booking-card @if($errors->hasAny(['unit_id', 'start_date', 'start_time', 'number_of_days', 'source_channel', 'source_details', 'external_customer_name', 'total_amount', 'party_size', 'affiliate_partnership_id', 'notes'])) open @endif>
+<details class="manual-booking-card" data-manual-booking-card @if($errors->hasAny(['unit_id', 'start_date', 'start_time', 'number_of_days', 'source_channel', 'source_details', 'external_customer_name', 'total_amount', 'payment_option', 'initial_payment_amount', 'security_deposit_amount', 'party_size', 'affiliate_partnership_id', 'notes'])) open @endif>
     <summary>
         <span aria-hidden="true">＋</span>
         <div>
@@ -78,6 +78,26 @@
             <div class="money-input"><span>₱</span><input id="manual_total_amount" name="total_amount" type="number" min="0" max="99999999.99" step="0.01" value="{{ old('total_amount', 0) }}" required></div>
             @error('total_amount')<p class="error-text">{{ $message }}</p>@enderror
         </div>
+        <div class="field-group">
+            <label for="manual_payment_option">Booking payment</label>
+            <select id="manual_payment_option" name="payment_option" required data-manual-payment-option>
+                <option value="fully_paid" @selected(old('payment_option') === 'fully_paid')>Fully paid</option>
+                <option value="downpayment" @selected(old('payment_option', 'downpayment') === 'downpayment')>Downpayment / reservation only</option>
+                <option value="unpaid" @selected(old('payment_option') === 'unpaid')>Not yet paid</option>
+            </select>
+            @error('payment_option')<p class="error-text">{{ $message }}</p>@enderror
+        </div>
+        <div class="field-group" data-manual-downpayment>
+            <label for="manual_initial_payment_amount">Downpayment collected</label>
+            <div class="money-input"><span>₱</span><input id="manual_initial_payment_amount" name="initial_payment_amount" type="number" min="0.01" max="99999999.99" step="0.01" value="{{ old('initial_payment_amount') }}"></div>
+            @error('initial_payment_amount')<p class="error-text">{{ $message }}</p>@enderror
+        </div>
+        <div class="field-group">
+            <label for="manual_security_deposit_amount">Refundable security deposit <span class="optional-label">Optional</span></label>
+            <div class="money-input"><span>₱</span><input id="manual_security_deposit_amount" name="security_deposit_amount" type="number" min="0" max="99999999.99" step="0.01" value="{{ old('security_deposit_amount', 0) }}"></div>
+            @error('security_deposit_amount')<p class="error-text">{{ $message }}</p>@enderror
+        </div>
+        <label class="availability-toggle"><input type="hidden" name="security_deposit_collected" value="0"><input type="checkbox" name="security_deposit_collected" value="1" @checked(old('security_deposit_collected'))><span><strong>Security deposit already collected</strong><small>Keep this separate from sales until it is returned or applied to charges.</small></span></label>
         <div class="field-group">
             <label for="manual_party_size">Guests, passengers, or quantity</label>
             <input id="manual_party_size" name="party_size" type="number" min="1" max="10000" value="{{ old('party_size', 1) }}">

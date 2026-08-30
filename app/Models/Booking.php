@@ -45,6 +45,7 @@ class Booking extends Model
         'package_breakdown',
         'additional_charges',
         'total_amount',
+        'security_deposit_amount',
         'party_size',
         'change_party_size',
         'change_package_breakdown',
@@ -70,6 +71,7 @@ class Booking extends Model
             'change_start_at' => 'datetime',
             'change_end_at' => 'datetime',
             'total_amount' => 'decimal:2',
+            'security_deposit_amount' => 'decimal:2',
             'rate_quantity' => 'integer',
             'package_breakdown' => 'array',
             'additional_charges' => 'array',
@@ -118,6 +120,11 @@ class Booking extends Model
     public function reviews(): HasMany
     {
         return $this->hasMany(Review::class);
+    }
+
+    public function financialEntries(): HasMany
+    {
+        return $this->hasMany(BookingFinancialEntry::class)->orderBy('occurred_at')->orderBy('id');
     }
 
     public function scopeBlocking(Builder $query): Builder
@@ -221,6 +228,43 @@ class Booking extends Model
 
     public function revenueAmount(): float
     {
-        return round(max(0, (float) $this->total_amount - $this->refundableDepositAmount()), 2);
+        return round(max(0, (float) $this->total_amount - $this->refundableDepositAmount()) + $this->chargeTotal(), 2);
+    }
+
+    public function chargeTotal(): float
+    {
+        return round((float) $this->financialEntries->where('kind', 'charge')->sum('amount'), 2);
+    }
+
+    public function paymentTotal(): float
+    {
+        return round((float) $this->financialEntries->whereIn('kind', ['payment', 'deposit_application'])->sum('amount'), 2);
+    }
+
+    public function outstandingBalance(): float
+    {
+        return round(max(0, $this->revenueAmount() - $this->paymentTotal()), 2);
+    }
+
+    public function securityDepositRequired(): float
+    {
+        return round((float) $this->security_deposit_amount + $this->refundableDepositAmount(), 2);
+    }
+
+    public function securityDepositHeld(): float
+    {
+        $collected = (float) $this->financialEntries->where('kind', 'deposit')->sum('amount');
+        $released = (float) $this->financialEntries->whereIn('kind', ['deposit_refund', 'deposit_application'])->sum('amount');
+
+        return round(max(0, $collected - $released), 2);
+    }
+
+    public function paymentStatusLabel(): string
+    {
+        if ($this->outstandingBalance() <= 0) {
+            return 'Fully paid';
+        }
+
+        return $this->paymentTotal() > 0 ? 'Partially paid' : 'Unpaid';
     }
 }

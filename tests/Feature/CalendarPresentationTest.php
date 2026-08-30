@@ -188,6 +188,29 @@ class CalendarPresentationTest extends TestCase
             ->assertDontSee('Listing timeline');
     }
 
+    public function test_same_category_listings_have_profiles_and_distinct_category_family_shades(): void
+    {
+        $host = User::factory()->host()->create();
+        $client = User::factory()->create();
+        $first = $this->createUnit($host, 'Blue Condo One', 'condo', 'unit');
+        $second = $this->createUnit($host, 'Blue Condo Two', 'condo', 'unit');
+        $first->images()->create(['path' => 'units/blue-condo-one.jpg', 'sort_order' => 0]);
+        $start = now()->addMonth()->startOfMonth()->addDays(4)->setTime(14, 0);
+        $this->createBooking($first, $client, $start, 'First unit.');
+        $this->createBooking($second, $client, $start->copy()->addDays(2), 'Second unit.');
+
+        $response = $this->actingAs($host)->get(route('calendar.index', ['mode' => 'manage', 'month' => $start->format('Y-m')]));
+        $response->assertOk()
+            ->assertSee('Individual listing colors')
+            ->assertSee('Blue Condo One')
+            ->assertSee('Blue Condo Two')
+            ->assertSee('units/blue-condo-one.jpg')
+            ->assertSee('unique listing shade');
+
+        preg_match_all('/--unit-accent:\s*(hsl\([^;]+\))/', $response->getContent(), $matches);
+        $this->assertGreaterThanOrEqual(2, count(array_unique($matches[1])));
+    }
+
     private function createUnit(User $host, string $name, string $category, string $kind): Unit
     {
         return Unit::create([

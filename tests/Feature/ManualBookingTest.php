@@ -200,6 +200,57 @@ class ManualBookingTest extends TestCase
         $this->assertDatabaseCount('bookings', 2);
     }
 
+    public function test_legacy_midnight_outside_condo_booking_times_are_repaired_from_the_listing(): void
+    {
+        $host = User::factory()->host()->create();
+        $client = User::factory()->create();
+        $condo = $this->unit($host, 'Legacy Timed Condo', 'condo');
+        $condo->update(['property_details' => [
+            'check_in_time' => '14:00',
+            'check_out_time' => '00:00',
+        ]]);
+        $start = today()->subMonth()->startOfMonth()->addDays(4);
+        $legacy = Booking::create([
+            'unit_id' => $condo->id,
+            'client_id' => $host->id,
+            'booking_origin' => 'manual',
+            'start_at' => $start->copy()->startOfDay(),
+            'end_at' => $start->copy()->addDay()->startOfDay(),
+            'status' => 'confirmed',
+            'total_amount' => 3000,
+            'party_size' => 1,
+        ]);
+        $alreadyTimed = Booking::create([
+            'unit_id' => $condo->id,
+            'client_id' => $host->id,
+            'booking_origin' => 'manual',
+            'start_at' => $start->copy()->addDays(3)->setTime(9, 30),
+            'end_at' => $start->copy()->addDays(4)->setTime(10, 30),
+            'status' => 'confirmed',
+            'total_amount' => 3000,
+            'party_size' => 1,
+        ]);
+        $platformBooking = Booking::create([
+            'unit_id' => $condo->id,
+            'client_id' => $client->id,
+            'booking_origin' => 'platform',
+            'start_at' => $start->copy()->addDays(6)->startOfDay(),
+            'end_at' => $start->copy()->addDays(7)->startOfDay(),
+            'status' => 'confirmed',
+            'total_amount' => 3000,
+            'party_size' => 1,
+        ]);
+
+        $migration = require database_path('migrations/2026_08_30_010000_repair_legacy_manual_condo_booking_times.php');
+        $migration->up();
+
+        $this->assertSame('14:00', $legacy->fresh()->start_at->format('H:i'));
+        $this->assertSame('00:00', $legacy->fresh()->end_at->format('H:i'));
+        $this->assertSame('09:30', $alreadyTimed->fresh()->start_at->format('H:i'));
+        $this->assertSame('10:30', $alreadyTimed->fresh()->end_at->format('H:i'));
+        $this->assertSame('00:00', $platformBooking->fresh()->start_at->format('H:i'));
+    }
+
     public function test_affiliate_can_add_outside_booking_only_to_an_assigned_listing(): void
     {
         $host = User::factory()->host()->create();
