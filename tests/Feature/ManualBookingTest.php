@@ -13,6 +13,49 @@ class ManualBookingTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_outside_booking_customer_field_suggests_repeat_customers_from_accessible_listings(): void
+    {
+        $host = User::factory()->host()->create();
+        $otherHost = User::factory()->host()->create();
+        $unit = $this->unit($host, 'Repeat Customer Condo', 'condo');
+        $otherUnit = $this->unit($otherHost, 'Private Customer Condo', 'condo');
+        $start = today()->subMonths(3);
+
+        foreach (['Returning Company', 'Returning Company', 'Single Visit Guest'] as $index => $customerName) {
+            Booking::create([
+                'unit_id' => $unit->id,
+                'client_id' => $host->id,
+                'booked_by_user_id' => $host->id,
+                'booking_origin' => 'manual',
+                'external_customer_name' => $customerName,
+                'start_at' => $start->copy()->addDays($index * 2)->setTime(14, 0),
+                'end_at' => $start->copy()->addDays(($index * 2) + 1)->startOfDay(),
+                'status' => 'confirmed',
+                'total_amount' => 2500,
+                'party_size' => 1,
+            ]);
+        }
+        Booking::create([
+            'unit_id' => $otherUnit->id,
+            'client_id' => $otherHost->id,
+            'booked_by_user_id' => $otherHost->id,
+            'booking_origin' => 'manual',
+            'external_customer_name' => 'Other Host Private Customer',
+            'start_at' => $start->copy()->setTime(14, 0),
+            'end_at' => $start->copy()->addDay()->startOfDay(),
+            'status' => 'confirmed',
+            'total_amount' => 2500,
+            'party_size' => 1,
+        ]);
+
+        $this->actingAs($host)->get(route('calendar.index', ['mode' => 'manage']))
+            ->assertOk()
+            ->assertSee('list="manual_customer_suggestions"', false)
+            ->assertSee('value="Returning Company" label="2 previous bookings"', false)
+            ->assertSee('value="Single Visit Guest" label="1 previous booking"', false)
+            ->assertDontSee('Other Host Private Customer');
+    }
+
     public function test_host_can_record_a_past_outside_booking_in_the_calendar_and_sales(): void
     {
         $host = User::factory()->host()->create();

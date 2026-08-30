@@ -92,6 +92,7 @@ class ManualBookingController extends Controller
 
             $commissionPercentage = $affiliatePartnership?->commission_percentage;
             $totalAmount = round((float) $validated['total_amount'], 2);
+            $externalCustomerName = trim((string) ($validated['external_customer_name'] ?? ''));
 
             $booking = $unit->bookings()->create([
                 'client_id' => $unit->host_id,
@@ -99,7 +100,7 @@ class ManualBookingController extends Controller
                 'booking_origin' => 'manual',
                 'source_channel' => $validated['source_channel'],
                 'source_details' => $validated['source_details'] ?? null,
-                'external_customer_name' => $validated['external_customer_name'] ?? null,
+                'external_customer_name' => $externalCustomerName !== '' ? $externalCustomerName : null,
                 'start_at' => $start,
                 'end_at' => $end,
                 'status' => 'confirmed',

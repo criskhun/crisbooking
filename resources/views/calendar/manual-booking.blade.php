@@ -70,7 +70,13 @@
         @endif
         <div class="field-group">
             <label for="manual_external_customer_name">Customer or company <span class="optional-label">Optional</span></label>
-            <input id="manual_external_customer_name" name="external_customer_name" type="text" maxlength="120" value="{{ old('external_customer_name') }}" placeholder="Name used in the external booking">
+            <input id="manual_external_customer_name" name="external_customer_name" type="text" maxlength="120" value="{{ old('external_customer_name') }}" placeholder="Start typing a previous customer or enter a new name" list="manual_customer_suggestions" autocomplete="off">
+            <datalist id="manual_customer_suggestions">
+                @foreach($manualBookingCustomerSuggestions as $customerSuggestion)
+                    <option value="{{ $customerSuggestion['name'] }}" label="{{ $customerSuggestion['booking_count'] }} previous {{ str('booking')->plural($customerSuggestion['booking_count']) }}"></option>
+                @endforeach
+            </datalist>
+            <small class="field-help">Start typing to select a customer or company from your previous outside bookings.</small>
             @error('external_customer_name')<p class="error-text">{{ $message }}</p>@enderror
         </div>
         <div class="field-group">

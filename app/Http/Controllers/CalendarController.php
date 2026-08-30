@@ -83,6 +83,24 @@ class CalendarController extends Controller
                 ->whereHas('units', fn ($query) => $query->whereIn('units.id', $scheduleUnits->pluck('id')))
                 ->orderBy('id')
                 ->get();
+        $manualBookingCustomerSuggestions = $bookingMode
+            ? collect()
+            : Booking::query()
+                ->selectRaw('TRIM(external_customer_name) AS customer_name, COUNT(*) AS booking_count, MAX(start_at) AS last_booked_at')
+                ->where('booking_origin', 'manual')
+                ->whereIn('unit_id', $scheduleUnits->pluck('id'))
+                ->whereNotNull('external_customer_name')
+                ->whereRaw("TRIM(external_customer_name) != ''")
+                ->when($isAffiliateCalendar, fn ($query) => $query->where('booked_by_user_id', $user->id))
+                ->groupByRaw('TRIM(external_customer_name)')
+                ->orderByDesc('booking_count')
+                ->orderByDesc('last_booked_at')
+                ->limit(100)
+                ->get()
+                ->map(fn (Booking $booking) => [
+                    'name' => $booking->customer_name,
+                    'booking_count' => (int) $booking->booking_count,
+                ]);
 
         $units = Unit::query()
             ->with(['host.hostApplication', 'rates', 'images'])
@@ -296,6 +314,7 @@ class CalendarController extends Controller
             'scheduleCategory' => $scheduleCategory,
             'scheduleUnitId' => $scheduleUnitId,
             'manualBookingPartnerships' => $manualBookingPartnerships,
+            'manualBookingCustomerSuggestions' => $manualBookingCustomerSuggestions,
             'manualBookingSourceOptions' => Booking::MANUAL_SOURCE_OPTIONS,
             'calendarUnitStyles' => $calendarUnitStyles,
         ]);
