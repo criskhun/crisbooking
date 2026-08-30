@@ -392,6 +392,10 @@ class BookingCalendarTest extends TestCase
             ->assertOk()
             ->assertSee('data-category-group="service"', false)
             ->assertSee('<option value="cleaning"', false)
+            ->assertSee('<option value="laundry"', false)
+            ->assertSee('<option value="delivery"', false)
+            ->assertSee('<option value="car_wash"', false)
+            ->assertSee('<option value="vehicle_maintenance"', false)
             ->assertSee('<option value="driving"', false)
             ->assertSee('<option value="massage"', false)
             ->assertSee('<option value="consultancy"', false)
@@ -449,6 +453,7 @@ class BookingCalendarTest extends TestCase
                 'color' => 'Silver',
             ],
             'car_accessories' => ['air_conditioning', 'bluetooth', 'reverse_camera'],
+            'car_fulfillment_options' => ['pickup', 'delivery'],
             'custom_accessories' => ['Portable tire inflator', 'Emergency toolkit'],
             'car_charges' => [
                 'car_wash' => ['enabled' => 1, 'amount' => 350],
@@ -462,6 +467,7 @@ class BookingCalendarTest extends TestCase
         $this->assertSame('Toyota', $unit->car_details['make']);
         $this->assertSame('Silver', $unit->car_details['color']);
         $this->assertSame(['air_conditioning', 'bluetooth', 'reverse_camera'], $unit->car_details['accessories']);
+        $this->assertSame(['pickup', 'delivery'], $unit->car_details['fulfillment_options']);
         $this->assertSame(['Portable tire inflator', 'Emergency toolkit'], $unit->car_details['custom_accessories']);
         $this->assertEquals(350.0, $unit->car_details['charges']['car_wash']['amount']);
         $this->assertArrayNotHasKey('delivery', $unit->car_details['charges']);
@@ -616,6 +622,7 @@ class BookingCalendarTest extends TestCase
                 'make' => 'Toyota',
                 'model' => 'Vios',
                 'color' => 'Blue',
+                'fulfillment_options' => ['pickup', 'delivery'],
                 'charges' => [
                     'car_wash' => ['label' => 'Car wash', 'amount' => 300, 'refundable' => false],
                     'delivery' => ['label' => 'Delivery', 'amount' => 500, 'refundable' => false],
@@ -631,12 +638,16 @@ class BookingCalendarTest extends TestCase
             'unit_id' => $unit->id,
             'inquiry_id' => $inquiry->id,
             'duration_pricing' => 1,
+            'fulfillment_method' => 'delivery',
+            'delivery_address' => 'Bajada, Davao City',
             'start_at' => $start->toDateTimeString(),
             'end_at' => $start->copy()->addDay()->toDateTimeString(),
         ])->assertRedirect();
 
         $booking = Booking::firstOrFail();
         $this->assertSame('5300.00', $booking->total_amount);
+        $this->assertSame('delivery', $booking->fulfillment_method);
+        $this->assertSame('Bajada, Davao City', $booking->delivery_address);
         $this->assertCount(3, $booking->additional_charges);
         $this->assertTrue($booking->additional_charges[2]['refundable']);
         $this->assertSame(2000.0, $booking->refundableDepositAmount());
@@ -646,6 +657,22 @@ class BookingCalendarTest extends TestCase
             ->assertSee('Required charges')
             ->assertSee('Refundable deposit')
             ->assertSee('₱5,300.00');
+
+        $pickupStart = $start->copy()->addDays(5);
+        $pickupInquiry = $this->createInquiry($unit, $client, $pickupStart, $pickupStart->copy()->addDay());
+        $this->actingAs($client)->post(route('bookings.store'), [
+            'unit_id' => $unit->id,
+            'inquiry_id' => $pickupInquiry->id,
+            'duration_pricing' => 1,
+            'fulfillment_method' => 'pickup',
+            'start_at' => $pickupStart->toDateTimeString(),
+            'end_at' => $pickupStart->copy()->addDay()->toDateTimeString(),
+        ])->assertRedirect();
+        $pickupBooking = Booking::query()->latest('id')->firstOrFail();
+        $this->assertSame('4800.00', $pickupBooking->total_amount);
+        $this->assertSame('pickup', $pickupBooking->fulfillment_method);
+        $this->assertCount(2, $pickupBooking->additional_charges);
+        $this->assertNotContains('delivery', collect($pickupBooking->additional_charges)->pluck('key'));
     }
 
     public function test_host_can_add_and_remove_gallery_images_without_removing_them_all(): void

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\BookingExpense;
 use App\Models\Inquiry;
 use App\Models\Unit;
 use App\Services\AppNotificationService;
@@ -27,7 +28,12 @@ class BookingController extends Controller
             || ($booking->isManualBooking() && $booking->affiliatePartnership()->where('marketer_id', $request->user()->id)->exists());
 
         abort_unless($canView, 403);
-        $booking->load(['unit.host', 'unit.images', 'unit.rates', 'client', 'bookedBy', 'inquiry', 'affiliatePartnership.marketer', 'reviews', 'financialEntries.recordedBy', 'financialEntries.revisions.editedBy']);
+        $booking->load(['unit.host', 'unit.images', 'unit.rates', 'client', 'bookedBy', 'inquiry', 'affiliatePartnership.marketer', 'reviews', 'financialEntries.recordedBy', 'financialEntries.revisions.editedBy', 'expenses.recordedBy', 'expenses.provider', 'expenses.serviceUnit']);
+        $canManageExpenses = $request->user()->is_admin || $booking->unit->host_id === $request->user()->id;
+        $serviceProviders = $canManageExpenses
+            ? Unit::query()->with('host:id,name')->where('kind', 'service')->where('is_active', true)->orderBy('category')->orderBy('name')->get()
+            : collect();
+        $expenseCategories = BookingExpense::categoryOptions($booking->unit->category);
 
         $googleCalendarUrl = 'https://calendar.google.com/calendar/render?'.http_build_query([
             'action' => 'TEMPLATE',
@@ -37,7 +43,7 @@ class BookingController extends Controller
             'location' => $booking->unit->location,
         ]);
 
-        return view('bookings.show', compact('booking', 'googleCalendarUrl'));
+        return view('bookings.show', compact('booking', 'googleCalendarUrl', 'canManageExpenses', 'serviceProviders', 'expenseCategories'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -47,6 +53,8 @@ class BookingController extends Controller
             'inquiry_id' => ['required', 'integer', 'exists:inquiries,id'],
             'unit_rate_id' => ['nullable', 'integer', 'exists:unit_rates,id'],
             'rental_coverage' => ['nullable', Rule::in(['within_city', 'out_of_town'])],
+            'fulfillment_method' => ['nullable', Rule::in(['pickup', 'delivery'])],
+            'delivery_address' => ['nullable', 'string', 'max:500'],
             'start_at' => ['required', 'date', 'after:now'],
             'end_at' => ['nullable', 'date', 'after:start_at'],
             'duration_pricing' => ['nullable', 'boolean'],
@@ -143,13 +151,27 @@ class BookingController extends Controller
                 $end = $requestedEnd;
             }
 
+            $fulfillmentMethod = null;
+            $deliveryAddress = null;
+            if ($unit->category === 'car') {
+                $fulfillmentOptions = collect($unit->car_details['fulfillment_options'] ?? ['pickup']);
+                $fulfillmentMethod = $validated['fulfillment_method'] ?? ($fulfillmentOptions->count() === 1 ? $fulfillmentOptions->first() : null);
+                if (! $fulfillmentMethod || ! $fulfillmentOptions->contains($fulfillmentMethod)) {
+                    throw ValidationException::withMessages(['fulfillment_method' => 'Choose one of this car’s available pickup or delivery options.']);
+                }
+                $deliveryAddress = trim((string) ($validated['delivery_address'] ?? ''));
+                if ($fulfillmentMethod === 'delivery' && $deliveryAddress === '') {
+                    throw ValidationException::withMessages(['delivery_address' => 'Enter where the vehicle should be delivered.']);
+                }
+            }
+
             if ($this->hasScheduleConflict($unit, $start, $end)) {
                 throw ValidationException::withMessages([
                     'start_at' => 'This unit or service is already booked during the selected time.',
                 ]);
             }
 
-            $additionalCharges = $this->carAdditionalCharges($unit);
+            $additionalCharges = $this->carAdditionalCharges($unit, $fulfillmentMethod);
             $baseRentalTotal = $packageBreakdown
                 ? $this->packageTotal($packageBreakdown)
                 : $this->calculateTotal($unit, $start, $end);
@@ -171,6 +193,8 @@ class BookingController extends Controller
                 'status' => 'pending',
                 'rate_period' => $ratePeriod,
                 'rental_coverage' => $unit->category === 'car' ? $rentalCoverage : null,
+                'fulfillment_method' => $fulfillmentMethod,
+                'delivery_address' => $fulfillmentMethod === 'delivery' ? $deliveryAddress : null,
                 'rate_quantity' => $rateQuantity,
                 'package_breakdown' => $packageBreakdown,
                 'additional_charges' => $additionalCharges ?: null,
@@ -846,13 +870,14 @@ class BookingController extends Controller
         return round((float) $unit->price * max(1, $quantity), 2);
     }
 
-    private function carAdditionalCharges(Unit $unit): array
+    private function carAdditionalCharges(Unit $unit, ?string $fulfillmentMethod = null): array
     {
         if ($unit->category !== 'car') {
             return [];
         }
 
         return collect($unit->car_details['charges'] ?? [])
+            ->reject(fn ($charge, $key) => $key === 'delivery' && $fulfillmentMethod !== 'delivery')
             ->map(fn ($charge, $key) => [
                 'key' => $key,
                 'label' => (string) ($charge['label'] ?? str($key)->replace('_', ' ')->title()),

@@ -42,7 +42,7 @@
                     </div>
                 @else
                     <div class="application-intro-card">
-                        <div><span class="eyebrow">One application, every listing type</span><h2>Apply once, then list vehicles, condos, properties, or services.</h2><p>Your personal and identity information comes directly from your verification profile. Category-specific information belongs in each listing after approval.</p></div>
+                        <div><span class="eyebrow">One application, every listing type</span><h2>Apply once, then list vehicles, properties, or professional services.</h2><p>Approved providers can publish Cleaning, Laundry, Vehicle Delivery, Carwash, or Vehicle Maintenance services and receive paid work from booking hosts. Your personal and identity information comes directly from your verification profile.</p></div>
                         <strong>Usually completed in a few minutes</strong>
                     </div>
                 @endif

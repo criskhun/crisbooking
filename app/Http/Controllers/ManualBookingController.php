@@ -33,6 +33,8 @@ class ManualBookingController extends Controller
             'source_channel' => ['required', Rule::in(array_keys(Booking::MANUAL_SOURCE_OPTIONS))],
             'source_details' => ['nullable', 'string', 'max:160'],
             'external_customer_name' => ['nullable', 'string', 'max:120'],
+            'fulfillment_method' => ['nullable', Rule::in(['pickup', 'delivery'])],
+            'delivery_address' => ['nullable', 'string', 'max:500'],
             'total_amount' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
             'payment_option' => ['nullable', Rule::in(['fully_paid', 'downpayment', 'unpaid'])],
             'initial_payment_amount' => ['nullable', 'required_if:payment_option,downpayment', 'numeric', 'min:0.01', 'lte:total_amount'],
@@ -67,6 +69,19 @@ class ManualBookingController extends Controller
 
             $days = (int) $validated['number_of_days'];
             $startDate = Carbon::createFromFormat('!Y-m-d', $validated['start_date'])->startOfDay();
+            $fulfillmentMethod = null;
+            $deliveryAddress = null;
+            if ($unit->category === 'car') {
+                $fulfillmentOptions = collect($unit->car_details['fulfillment_options'] ?? ['pickup']);
+                $fulfillmentMethod = $validated['fulfillment_method'] ?? ($fulfillmentOptions->count() === 1 ? $fulfillmentOptions->first() : null);
+                if (! $fulfillmentMethod || ! $fulfillmentOptions->contains($fulfillmentMethod)) {
+                    throw ValidationException::withMessages(['fulfillment_method' => 'Choose an available pickup or delivery option.']);
+                }
+                $deliveryAddress = trim((string) ($validated['delivery_address'] ?? ''));
+                if ($fulfillmentMethod === 'delivery' && $deliveryAddress === '') {
+                    throw ValidationException::withMessages(['delivery_address' => 'Enter where the vehicle should be delivered.']);
+                }
+            }
 
             if ($unit->category === 'condo') {
                 [$start, $end] = $unit->standardizeBookingPeriod(
@@ -101,6 +116,8 @@ class ManualBookingController extends Controller
                 'source_channel' => $validated['source_channel'],
                 'source_details' => $validated['source_details'] ?? null,
                 'external_customer_name' => $externalCustomerName !== '' ? $externalCustomerName : null,
+                'fulfillment_method' => $fulfillmentMethod,
+                'delivery_address' => $fulfillmentMethod === 'delivery' ? $deliveryAddress : null,
                 'start_at' => $start,
                 'end_at' => $end,
                 'status' => 'confirmed',

@@ -136,6 +136,11 @@ class User extends Authenticatable implements MustVerifyEmailContract
         return $this->hasMany(AffiliatePartnership::class, 'host_id');
     }
 
+    public function serviceAssignments(): HasMany
+    {
+        return $this->hasMany(BookingExpense::class, 'provider_user_id');
+    }
+
     public function hasCompleteProfile(): bool
     {
         return $this->profile_completed_at !== null

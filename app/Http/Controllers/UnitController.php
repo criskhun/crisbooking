@@ -396,7 +396,7 @@ class UnitController extends Controller
             'name' => ['required', 'string', 'max:120'],
             'kind' => ['required', Rule::in(['unit', 'service'])],
             'category' => ['required', Rule::in($kind === 'service'
-                ? ['cleaning', 'driving', 'massage', 'consultancy', 'other']
+                ? ['cleaning', 'laundry', 'delivery', 'car_wash', 'vehicle_maintenance', 'driving', 'massage', 'consultancy', 'other']
                 : ['car', 'condo'])],
             'custom_category' => [Rule::requiredIf($kind === 'service' && $selectedCategory === 'other'), 'nullable', 'string', 'max:30', 'regex:/[A-Za-z0-9]/'],
             'location' => ['nullable', 'string', 'max:180'],
@@ -447,6 +447,8 @@ class UnitController extends Controller
             'car.transmission' => [Rule::requiredIf($isCar), 'nullable', Rule::in(['automatic', 'manual'])],
             'car.fuel_type' => [Rule::requiredIf($isCar), 'nullable', Rule::in(['gasoline', 'diesel', 'hybrid', 'electric'])],
             'car.color' => [Rule::requiredIf($isCar), 'nullable', 'string', 'max:50'],
+            'car_fulfillment_options' => ['nullable', 'array', 'min:1'],
+            'car_fulfillment_options.*' => [Rule::in(['pickup', 'delivery'])],
             'car_accessories' => ['nullable', 'array'],
             'car_accessories.*' => [Rule::in(['air_conditioning', 'bluetooth', 'usb_charger', 'dashcam', 'gps', 'child_seat', 'roof_rack', 'reverse_camera', 'toll_tag', 'phone_holder'])],
             'custom_accessories' => ['nullable', 'array', 'max:20'],
@@ -558,6 +560,7 @@ class UnitController extends Controller
             }
         }
         $carDetails = $validated['car'] ?? [];
+        $carDetails['fulfillment_options'] = $validated['car_fulfillment_options'] ?? ['pickup'];
         $carDetails['accessories'] = $validated['car_accessories'] ?? [];
         $carDetails['custom_accessories'] = collect($validated['custom_accessories'] ?? [])
             ->map(fn ($accessory) => trim((string) $accessory))
@@ -583,7 +586,7 @@ class UnitController extends Controller
         $propertyDetails['amenities'] = $validated['property_amenities'] ?? [];
         $propertyDetails['parking'] = in_array('parking', $propertyDetails['amenities'], true) ? ($validated['parking'] ?? []) : null;
         $propertyDetails['pool'] = in_array('pool', $propertyDetails['amenities'], true) ? ($validated['pool'] ?? []) : null;
-        unset($validated['photos'], $validated['primary_image'], $validated['remove_images'], $validated['remove_draft_photos'], $validated['offered_rates'], $validated['rates'], $validated['car_rate_areas'], $validated['car_offered_rates'], $validated['car_rates'], $validated['car'], $validated['car_accessories'], $validated['custom_accessories'], $validated['car_charges'], $validated['gps'], $validated['wifi'], $validated['wifi_qr'], $validated['remove_wifi_qr'], $validated['parking'], $validated['pool'], $validated['property'], $validated['property_amenities']);
+        unset($validated['photos'], $validated['primary_image'], $validated['remove_images'], $validated['remove_draft_photos'], $validated['offered_rates'], $validated['rates'], $validated['car_rate_areas'], $validated['car_offered_rates'], $validated['car_rates'], $validated['car'], $validated['car_fulfillment_options'], $validated['car_accessories'], $validated['custom_accessories'], $validated['car_charges'], $validated['gps'], $validated['wifi'], $validated['wifi_qr'], $validated['remove_wifi_qr'], $validated['parking'], $validated['pool'], $validated['property'], $validated['property_amenities']);
 
         $validated['car_details'] = $validated['category'] === 'car' ? $carDetails : null;
         $validated['gps_details'] = $validated['category'] === 'car' && in_array('gps', $carDetails['accessories'], true) ? $gpsDetails : null;
@@ -777,7 +780,7 @@ class UnitController extends Controller
         $kind = ($payload['kind'] ?? 'unit') === 'service' ? 'service' : 'unit';
         $category = trim((string) ($payload['category'] ?? ''));
         $assetCategories = ['car', 'condo'];
-        $serviceCategories = ['cleaning', 'driving', 'massage', 'consultancy', 'other'];
+        $serviceCategories = ['cleaning', 'laundry', 'delivery', 'car_wash', 'vehicle_maintenance', 'driving', 'massage', 'consultancy', 'other'];
 
         $payload['kind'] = $kind;
 

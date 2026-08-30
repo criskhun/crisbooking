@@ -94,6 +94,7 @@
                                 @if($booking->affiliatePartnership)<div><dt>Affiliate</dt><dd>{{ $booking->affiliatePartnership->marketer->name }} · {{ number_format((float) $booking->affiliate_commission_percentage, 2) }}%</dd></div>@endif
                             @endif
                             @if ($booking->rental_coverage)<div><dt>Rental coverage</dt><dd>{{ ['within_city' => 'Within-city use', 'out_of_town' => 'Out-of-town use'][$booking->rental_coverage] ?? str($booking->rental_coverage)->replace('_', ' ')->title() }}</dd></div>@endif
+                            @if ($booking->fulfillment_method)<div><dt>Vehicle handover</dt><dd>{{ $booking->fulfillment_method === 'delivery' ? 'Delivery to customer' : 'Customer pickup' }}@if($booking->delivery_address)<small>{{ $booking->delivery_address }}</small>@endif</dd></div>@endif
                             @if ($currentPackages->isNotEmpty())
                                 <div><dt>Packages</dt><dd class="package-breakdown-list">@foreach($currentPackages as $period => $package)<span>{{ $package['quantity'] }} × {{ $rateLabels[$period] ?? str($period)->replace('_', ' ')->title() }} <small>₱{{ number_format($package['unit_price'], 2) }} each</small></span>@endforeach</dd></div>
                             @endif
@@ -152,6 +153,39 @@
                                 <form method="POST" action="{{ route('bookings.financial-entries.store', $booking) }}">@csrf<strong>Security deposit</strong><label><span>Action</span><select name="kind" required><option value="deposit">Record deposit collected</option><option value="deposit_refund">Return deposit</option><option value="deposit_application">Apply deposit to charges</option></select></label><label><span>Amount</span><div class="money-input"><span>₱</span><input name="amount" type="text" inputmode="decimal" required data-accounting-input></div></label><label><span>Note</span><input name="notes" maxlength="500" placeholder="Return method or damage reference"></label><button class="button button-primary button-small" type="submit">Record deposit action</button></form>
                             </div>
                         @endif
+                    </section>
+                @endif
+
+                @if ($canManageExpenses)
+                    <section class="booking-finance-card booking-expense-card">
+                        <div class="booking-finance-heading"><div><span class="eyebrow">Private operating costs</span><h2>Booking expenses & assigned services</h2><p>Record the costs used to fulfill this booking. Assigned platform providers receive the job in their Service work account.</p></div><span class="booking-status status-confirmed">Net ₱{{ number_format($booking->netRevenueAmount(), 2) }}</span></div>
+                        <div class="booking-finance-metrics booking-expense-metrics">
+                            <div><small>Booking revenue</small><strong>₱{{ number_format($booking->revenueAmount(), 2) }}</strong></div>
+                            <div><small>Total operating expenses</small><strong>₱{{ number_format($booking->expenseTotal(), 2) }}</strong></div>
+                            <div><small>Provider payments pending</small><strong>₱{{ number_format($booking->expenses->where('status', 'completed')->sum('amount'), 2) }}</strong></div>
+                            <div><small>Net after expenses</small><strong>₱{{ number_format($booking->netRevenueAmount(), 2) }}</strong></div>
+                        </div>
+                        <div class="booking-expense-list">
+                            @forelse($booking->expenses as $expense)
+                                <article class="booking-expense-entry status-{{ $expense->status }}">
+                                    <div><small>{{ $expense->categoryLabel() }}</small><strong>{{ $expense->serviceUnit?->name ?? $expense->vendor_name ?? 'Direct expense' }}</strong><span>{{ $expense->provider?->name ? 'Provider: '.$expense->provider->name : 'Recorded by '.$expense->recordedBy?->name }}@if($expense->scheduled_at) · {{ $expense->scheduled_at->format('M j, Y · g:i A') }}@endif</span>@if($expense->notes)<p>{{ $expense->notes }}</p>@endif</div>
+                                    <div class="booking-expense-amount"><b>₱{{ number_format($expense->amount, 2) }}</b><span class="booking-status status-{{ $expense->status }}">{{ $expense->statusLabel() }}</span></div>
+                                    <form method="POST" action="{{ route('bookings.expenses.status', [$booking, $expense]) }}">@csrf @method('PATCH')<select name="status" aria-label="Update {{ $expense->categoryLabel() }} status"><option value="recorded" @selected($expense->status === 'recorded')>Recorded</option>@if($expense->provider_user_id)<option value="assigned" @selected($expense->status === 'assigned')>Assigned</option><option value="completed" @selected($expense->status === 'completed')>Completed</option><option value="paid" @selected($expense->status === 'paid')>Paid</option>@endif<option value="cancelled" @selected($expense->status === 'cancelled')>Cancelled</option></select><button class="button button-ghost button-small" type="submit">Update</button></form>
+                                </article>
+                            @empty
+                                <p>No operating expenses have been recorded for this booking.</p>
+                            @endforelse
+                        </div>
+                        <form method="POST" action="{{ route('bookings.expenses.store', $booking) }}" class="booking-expense-form">
+                            @csrf
+                            <div class="field-group"><label for="expense_category">Expense</label><select id="expense_category" name="category" required>@foreach($expenseCategories as $value => $label)<option value="{{ $value }}" @selected(old('category') === $value)>{{ $label }}</option>@endforeach</select>@error('category')<p class="error-text">{{ $message }}</p>@enderror</div>
+                            <div class="field-group"><label for="expense_amount">Amount</label><div class="money-input"><span>₱</span><input id="expense_amount" name="amount" type="text" inputmode="decimal" value="{{ old('amount') }}" required data-accounting-input></div>@error('amount')<p class="error-text">{{ $message }}</p>@enderror</div>
+                            <div class="field-group"><label for="service_unit_id">Platform service provider <span class="optional-label">Optional</span></label><select id="service_unit_id" name="service_unit_id"><option value="">No platform provider</option>@foreach($serviceProviders as $providerService)<option value="{{ $providerService->id }}" @selected((int) old('service_unit_id') === $providerService->id)>{{ $providerService->host->name }} · {{ $providerService->name }} ({{ str($providerService->category)->replace('_', ' ')->title() }})</option>@endforeach</select><small class="field-help">Providers use the normal host application, then publish a service listing.</small>@error('service_unit_id')<p class="error-text">{{ $message }}</p>@enderror</div>
+                            <div class="field-group"><label for="expense_vendor_name">Outside vendor <span class="optional-label">Optional</span></label><input id="expense_vendor_name" name="vendor_name" maxlength="120" value="{{ old('vendor_name') }}" placeholder="Cleaner, laundry shop, supplier…">@error('vendor_name')<p class="error-text">{{ $message }}</p>@enderror</div>
+                            <div class="field-group"><label for="expense_scheduled_at">Scheduled service <span class="optional-label">Optional</span></label><input id="expense_scheduled_at" name="scheduled_at" type="datetime-local" value="{{ old('scheduled_at') }}">@error('scheduled_at')<p class="error-text">{{ $message }}</p>@enderror</div>
+                            <div class="field-group"><label for="expense_notes">Details <span class="optional-label">Optional</span></label><input id="expense_notes" name="notes" maxlength="500" value="{{ old('notes') }}" placeholder="Quantity, instructions, receipt reference…">@error('notes')<p class="error-text">{{ $message }}</p>@enderror</div>
+                            <button class="button button-primary" type="submit">Record expense / assign provider</button>
+                        </form>
                     </section>
                 @endif
 

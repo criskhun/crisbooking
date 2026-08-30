@@ -26,7 +26,7 @@
                 <div class="listing-grid">
                     @forelse ($units as $unit)
                         @php
-                            $icons = ['car' => '🚗', 'condo' => '🏢', 'driving' => '🛞', 'pet_transport' => '🐾', 'other' => '◇'];
+                            $icons = ['car' => '🚗', 'condo' => '🏢', 'cleaning' => '🧹', 'laundry' => '🧺', 'delivery' => '🚚', 'car_wash' => '🫧', 'vehicle_maintenance' => '🛠', 'driving' => '🛞', 'pet_transport' => '🐾', 'other' => '◇'];
                             $isBooked = $unit->active_bookings_count > 0;
                             $recordCount = $unit->bookings_count + $unit->inquiries_count;
                         @endphp
@@ -53,6 +53,7 @@
                             @endif
                             @if ($unit->category === 'car' && $unit->car_details)
                                 <div class="listing-detail-summary"><strong>{{ $unit->car_details['year'] ?? '' }} {{ $unit->car_details['make'] ?? '' }} {{ $unit->car_details['model'] ?? '' }}</strong><small>{{ $unit->car_details['color'] ?? 'Color not specified' }} · {{ ucfirst($unit->car_details['transmission'] ?? '') }} · {{ ucfirst($unit->car_details['fuel_type'] ?? '') }}</small></div>
+                                <div class="detail-chip-list"><span>{{ collect($unit->car_details['fulfillment_options'] ?? ['pickup'])->map(fn($option) => $option === 'delivery' ? 'Delivery available' : 'Customer pickup')->join(' · ') }}</span></div>
                                 @if (! empty($unit->car_details['accessories']))<div class="detail-chip-list">@foreach ($unit->car_details['accessories'] as $accessory)<span>{{ str($accessory)->replace('_', ' ')->title() }}</span>@endforeach</div>@endif
                                 @if (! empty($unit->car_details['custom_accessories']))<div class="detail-chip-list custom">@foreach ($unit->car_details['custom_accessories'] as $accessory)<span>{{ $accessory }}</span>@endforeach</div>@endif
                                 @if (! empty($unit->car_details['charges']))<div class="amenity-access-list car-charge-summary">@foreach($unit->car_details['charges'] as $charge)<span><small>{{ $charge['label'] }}</small><strong>₱{{ number_format($charge['amount'], 2) }}{{ !empty($charge['refundable']) ? ' refundable' : '' }}</strong></span>@endforeach</div>@endif

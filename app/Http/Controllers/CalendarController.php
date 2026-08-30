@@ -67,7 +67,7 @@ class CalendarController extends Controller
         $scheduleUnits = $bookingMode
             ? collect()
             : Unit::query()
-                ->select(['id', 'host_id', 'name', 'category', 'property_details'])
+                ->select(['id', 'host_id', 'name', 'category', 'property_details', 'car_details'])
                 ->when($user->isHost(), fn ($query) => $query->where('host_id', $user->id))
                 ->when($isAffiliateCalendar, fn ($query) => $query->whereIn('id', $affiliateUnitIds))
                 ->orderBy('name')
@@ -322,7 +322,7 @@ class CalendarController extends Controller
 
     private function calendarUnitStyles(mixed $units): array
     {
-        $categoryHues = ['car' => 28, 'condo' => 220, 'cleaning' => 174, 'driving' => 267, 'massage' => 326, 'consultancy' => 215, 'pet_transport' => 82];
+        $categoryHues = ['car' => 28, 'condo' => 220, 'cleaning' => 174, 'laundry' => 188, 'delivery' => 258, 'car_wash' => 198, 'vehicle_maintenance' => 42, 'driving' => 267, 'massage' => 326, 'consultancy' => 215, 'pet_transport' => 82];
 
         return $units->mapWithKeys(function (Unit $unit) use ($categoryHues) {
             if (preg_match('/^#[0-9a-fA-F]{6}$/', (string) $unit->calendar_color)) {

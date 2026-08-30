@@ -61,8 +61,13 @@
                         <div><dt>Capacity</dt><dd>{{ $unit->capacity ? $unit->capacity.' '.Str::plural('person', $unit->capacity) : 'Ask the host' }}</dd></div>
                         <div><dt>Status</dt><dd>Accepting inquiries</dd></div>
                         @if($unit->category === 'condo')<div><dt>Check-in</dt><dd>{{ \Carbon\Carbon::createFromFormat('H:i', $unit->condoCheckInTime())->format('g:i A') }}</dd></div><div><dt>Check-out</dt><dd>{{ \Carbon\Carbon::createFromFormat('H:i', $unit->condoCheckOutTime())->format('g:i A') }}</dd></div>@endif
+                        @if($unit->category === 'car')<div><dt>Vehicle handover</dt><dd>{{ collect($unit->car_details['fulfillment_options'] ?? ['pickup'])->map(fn($option) => $option === 'delivery' ? 'Delivery available' : 'Customer pickup')->join(' or ') }}</dd></div>@endif
                     </dl>
                 </section>
+
+                @if($unit->category === 'car' && !empty($unit->car_details['charges']))
+                    <section><span class="eyebrow">Vehicle fees</span><h2>Handover and required charges</h2><div class="public-rate-grid">@foreach($unit->car_details['charges'] as $key => $charge)<span><small>{{ $charge['label'] }}@if($key === 'delivery') · only when delivery is selected @endif</small><strong>₱{{ number_format($charge['amount'], 2) }}</strong>@if(!empty($charge['refundable']))<em>Refundable</em>@endif</span>@endforeach</div></section>
+                @endif
 
                 @if($unit->rates->isNotEmpty())
                     <section><span class="eyebrow">Transparent pricing</span><h2>Rental packages</h2><div class="public-rate-grid">@foreach($unit->rates as $rate)<span><small>{{ $unit->category === 'car' ? str($rate->coverage)->replace('_', ' ')->title().' · ' : '' }}{{ str($rate->period)->replace('_', ' ')->title() }}</small>@if($unit->hasSale())<del>₱{{ number_format($rate->price, 2) }}</del>@endif<strong>₱{{ number_format($unit->discountedPrice($rate->price), 2) }}</strong></span>@endforeach</div></section>

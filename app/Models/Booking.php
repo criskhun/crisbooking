@@ -41,6 +41,8 @@ class Booking extends Model
         'status',
         'rate_period',
         'rental_coverage',
+        'fulfillment_method',
+        'delivery_address',
         'rate_quantity',
         'package_breakdown',
         'additional_charges',
@@ -125,6 +127,21 @@ class Booking extends Model
     public function financialEntries(): HasMany
     {
         return $this->hasMany(BookingFinancialEntry::class)->orderBy('occurred_at')->orderBy('id');
+    }
+
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(BookingExpense::class)->latest();
+    }
+
+    public function expenseTotal(): float
+    {
+        return round((float) $this->expenses->where('status', '!=', 'cancelled')->sum('amount'), 2);
+    }
+
+    public function netRevenueAmount(): float
+    {
+        return round($this->revenueAmount() - $this->expenseTotal(), 2);
     }
 
     public function scopeBlocking(Builder $query): Builder

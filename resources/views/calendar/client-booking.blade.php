@@ -3,6 +3,10 @@
         'car' => ['icon' => '🚗', 'label' => 'Car rental', 'copy' => 'Drive on your own schedule'],
         'condo' => ['icon' => '🏢', 'label' => 'Stay', 'copy' => 'Condos, rooms, and properties'],
         'cleaning' => ['icon' => '🧹', 'label' => 'Cleaning', 'copy' => 'Book help for your space'],
+        'laundry' => ['icon' => '🧺', 'label' => 'Laundry', 'copy' => 'Book linen and laundry service'],
+        'delivery' => ['icon' => '🚚', 'label' => 'Vehicle delivery', 'copy' => 'Arrange vehicle handover delivery'],
+        'car_wash' => ['icon' => '🫧', 'label' => 'Carwash', 'copy' => 'Book vehicle cleaning service'],
+        'vehicle_maintenance' => ['icon' => '🛠', 'label' => 'Vehicle maintenance', 'copy' => 'Book vehicle upkeep and maintenance'],
         'driving' => ['icon' => '🛞', 'label' => 'Driving', 'copy' => 'Book a driver for your trip'],
         'massage' => ['icon' => '💆', 'label' => 'Massage', 'copy' => 'Book a massage session'],
         'consultancy' => ['icon' => '💬', 'label' => 'Consultancy', 'copy' => 'Book professional advice'],
@@ -157,6 +161,21 @@
                 @if ($selectedInquiry->agreed_price !== null)<div class="negotiated-booking-price"><span>✓</span><div><small>Accepted negotiated subtotal</small><strong>₱{{ number_format($selectedInquiry->agreed_price, 2) }}</strong><p>This replaces the standard rental or service subtotal. Required listing charges are added separately.</p></div></div>@endif
                 @if ($selectedUnit->isPackageRental())
                     @if ($selectedUnit->category === 'car')
+                        @php
+                            $fulfillmentOptions = collect($selectedUnit->car_details['fulfillment_options'] ?? ['pickup']);
+                        @endphp
+                        <div class="field-group">
+                            <label for="fulfillment_method">How will you receive the car?</label>
+                            <select id="fulfillment_method" name="fulfillment_method" required data-fulfillment-method>
+                                @if($fulfillmentOptions->contains('pickup'))<option value="pickup" @selected(old('fulfillment_method', 'pickup') === 'pickup')>Pick up from the owner</option>@endif
+                                @if($fulfillmentOptions->contains('delivery'))<option value="delivery" @selected(old('fulfillment_method') === 'delivery')>Deliver the car to me</option>@endif
+                            </select>
+                            <small class="field-help">Delivery fees apply only when delivery is selected.</small>
+                            @error('fulfillment_method')<p class="error-text">{{ $message }}</p>@enderror
+                        </div>
+                        @if($fulfillmentOptions->contains('delivery'))
+                            <div class="field-group" data-delivery-address-field @if(old('fulfillment_method', 'pickup') !== 'delivery') hidden @endif><label for="delivery_address">Delivery address</label><input id="delivery_address" name="delivery_address" maxlength="500" value="{{ old('delivery_address') }}" placeholder="Complete address or landmark"><small class="field-help">Required only when delivery is selected.</small>@error('delivery_address')<p class="error-text">{{ $message }}</p>@enderror</div>
+                        @endif
                         <div class="field-group rental-coverage-choice">
                             <label for="rental_coverage">Where will you drive?</label>
                             <select id="rental_coverage" name="rental_coverage" required data-rental-coverage-select>

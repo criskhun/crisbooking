@@ -29,6 +29,7 @@
     })->all();
     $carOfferedRates = old('car_offered_rates', $defaultCarOfferedRates);
     $carDetails = old('car', $unit->car_details ?? []);
+    $carFulfillmentOptions = old('car_fulfillment_options', $unit->car_details['fulfillment_options'] ?? ['pickup']);
     $carAccessories = old('car_accessories', $unit->car_details['accessories'] ?? []);
     $customAccessories = old('custom_accessories', $unit->car_details['custom_accessories'] ?? []);
     $storedCarCharges = $unit->car_details['charges'] ?? [];
@@ -47,7 +48,7 @@
     $draftPrimaryValue = $draftPrimaryIndex === false ? null : 'draft:'.$draftPrimaryIndex;
     $hasStoredPhotos = ($editing && $unit->images->isNotEmpty()) || count($draftPhotoPaths) > 0;
     $assetCategories = ['car' => 'Car rental', 'condo' => 'Condo rental'];
-    $serviceCategories = ['cleaning' => 'Cleaning', 'driving' => 'Driving', 'massage' => 'Massage', 'consultancy' => 'Consultancy', 'other' => 'Other'];
+    $serviceCategories = ['cleaning' => 'Cleaning', 'laundry' => 'Laundry', 'delivery' => 'Vehicle delivery', 'car_wash' => 'Carwash', 'vehicle_maintenance' => 'Vehicle maintenance', 'driving' => 'Driving', 'massage' => 'Massage', 'consultancy' => 'Consultancy', 'other' => 'Other'];
     $selectedKind = old('kind', $unit->kind ?? 'unit') === 'service' ? 'service' : 'unit';
     $storedCategory = old('category', $unit->category ?? 'car');
     if ($selectedKind === 'unit') {
@@ -279,6 +280,12 @@
                 <label><input type="checkbox" name="car_accessories[]" value="{{ $value }}" @checked(in_array($value, $carAccessories)) @if($value === 'gps') data-gps-accessory @endif><span>{{ $label }}</span></label>
             @endforeach
         </div>
+        <div class="detail-subheading"><strong>Vehicle handover options</strong><small>Choose whether renters collect the car, request delivery, or can choose either method.</small></div>
+        <div class="option-check-grid">
+            <label><input type="checkbox" name="car_fulfillment_options[]" value="pickup" @checked(in_array('pickup', $carFulfillmentOptions))><span>Customer pickup</span></label>
+            <label><input type="checkbox" name="car_fulfillment_options[]" value="delivery" @checked(in_array('delivery', $carFulfillmentOptions))><span>Deliver to customer</span></label>
+        </div>
+        @error('car_fulfillment_options')<p class="error-text">{{ $message }}</p>@enderror
         <div class="custom-accessory-panel" data-custom-accessories>
             <div class="private-detail-heading"><span>＋</span><div><strong>Other included accessories</strong><small>Add equipment that is not in the standard checklist.</small></div><button class="map-action-button" type="button" data-add-accessory>Add accessory</button></div>
             <div class="custom-accessory-list" data-accessory-list>

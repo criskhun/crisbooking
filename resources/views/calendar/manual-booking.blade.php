@@ -1,4 +1,4 @@
-<details class="manual-booking-card" data-manual-booking-card @if($errors->hasAny(['unit_id', 'start_date', 'start_time', 'number_of_days', 'source_channel', 'source_details', 'external_customer_name', 'total_amount', 'payment_option', 'initial_payment_amount', 'security_deposit_amount', 'party_size', 'affiliate_partnership_id', 'notes'])) open @endif>
+<details class="manual-booking-card" data-manual-booking-card @if($errors->hasAny(['unit_id', 'start_date', 'start_time', 'number_of_days', 'source_channel', 'source_details', 'external_customer_name', 'fulfillment_method', 'delivery_address', 'total_amount', 'payment_option', 'initial_payment_amount', 'security_deposit_amount', 'party_size', 'affiliate_partnership_id', 'notes'])) open @endif>
     <summary>
         <span aria-hidden="true">＋</span>
         <div>
@@ -18,7 +18,7 @@
             <select id="manual_unit_id" name="unit_id" required data-manual-booking-unit>
                 <option value="">Choose a listing</option>
                 @foreach($scheduleUnits as $manualUnit)
-                    <option value="{{ $manualUnit->id }}" data-category="{{ str($manualUnit->category)->replace('_', ' ')->title() }}" data-unit-category="{{ $manualUnit->category }}" data-start-time="{{ $manualUnit->category === 'condo' ? $manualUnit->condoCheckInTime() : '' }}" data-end-time="{{ $manualUnit->category === 'condo' ? $manualUnit->condoCheckOutTime() : '' }}" @selected((int) old('unit_id') === $manualUnit->id)>{{ $manualUnit->name }} · {{ str($manualUnit->category)->replace('_', ' ')->title() }}</option>
+                    <option value="{{ $manualUnit->id }}" data-category="{{ str($manualUnit->category)->replace('_', ' ')->title() }}" data-unit-category="{{ $manualUnit->category }}" data-fulfillment-options="{{ collect($manualUnit->car_details['fulfillment_options'] ?? ['pickup'])->join(',') }}" data-start-time="{{ $manualUnit->category === 'condo' ? $manualUnit->condoCheckInTime() : '' }}" data-end-time="{{ $manualUnit->category === 'condo' ? $manualUnit->condoCheckOutTime() : '' }}" @selected((int) old('unit_id') === $manualUnit->id)>{{ $manualUnit->name }} · {{ str($manualUnit->category)->replace('_', ' ')->title() }}</option>
                 @endforeach
             </select>
             @error('unit_id')<p class="error-text">{{ $message }}</p>@enderror
@@ -41,6 +41,16 @@
             @error('number_of_days')<p class="error-text">{{ $message }}</p>@enderror
         </div>
         <div class="manual-booking-duration" aria-live="polite" data-manual-booking-duration>1 day will be blocked.</div>
+        <div class="field-group" data-manual-fulfillment hidden>
+            <label for="manual_fulfillment_method">Vehicle handover</label>
+            <select id="manual_fulfillment_method" name="fulfillment_method" data-fulfillment-method><option value="pickup" @selected(old('fulfillment_method') === 'pickup')>Customer pickup</option><option value="delivery" @selected(old('fulfillment_method') === 'delivery')>Deliver to customer</option></select>
+            @error('fulfillment_method')<p class="error-text">{{ $message }}</p>@enderror
+        </div>
+        <div class="field-group" data-manual-delivery-address hidden>
+            <label for="manual_delivery_address">Delivery address</label>
+            <input id="manual_delivery_address" name="delivery_address" maxlength="500" value="{{ old('delivery_address') }}" placeholder="Complete delivery location">
+            @error('delivery_address')<p class="error-text">{{ $message }}</p>@enderror
+        </div>
         <div class="field-group">
             <label for="manual_source_channel">Sales source</label>
             <select id="manual_source_channel" name="source_channel" required>

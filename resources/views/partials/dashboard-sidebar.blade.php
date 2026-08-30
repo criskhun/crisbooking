@@ -45,6 +45,7 @@
         @endif
         @if (auth()->user()->isHost() || auth()->user()->is_admin)
             <a @class(['active' => request()->routeIs('units.*')]) href="{{ route('units.index') }}"><span>＋</span> Units & services</a>
+            <a @class(['active' => request()->routeIs('service-work.*')]) href="{{ route('service-work.index') }}"><span>🛠</span> Service work</a>
         @endif
         @if (auth()->user()->is_admin)
             <a @class(['active' => request()->routeIs('admin.host-applications.*')]) href="{{ route('admin.host-applications.index') }}"><span>✓</span> Host applications @if($pendingHostReviewCount)<b class="sidebar-notification-badge" title="{{ $pendingHostReviewCount }} applications need review">{{ $pendingHostReviewCount > 99 ? '99+' : $pendingHostReviewCount }}</b>@endif</a>

@@ -1,0 +1,87 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class BookingExpense extends Model
+{
+    public const RESIDENCE_CATEGORIES = [
+        'cleaning' => 'Cleaning fee',
+        'laundry' => 'Laundry',
+        'drinking_water' => 'Drinking water',
+        'guest_supplies' => 'Guest supplies',
+        'utilities' => 'Utilities',
+        'property_maintenance' => 'Property maintenance',
+        'other' => 'Other expense',
+    ];
+
+    public const CAR_CATEGORIES = [
+        'delivery' => 'Vehicle delivery',
+        'car_wash' => 'Carwash',
+        'fuel' => 'Fuel',
+        'vehicle_maintenance' => 'Vehicle maintenance',
+        'repair' => 'Repair or parts',
+        'toll_parking' => 'Toll or parking',
+        'other' => 'Other expense',
+    ];
+
+    protected $fillable = [
+        'booking_id', 'recorded_by_user_id', 'provider_user_id', 'service_unit_id',
+        'category', 'vendor_name', 'amount', 'status', 'notes', 'scheduled_at',
+        'completed_at', 'paid_at',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'amount' => 'decimal:2',
+            'scheduled_at' => 'datetime',
+            'completed_at' => 'datetime',
+            'paid_at' => 'datetime',
+        ];
+    }
+
+    public function booking(): BelongsTo
+    {
+        return $this->belongsTo(Booking::class);
+    }
+
+    public function recordedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'recorded_by_user_id');
+    }
+
+    public function provider(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'provider_user_id');
+    }
+
+    public function serviceUnit(): BelongsTo
+    {
+        return $this->belongsTo(Unit::class, 'service_unit_id');
+    }
+
+    public static function categoryOptions(string $bookingCategory): array
+    {
+        return $bookingCategory === 'car' ? self::CAR_CATEGORIES : self::RESIDENCE_CATEGORIES;
+    }
+
+    public function categoryLabel(): string
+    {
+        return (self::RESIDENCE_CATEGORIES + self::CAR_CATEGORIES)[$this->category]
+            ?? str($this->category)->replace('_', ' ')->title();
+    }
+
+    public function statusLabel(): string
+    {
+        return match ($this->status) {
+            'assigned' => 'Assigned',
+            'completed' => 'Completed — payment pending',
+            'paid' => 'Paid',
+            'cancelled' => 'Cancelled',
+            default => 'Recorded',
+        };
+    }
+}

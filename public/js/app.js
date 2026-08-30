@@ -106,6 +106,19 @@
             });
         });
 
+        document.querySelectorAll('[data-fulfillment-method]').forEach((method) => {
+            if (method.closest('[data-manual-booking-form]')) return;
+            const field = method.form?.querySelector('[data-delivery-address-field]');
+            const input = field?.querySelector('input');
+            const syncDeliveryAddress = () => {
+                const needsDelivery = method.value === 'delivery';
+                if (field) field.hidden = !needsDelivery;
+                if (input) input.required = needsDelivery;
+            };
+            method.addEventListener('change', syncDeliveryAddress);
+            syncDeliveryAddress();
+        });
+
         document.querySelectorAll('[data-calendar-color-picker]').forEach((picker) => {
             const enabled = picker.querySelector('[data-calendar-color-enabled]');
             const gradient = picker.querySelector('[data-calendar-gradient-enabled]');
@@ -1095,6 +1108,9 @@
             const duration = form.querySelector('[data-manual-booking-duration]');
             const paymentOption = form.querySelector('[data-manual-payment-option]');
             const downpayment = form.querySelector('[data-manual-downpayment]');
+            const fulfillment = form.querySelector('[data-manual-fulfillment]');
+            const fulfillmentMethod = form.querySelector('[data-fulfillment-method]');
+            const deliveryAddress = form.querySelector('[data-manual-delivery-address]');
             let flexibleStartTime = startTime?.value || '12:00';
             const formatClockTime = (value) => new Date(`2000-01-01T${value}:00`).toLocaleTimeString('en-PH', {
                 hour: 'numeric',
@@ -1150,6 +1166,23 @@
                 syncAffiliates();
                 syncUnitTimes();
                 syncDuration();
+                const selectedUnit = unit?.selectedOptions[0];
+                const isCar = selectedUnit?.dataset.unitCategory === 'car';
+                const options = (selectedUnit?.dataset.fulfillmentOptions || 'pickup').split(',').filter(Boolean);
+                if (fulfillment) fulfillment.hidden = !isCar;
+                if (fulfillmentMethod) {
+                    [...fulfillmentMethod.options].forEach((option) => {
+                        option.hidden = !options.includes(option.value);
+                        option.disabled = !options.includes(option.value);
+                    });
+                    if (!options.includes(fulfillmentMethod.value)) fulfillmentMethod.value = options[0] || 'pickup';
+                    fulfillmentMethod.required = isCar;
+                }
+                const needsAddress = isCar && fulfillmentMethod?.value === 'delivery';
+                if (deliveryAddress) {
+                    deliveryAddress.hidden = !needsAddress;
+                    deliveryAddress.querySelector('input')?.toggleAttribute('required', needsAddress);
+                }
             };
             const syncPayment = () => {
                 if (!paymentOption || !downpayment) return;
@@ -1166,9 +1199,8 @@
             });
             days?.addEventListener('input', syncDuration);
             paymentOption?.addEventListener('change', syncPayment);
-            syncUnitTimes();
-            syncAffiliates();
-            syncDuration();
+            fulfillmentMethod?.addEventListener('change', syncUnit);
+            syncUnit();
             syncPayment();
         });
 
