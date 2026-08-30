@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\BookingFinancialEntry;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -13,6 +15,7 @@ class BookingFinancialEntryController extends Controller
 {
     public function store(Request $request, Booking $booking): RedirectResponse
     {
+        $this->normalizeMoneyInput($request, 'amount');
         $booking->loadMissing('unit', 'financialEntries');
         abort_unless($request->user()->is_admin || $booking->unit->host_id === $request->user()->id, 403);
 
@@ -61,5 +64,115 @@ class BookingFinancialEntryController extends Controller
         ]);
 
         return back()->with('status', 'Booking financial record added.');
+    }
+
+    public function update(Request $request, Booking $booking, BookingFinancialEntry $financialEntry): RedirectResponse
+    {
+        abort_unless($financialEntry->booking_id === $booking->id, 404);
+        $booking->loadMissing('unit');
+        abort_unless($request->user()->is_admin || $booking->unit->host_id === $request->user()->id, 403);
+        $this->normalizeMoneyInput($request, 'amount');
+
+        $validated = $request->validate([
+            'category' => ['nullable', Rule::in(array_keys(BookingFinancialEntry::CATEGORY_LABELS))],
+            'amount' => ['required', 'numeric', 'min:0.01', 'max:99999999.99'],
+            'notes' => ['nullable', 'string', 'max:500'],
+            'occurred_at' => ['required', 'date'],
+            'correction_reason' => ['required', 'string', 'min:5', 'max:500'],
+        ]);
+
+        DB::transaction(function () use ($booking, $financialEntry, $validated, $request) {
+            $lockedBooking = Booking::query()->lockForUpdate()->with('financialEntries')->findOrFail($booking->id);
+            $entry = BookingFinancialEntry::query()->lockForUpdate()->findOrFail($financialEntry->id);
+            abort_unless($entry->booking_id === $lockedBooking->id, 404);
+
+            $category = $this->categoryForEntry($entry, $validated['category'] ?? null);
+            $amount = round((float) $validated['amount'], 2);
+            $this->validateCorrectedAmount($lockedBooking, $entry, $amount);
+
+            $before = $this->auditSnapshot($entry);
+            $entry->fill([
+                'category' => $category,
+                'amount' => $amount,
+                'notes' => filled($validated['notes'] ?? null) ? trim($validated['notes']) : null,
+                'occurred_at' => Carbon::parse($validated['occurred_at']),
+            ]);
+
+            if (! $entry->isDirty(['category', 'amount', 'notes', 'occurred_at'])) {
+                throw ValidationException::withMessages(['amount' => 'Change at least one ledger detail before saving the correction.']);
+            }
+
+            $entry->save();
+            $entry->revisions()->create([
+                'edited_by_user_id' => $request->user()->id,
+                'before_values' => $before,
+                'after_values' => $this->auditSnapshot($entry->fresh()),
+                'reason' => trim($validated['correction_reason']),
+            ]);
+        });
+
+        return back()->with('status', 'Financial entry corrected. The original values and reason were added to its audit history.');
+    }
+
+    private function categoryForEntry(BookingFinancialEntry $entry, ?string $category): string
+    {
+        $allowedCategories = match ($entry->kind) {
+            'payment' => ['full_payment', 'downpayment', 'balance_payment'],
+            'charge' => ['damage', 'late_checkout', 'smoking', 'excessive_cleaning', 'other_penalty'],
+            default => [],
+        };
+
+        if ($allowedCategories === []) {
+            return $entry->category;
+        }
+        if (! $category || ! in_array($category, $allowedCategories, true)) {
+            throw ValidationException::withMessages(['category' => 'Choose a category that matches this financial entry.']);
+        }
+
+        return $category;
+    }
+
+    private function validateCorrectedAmount(Booking $booking, BookingFinancialEntry $entry, float $amount): void
+    {
+        $otherEntries = $booking->financialEntries->reject(fn (BookingFinancialEntry $candidate) => $candidate->id === $entry->id);
+        $charges = (float) $otherEntries->where('kind', 'charge')->sum('amount') + ($entry->kind === 'charge' ? $amount : 0);
+        $revenue = round(max(0, (float) $booking->total_amount - $booking->refundableDepositAmount()) + $charges, 2);
+        $otherPayments = (float) $otherEntries->whereIn('kind', ['payment', 'deposit_application'])->sum('amount');
+        $balanceBeforeEntry = round(max(0, $revenue - $otherPayments), 2);
+
+        if (in_array($entry->kind, ['payment', 'deposit_application'], true) && $amount > $balanceBeforeEntry) {
+            throw ValidationException::withMessages(['amount' => 'This correction would make collected payments greater than the booking balance.']);
+        }
+
+        $otherDeposits = (float) $otherEntries->where('kind', 'deposit')->sum('amount');
+        $otherReleases = (float) $otherEntries->whereIn('kind', ['deposit_refund', 'deposit_application'])->sum('amount');
+        $depositHeldBeforeEntry = round(max(0, $otherDeposits - $otherReleases), 2);
+
+        if (in_array($entry->kind, ['deposit_refund', 'deposit_application'], true) && $amount > $depositHeldBeforeEntry) {
+            throw ValidationException::withMessages(['amount' => 'This correction is greater than the security deposit available before this entry.']);
+        }
+
+        $remainingRequiredDeposit = max(0, $booking->securityDepositRequired() - $depositHeldBeforeEntry);
+        if ($entry->kind === 'deposit' && $booking->securityDepositRequired() > 0 && $amount > $remainingRequiredDeposit) {
+            throw ValidationException::withMessages(['amount' => 'This correction is greater than the required security deposit.']);
+        }
+    }
+
+    /** @return array{category:string, amount:string, notes:?string, occurred_at:string} */
+    private function auditSnapshot(BookingFinancialEntry $entry): array
+    {
+        return [
+            'category' => $entry->category,
+            'amount' => number_format((float) $entry->amount, 2, '.', ''),
+            'notes' => $entry->notes,
+            'occurred_at' => $entry->occurred_at->toIso8601String(),
+        ];
+    }
+
+    private function normalizeMoneyInput(Request $request, string $field): void
+    {
+        if ($request->filled($field)) {
+            $request->merge([$field => str_replace([',', '₱', ' '], '', (string) $request->input($field))]);
+        }
     }
 }

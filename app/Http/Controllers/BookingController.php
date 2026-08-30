@@ -27,7 +27,7 @@ class BookingController extends Controller
             || ($booking->isManualBooking() && $booking->affiliatePartnership()->where('marketer_id', $request->user()->id)->exists());
 
         abort_unless($canView, 403);
-        $booking->load(['unit.host', 'unit.images', 'unit.rates', 'client', 'bookedBy', 'inquiry', 'affiliatePartnership.marketer', 'reviews', 'financialEntries.recordedBy']);
+        $booking->load(['unit.host', 'unit.images', 'unit.rates', 'client', 'bookedBy', 'inquiry', 'affiliatePartnership.marketer', 'reviews', 'financialEntries.recordedBy', 'financialEntries.revisions.editedBy']);
 
         $googleCalendarUrl = 'https://calendar.google.com/calendar/render?'.http_build_query([
             'action' => 'TEMPLATE',

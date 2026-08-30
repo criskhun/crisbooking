@@ -26,10 +26,10 @@ class BookingFinancialLedgerTest extends TestCase
             'number_of_days' => 1,
             'source_channel' => 'direct',
             'external_customer_name' => 'Deposit Customer',
-            'total_amount' => 5000,
+            'total_amount' => '5,000.00',
             'payment_option' => 'downpayment',
-            'initial_payment_amount' => 2000,
-            'security_deposit_amount' => 1500,
+            'initial_payment_amount' => '2,000.00',
+            'security_deposit_amount' => '1,500.00',
             'security_deposit_collected' => 1,
             'party_size' => 1,
         ])->assertRedirect();
@@ -41,6 +41,28 @@ class BookingFinancialLedgerTest extends TestCase
         $this->assertDatabaseHas('booking_financial_entries', ['booking_id' => $booking->id, 'kind' => 'payment', 'category' => 'downpayment', 'amount' => 2000]);
         $this->assertDatabaseHas('booking_financial_entries', ['booking_id' => $booking->id, 'kind' => 'deposit', 'amount' => 1500]);
 
+        $downpayment = $booking->financialEntries->firstWhere('category', 'downpayment');
+        $this->actingAs($other)->patch(route('bookings.financial-entries.update', [$booking, $downpayment]), [
+            'category' => 'downpayment', 'amount' => '2,100.00', 'occurred_at' => now()->format('Y-m-d H:i:s'),
+            'correction_reason' => 'Correcting a typing error.',
+        ])->assertForbidden();
+        $this->actingAs($host)->from(route('bookings.show', $booking))->patch(route('bookings.financial-entries.update', [$booking, $downpayment]), [
+            'category' => 'downpayment', 'amount' => '2,100.00', 'occurred_at' => $downpayment->occurred_at->format('Y-m-d H:i:s'),
+        ])->assertRedirect(route('bookings.show', $booking))->assertSessionHasErrors('correction_reason');
+        $this->actingAs($host)->patch(route('bookings.financial-entries.update', [$booking, $downpayment]), [
+            'category' => 'downpayment', 'amount' => '2,100.00', 'occurred_at' => $downpayment->occurred_at->format('Y-m-d H:i:s'),
+            'notes' => 'Corrected cash downpayment.', 'correction_reason' => 'The original amount was entered with a typing error.',
+        ])->assertRedirect();
+        $this->assertDatabaseHas('booking_financial_entries', ['id' => $downpayment->id, 'amount' => 2100, 'notes' => 'Corrected cash downpayment.']);
+        $this->assertDatabaseHas('booking_financial_entry_revisions', [
+            'booking_financial_entry_id' => $downpayment->id,
+            'edited_by_user_id' => $host->id,
+            'reason' => 'The original amount was entered with a typing error.',
+        ]);
+        $revision = $downpayment->revisions()->firstOrFail();
+        $this->assertSame('2000.00', $revision->before_values['amount']);
+        $this->assertSame('2100.00', $revision->after_values['amount']);
+
         $this->actingAs($other)->post(route('bookings.financial-entries.store', $booking), [
             'kind' => 'charge', 'category' => 'damage', 'amount' => 2000,
         ])->assertForbidden();
@@ -51,7 +73,7 @@ class BookingFinancialLedgerTest extends TestCase
             'kind' => 'deposit_application', 'amount' => 1500, 'notes' => 'Applied held deposit to damage.',
         ])->assertRedirect();
         $this->actingAs($host)->post(route('bookings.financial-entries.store', $booking), [
-            'kind' => 'payment', 'category' => 'balance_payment', 'amount' => 3500,
+            'kind' => 'payment', 'category' => 'balance_payment', 'amount' => '3,400.00',
         ])->assertRedirect();
 
         $booking->refresh()->load('financialEntries');
@@ -64,6 +86,9 @@ class BookingFinancialLedgerTest extends TestCase
             ->assertSee('Booking financial ledger')
             ->assertSee('Damage fee')
             ->assertSee('Damaged side mirror.')
+            ->assertSee('Correction history')
+            ->assertSee('The original amount was entered with a typing error.')
+            ->assertSee('₱2,000.00 → ₱2,100.00')
             ->assertSee('Fully paid');
         $this->actingAs($host)->get(route('sales.index'))->assertOk()->assertSee('₱7,000.00');
     }

@@ -75,7 +75,7 @@
         </div>
         <div class="field-group">
             <label for="manual_total_amount">Recorded sale amount</label>
-            <div class="money-input"><span>₱</span><input id="manual_total_amount" name="total_amount" type="number" min="0" max="99999999.99" step="0.01" value="{{ old('total_amount', 0) }}" required></div>
+            <div class="money-input"><span>₱</span><input id="manual_total_amount" name="total_amount" type="text" inputmode="decimal" value="{{ number_format((float) old('total_amount', 0), 2, '.', ',') }}" required data-accounting-input></div>
             @error('total_amount')<p class="error-text">{{ $message }}</p>@enderror
         </div>
         <div class="field-group">
@@ -89,12 +89,12 @@
         </div>
         <div class="field-group" data-manual-downpayment>
             <label for="manual_initial_payment_amount">Downpayment collected</label>
-            <div class="money-input"><span>₱</span><input id="manual_initial_payment_amount" name="initial_payment_amount" type="number" min="0.01" max="99999999.99" step="0.01" value="{{ old('initial_payment_amount') }}"></div>
+            <div class="money-input"><span>₱</span><input id="manual_initial_payment_amount" name="initial_payment_amount" type="text" inputmode="decimal" value="{{ filled(old('initial_payment_amount')) ? number_format((float) old('initial_payment_amount'), 2, '.', ',') : '' }}" data-accounting-input></div>
             @error('initial_payment_amount')<p class="error-text">{{ $message }}</p>@enderror
         </div>
         <div class="field-group">
             <label for="manual_security_deposit_amount">Refundable security deposit <span class="optional-label">Optional</span></label>
-            <div class="money-input"><span>₱</span><input id="manual_security_deposit_amount" name="security_deposit_amount" type="number" min="0" max="99999999.99" step="0.01" value="{{ old('security_deposit_amount', 0) }}"></div>
+            <div class="money-input"><span>₱</span><input id="manual_security_deposit_amount" name="security_deposit_amount" type="text" inputmode="decimal" value="{{ number_format((float) old('security_deposit_amount', 0), 2, '.', ',') }}" data-accounting-input></div>
             @error('security_deposit_amount')<p class="error-text">{{ $message }}</p>@enderror
         </div>
         <label class="availability-toggle"><input type="hidden" name="security_deposit_collected" value="0"><input type="checkbox" name="security_deposit_collected" value="1" @checked(old('security_deposit_collected'))><span><strong>Security deposit already collected</strong><small>Keep this separate from sales until it is returned or applied to charges.</small></span></label>

@@ -17,6 +17,12 @@ class ManualBookingController extends Controller
 {
     public function store(Request $request, AppNotificationService $notifications): RedirectResponse
     {
+        foreach (['total_amount', 'initial_payment_amount', 'security_deposit_amount'] as $moneyField) {
+            if ($request->filled($moneyField)) {
+                $request->merge([$moneyField => str_replace([',', '₱', ' '], '', (string) $request->input($moneyField))]);
+            }
+        }
+
         $validated = $request->validate([
             'unit_id' => ['required', 'integer', 'exists:units,id'],
             // Outside bookings may be entered after the fact so historical sales can

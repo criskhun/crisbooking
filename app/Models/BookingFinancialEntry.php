@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class BookingFinancialEntry extends Model
 {
@@ -36,6 +37,11 @@ class BookingFinancialEntry extends Model
     public function recordedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recorded_by_user_id');
+    }
+
+    public function revisions(): HasMany
+    {
+        return $this->hasMany(BookingFinancialEntryRevision::class)->latest();
     }
 
     public function label(): string

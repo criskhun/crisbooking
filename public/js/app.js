@@ -62,6 +62,50 @@
 
         syncControls();
 
+        const accountingInputs = [...document.querySelectorAll('[data-accounting-input]')];
+        const stripAccountingValue = (value) => String(value || '').replace(/[^0-9.]/g, '');
+        const formatAccountingInput = (input) => {
+            const caret = input.selectionStart ?? input.value.length;
+            const digitsBeforeCaret = input.value.slice(0, caret).replace(/\D/g, '').length;
+            const clean = stripAccountingValue(input.value);
+            const [rawInteger = '', ...decimalParts] = clean.split('.');
+            const integer = rawInteger.replace(/^0+(?=\d)/, '') || (clean ? '0' : '');
+            const decimals = decimalParts.join('').slice(0, 2);
+            const grouped = integer ? Number(integer).toLocaleString('en-US', {maximumFractionDigits: 0}) : '';
+            input.value = grouped + (clean.includes('.') ? `.${decimals}` : '');
+
+            if (document.activeElement === input) {
+                let nextCaret = input.value.length;
+                let digitCount = 0;
+                for (let index = 0; index < input.value.length; index++) {
+                    if (/\d/.test(input.value[index])) digitCount++;
+                    if (digitCount >= digitsBeforeCaret) {
+                        nextCaret = index + 1;
+                        break;
+                    }
+                }
+                input.setSelectionRange(nextCaret, nextCaret);
+            }
+        };
+
+        accountingInputs.forEach((input) => {
+            input.addEventListener('input', () => formatAccountingInput(input));
+            input.addEventListener('blur', () => {
+                const numericValue = Number(stripAccountingValue(input.value));
+                if (input.value !== '' && Number.isFinite(numericValue)) {
+                    input.value = numericValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                }
+            });
+            formatAccountingInput(input);
+        });
+        new Set(accountingInputs.map((input) => input.form).filter(Boolean)).forEach((form) => {
+            form.addEventListener('submit', () => {
+                form.querySelectorAll('[data-accounting-input]').forEach((input) => {
+                    input.value = input.value.replace(/,/g, '');
+                });
+            });
+        });
+
         document.querySelectorAll('[data-calendar-color-picker]').forEach((picker) => {
             const enabled = picker.querySelector('[data-calendar-color-enabled]');
             const gradient = picker.querySelector('[data-calendar-gradient-enabled]');

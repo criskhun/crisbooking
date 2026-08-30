@@ -109,6 +109,7 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     Route::get('/units/{unit}/wifi-qr', [UnitController::class, 'wifiQr'])->name('units.wifi-qr');
     Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('bookings.show');
     Route::post('/bookings/{booking}/financial-entries', [BookingFinancialEntryController::class, 'store'])->name('bookings.financial-entries.store');
+    Route::patch('/bookings/{booking}/financial-entries/{financialEntry}', [BookingFinancialEntryController::class, 'update'])->name('bookings.financial-entries.update');
     Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
     Route::patch('/bookings/{booking}/status', [BookingController::class, 'updateStatus'])->name('bookings.status');
     Route::post('/bookings/{booking}/payment-proof', [BookingController::class, 'submitPaymentProof'])->name('bookings.payment-proof.store');
