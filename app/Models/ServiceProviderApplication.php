@@ -19,13 +19,13 @@ class ServiceProviderApplication extends Model
     ];
 
     protected $fillable = [
-        'applicant_user_id', 'host_id', 'services', 'status', 'application_message',
+        'applicant_user_id', 'host_id', 'services', 'status', 'application_message', 'application_images',
         'review_note', 'reviewed_at',
     ];
 
     protected function casts(): array
     {
-        return ['services' => 'array', 'reviewed_at' => 'datetime'];
+        return ['services' => 'array', 'application_images' => 'array', 'reviewed_at' => 'datetime'];
     }
 
     public function applicant(): BelongsTo

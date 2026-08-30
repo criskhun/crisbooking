@@ -115,6 +115,7 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     Route::patch('/bookings/{booking}/financial-entries/{financialEntry}', [BookingFinancialEntryController::class, 'update'])->name('bookings.financial-entries.update');
     Route::post('/bookings/{booking}/expenses', [BookingExpenseController::class, 'store'])->name('bookings.expenses.store');
     Route::patch('/bookings/{booking}/expenses/{expense}/status', [BookingExpenseController::class, 'updateStatus'])->name('bookings.expenses.status');
+    Route::get('/bookings/{booking}/expenses/{expense}/payment-proof', [BookingExpenseController::class, 'paymentProof'])->name('bookings.expenses.payment-proof');
     Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
     Route::patch('/bookings/{booking}/status', [BookingController::class, 'updateStatus'])->name('bookings.status');
     Route::post('/bookings/{booking}/payment-proof', [BookingController::class, 'submitPaymentProof'])->name('bookings.payment-proof.store');
@@ -158,8 +159,11 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     Route::get('/sales', [SalesController::class, 'index'])->name('sales.index');
     Route::get('/service-work', [ServiceWorkController::class, 'index'])->name('service-work.index');
     Route::patch('/service-work/{expense}/complete', [ServiceWorkController::class, 'complete'])->name('service-work.complete');
+    Route::patch('/service-work/{expense}/payment-received', [ServiceWorkController::class, 'confirmPayment'])->name('service-work.payment-received');
+    Route::get('/service-work/{expense}/completion-images/{image}', [ServiceWorkController::class, 'completionImage'])->whereNumber('image')->name('service-work.completion-images.show');
     Route::post('/service-provider-applications', [ServiceProviderApplicationController::class, 'store'])->name('service-provider-applications.store');
     Route::patch('/service-provider-applications/{application}', [ServiceProviderApplicationController::class, 'review'])->name('service-provider-applications.review');
+    Route::get('/service-provider-applications/{application}/images/{image}', [ServiceProviderApplicationController::class, 'image'])->whereNumber('image')->name('service-provider-applications.images.show');
     Route::get('/support', [SupportReportController::class, 'index'])->name('support.index');
     Route::post('/support', [SupportReportController::class, 'store'])->name('support.store');
 });

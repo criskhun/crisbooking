@@ -29,8 +29,9 @@ class BookingExpense extends Model
 
     protected $fillable = [
         'booking_id', 'recorded_by_user_id', 'provider_user_id', 'service_unit_id', 'service_provider_application_id',
-        'category', 'vendor_name', 'amount', 'status', 'notes', 'scheduled_at',
-        'completed_at', 'paid_at',
+        'category', 'vendor_name', 'amount', 'status', 'notes', 'completion_images',
+        'payment_proof_path', 'payment_proof_name', 'scheduled_at', 'completed_at', 'paid_at',
+        'payment_received_at',
     ];
 
     protected function casts(): array
@@ -40,6 +41,8 @@ class BookingExpense extends Model
             'scheduled_at' => 'datetime',
             'completed_at' => 'datetime',
             'paid_at' => 'datetime',
+            'payment_received_at' => 'datetime',
+            'completion_images' => 'array',
         ];
     }
 
@@ -93,7 +96,8 @@ class BookingExpense extends Model
         return match ($this->status) {
             'assigned' => 'Assigned',
             'completed' => 'Completed — payment pending',
-            'paid' => 'Paid',
+            'paid' => 'Paid — awaiting provider confirmation',
+            'payment_received' => 'Closed — payment received',
             'cancelled' => 'Cancelled',
             default => 'Recorded',
         };
