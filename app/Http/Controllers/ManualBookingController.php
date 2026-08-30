@@ -22,6 +22,7 @@ class ManualBookingController extends Controller
             // Outside bookings may be entered after the fact so historical sales can
             // be reflected in both the calendar and the sales dashboard.
             'start_date' => ['required', 'date_format:Y-m-d'],
+            'start_time' => ['required', 'date_format:H:i'],
             'number_of_days' => ['required', 'integer', 'min:1', 'max:365'],
             'source_channel' => ['required', Rule::in(array_keys(Booking::MANUAL_SOURCE_OPTIONS))],
             'source_details' => ['nullable', 'string', 'max:160'],
@@ -54,9 +55,20 @@ class ManualBookingController extends Controller
                 ]);
             }
 
-            $start = Carbon::createFromFormat('!Y-m-d', $validated['start_date'])->startOfDay();
             $days = (int) $validated['number_of_days'];
-            $end = $start->copy()->addDays($days);
+            $startDate = Carbon::createFromFormat('!Y-m-d', $validated['start_date'])->startOfDay();
+
+            if ($unit->category === 'condo') {
+                [$start, $end] = $unit->standardizeBookingPeriod(
+                    $startDate,
+                    $startDate->copy()->addDays($days),
+                );
+            } else {
+                [$startHour, $startMinute] = array_map('intval', explode(':', $validated['start_time']));
+                $start = $startDate->setTime($startHour, $startMinute);
+                $end = $start->copy()->addDays($days);
+            }
+
             $conflict = $unit->bookings()->blocking()
                 ->where('start_at', '<', $end)
                 ->where('end_at', '>', $start)

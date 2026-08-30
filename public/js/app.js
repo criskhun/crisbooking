@@ -1009,8 +1009,15 @@
             const unit = form.querySelector('[data-manual-booking-unit]');
             const affiliate = form.querySelector('[data-manual-booking-affiliate]');
             const start = form.querySelector('[data-manual-booking-start]');
+            const startTime = form.querySelector('[data-manual-booking-time]');
+            const startTimeHelp = form.querySelector('[data-manual-booking-time-help]');
             const days = form.querySelector('[data-manual-booking-days]');
             const duration = form.querySelector('[data-manual-booking-duration]');
+            let flexibleStartTime = startTime?.value || '12:00';
+            const formatClockTime = (value) => new Date(`2000-01-01T${value}:00`).toLocaleTimeString('en-PH', {
+                hour: 'numeric',
+                minute: '2-digit',
+            });
 
             const syncAffiliates = () => {
                 if (!unit || !affiliate) return;
@@ -1023,21 +1030,54 @@
                 });
                 if (affiliate.selectedOptions[0]?.disabled) affiliate.value = '';
             };
+            const syncUnitTimes = () => {
+                if (!unit || !startTime) return;
+                const selectedUnit = unit.selectedOptions[0];
+                const isCondo = selectedUnit?.dataset.unitCategory === 'condo';
+
+                if (isCondo) {
+                    if (!startTime.readOnly) flexibleStartTime = startTime.value || flexibleStartTime;
+                    startTime.value = selectedUnit.dataset.startTime || '14:00';
+                    startTime.readOnly = true;
+                    if (startTimeHelp) {
+                        startTimeHelp.textContent = `Fixed by this listing: check-in at ${formatClockTime(startTime.value)} and check-out at ${formatClockTime(selectedUnit.dataset.endTime || '12:00')}.`;
+                    }
+                } else {
+                    if (startTime.readOnly) startTime.value = flexibleStartTime;
+                    startTime.readOnly = false;
+                    if (startTimeHelp) startTimeHelp.textContent = 'For a one-day rental, the booking ends at this time on the following date.';
+                }
+            };
             const syncDuration = () => {
                 if (!duration || !days) return;
                 const count = Math.max(1, Number(days.value) || 1);
                 let message = `${count} ${count === 1 ? 'day' : 'days'} will be blocked.`;
                 if (start?.value) {
-                    const departure = new Date(`${start.value}T12:00:00`);
+                    const selectedUnit = unit?.selectedOptions[0];
+                    const endTime = selectedUnit?.dataset.unitCategory === 'condo'
+                        ? (selectedUnit.dataset.endTime || '12:00')
+                        : (startTime?.value || '12:00');
+                    const departure = new Date(`${start.value}T${endTime}:00`);
                     departure.setDate(departure.getDate() + count);
-                    message += ` Available again ${departure.toLocaleDateString('en-PH', {month: 'short', day: 'numeric', year: 'numeric'})}.`;
+                    message += ` Ends ${departure.toLocaleString('en-PH', {month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit'})}.`;
                 }
                 duration.textContent = message;
             };
 
-            unit?.addEventListener('change', syncAffiliates);
+            const syncUnit = () => {
+                syncAffiliates();
+                syncUnitTimes();
+                syncDuration();
+            };
+
+            unit?.addEventListener('change', syncUnit);
             start?.addEventListener('change', syncDuration);
+            startTime?.addEventListener('input', () => {
+                if (!startTime.readOnly) flexibleStartTime = startTime.value || flexibleStartTime;
+                syncDuration();
+            });
             days?.addEventListener('input', syncDuration);
+            syncUnitTimes();
             syncAffiliates();
             syncDuration();
         });

@@ -67,7 +67,7 @@ class CalendarController extends Controller
         $scheduleUnits = $bookingMode
             ? collect()
             : Unit::query()
-                ->select(['id', 'host_id', 'name', 'category'])
+                ->select(['id', 'host_id', 'name', 'category', 'property_details'])
                 ->when($user->isHost(), fn ($query) => $query->where('host_id', $user->id))
                 ->when($isAffiliateCalendar, fn ($query) => $query->whereIn('id', $affiliateUnitIds))
                 ->orderBy('name')
@@ -321,7 +321,9 @@ class CalendarController extends Controller
 
         foreach ($bookings->whereIn('status', ['pending', 'pre_approved', 'payment_submitted', 'confirmed'])->sortBy('start_at') as $booking) {
             $firstDay = $booking->start_at->copy()->startOfDay()->max($calendarStart);
-            $lastDay = $booking->end_at->copy()->subSecond()->startOfDay()->min($gridEnd->copy()->startOfDay());
+            // Show the departure/return date as part of a multi-date rental even
+            // when its exact end time is midnight at the start of that date.
+            $lastDay = $booking->end_at->copy()->startOfDay()->min($gridEnd->copy()->startOfDay());
 
             if ($lastDay->lt($firstDay)) {
                 continue;

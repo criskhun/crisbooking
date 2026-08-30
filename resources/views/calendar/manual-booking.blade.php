@@ -1,4 +1,4 @@
-<details class="manual-booking-card" data-manual-booking-card @if($errors->hasAny(['unit_id', 'start_date', 'number_of_days', 'source_channel', 'source_details', 'external_customer_name', 'total_amount', 'party_size', 'affiliate_partnership_id', 'notes'])) open @endif>
+<details class="manual-booking-card" data-manual-booking-card @if($errors->hasAny(['unit_id', 'start_date', 'start_time', 'number_of_days', 'source_channel', 'source_details', 'external_customer_name', 'total_amount', 'party_size', 'affiliate_partnership_id', 'notes'])) open @endif>
     <summary>
         <span aria-hidden="true">＋</span>
         <div>
@@ -18,7 +18,7 @@
             <select id="manual_unit_id" name="unit_id" required data-manual-booking-unit>
                 <option value="">Choose a listing</option>
                 @foreach($scheduleUnits as $manualUnit)
-                    <option value="{{ $manualUnit->id }}" data-category="{{ str($manualUnit->category)->replace('_', ' ')->title() }}" @selected((int) old('unit_id') === $manualUnit->id)>{{ $manualUnit->name }} · {{ str($manualUnit->category)->replace('_', ' ')->title() }}</option>
+                    <option value="{{ $manualUnit->id }}" data-category="{{ str($manualUnit->category)->replace('_', ' ')->title() }}" data-unit-category="{{ $manualUnit->category }}" data-start-time="{{ $manualUnit->category === 'condo' ? $manualUnit->condoCheckInTime() : '' }}" data-end-time="{{ $manualUnit->category === 'condo' ? $manualUnit->condoCheckOutTime() : '' }}" @selected((int) old('unit_id') === $manualUnit->id)>{{ $manualUnit->name }} · {{ str($manualUnit->category)->replace('_', ' ')->title() }}</option>
                 @endforeach
             </select>
             @error('unit_id')<p class="error-text">{{ $message }}</p>@enderror
@@ -28,6 +28,12 @@
             <input id="manual_start_date" name="start_date" type="date" value="{{ old('start_date', $selectedDate->toDateString()) }}" required data-manual-booking-start>
             <small class="field-help">Past dates are available only for recording outside bookings that already happened.</small>
             @error('start_date')<p class="error-text">{{ $message }}</p>@enderror
+        </div>
+        <div class="field-group">
+            <label for="manual_start_time">Pickup or start time</label>
+            <input id="manual_start_time" name="start_time" type="time" value="{{ old('start_time', '12:00') }}" required data-manual-booking-time>
+            <small class="field-help" data-manual-booking-time-help>For a one-day rental, the booking ends at this time on the following date.</small>
+            @error('start_time')<p class="error-text">{{ $message }}</p>@enderror
         </div>
         <div class="field-group">
             <label for="manual_number_of_days">Number of days</label>

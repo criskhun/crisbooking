@@ -31,6 +31,7 @@ class ManualBookingTest extends TestCase
         $response = $this->actingAs($host)->post(route('calendar.manual-bookings.store'), [
             'unit_id' => $unit->id,
             'start_date' => $start->toDateString(),
+            'start_time' => '09:00',
             'number_of_days' => 2,
             'source_channel' => 'direct',
             'external_customer_name' => 'Previous Walk-in Customer',
@@ -54,6 +55,7 @@ class ManualBookingTest extends TestCase
             ->post(route('calendar.manual-bookings.store'), [
                 'unit_id' => $unit->id,
                 'start_date' => $start->copy()->addDay()->toDateString(),
+                'start_time' => '09:00',
                 'number_of_days' => 1,
                 'source_channel' => 'other',
                 'total_amount' => 1000,
@@ -81,6 +83,7 @@ class ManualBookingTest extends TestCase
         $response = $this->actingAs($host)->post(route('calendar.manual-bookings.store'), [
             'unit_id' => $unit->id,
             'start_date' => $start->toDateString(),
+            'start_time' => '09:00',
             'number_of_days' => 3,
             'source_channel' => 'airbnb',
             'source_details' => 'AIR-48291',
@@ -139,6 +142,64 @@ class ManualBookingTest extends TestCase
             ->assertSee('Cancel outside booking & release dates', false);
     }
 
+    public function test_one_day_outside_condo_and_car_bookings_use_real_times_and_span_two_calendar_dates(): void
+    {
+        $host = User::factory()->host()->create();
+        $condo = $this->unit($host, 'Timed Harbor Condo', 'condo');
+        $condo->update(['property_details' => [
+            'type' => 'condo',
+            'check_in_time' => '14:00',
+            'check_out_time' => '00:00',
+        ]]);
+        $car = $this->unit($host, 'Timed Touring Car', 'car');
+        $month = today()->addMonth()->startOfMonth();
+        $condoDate = $month->copy()->addDays(9);
+        $carDate = $month->copy()->addDays(12);
+        $payload = [
+            'number_of_days' => 1,
+            'source_channel' => 'direct',
+            'total_amount' => 2500,
+            'party_size' => 1,
+        ];
+
+        $this->actingAs($host)->post(route('calendar.manual-bookings.store'), [
+            ...$payload,
+            'unit_id' => $condo->id,
+            'start_date' => $condoDate->toDateString(),
+            'start_time' => '09:15',
+        ])->assertRedirect();
+        $this->actingAs($host)->post(route('calendar.manual-bookings.store'), [
+            ...$payload,
+            'unit_id' => $car->id,
+            'start_date' => $carDate->toDateString(),
+            'start_time' => '14:30',
+        ])->assertRedirect();
+
+        $condoBooking = Booking::where('unit_id', $condo->id)->sole();
+        $carBooking = Booking::where('unit_id', $car->id)->sole();
+        $this->assertSame($condoDate->format('Y-m-d').' 14:00', $condoBooking->start_at->format('Y-m-d H:i'));
+        $this->assertSame($condoDate->copy()->addDay()->format('Y-m-d').' 00:00', $condoBooking->end_at->format('Y-m-d H:i'));
+        $this->assertSame($carDate->format('Y-m-d').' 14:30', $carBooking->start_at->format('Y-m-d H:i'));
+        $this->assertSame($carDate->copy()->addDay()->format('Y-m-d').' 14:30', $carBooking->end_at->format('Y-m-d H:i'));
+
+        $this->actingAs($host)->get(route('calendar.index', [
+            'mode' => 'manage',
+            'month' => $month->format('Y-m'),
+        ]))->assertOk()
+            ->assertSee('data-booking-id="'.$condoBooking->id.'" data-segment-start="'.$condoDate->format('Y-m-d').'" data-segment-end="'.$condoDate->copy()->addDay()->format('Y-m-d').'"', false)
+            ->assertSee('data-booking-id="'.$carBooking->id.'" data-segment-start="'.$carDate->format('Y-m-d').'" data-segment-end="'.$carDate->copy()->addDay()->format('Y-m-d').'"', false);
+
+        $this->actingAs($host)->from(route('calendar.index', ['mode' => 'manage']))
+            ->post(route('calendar.manual-bookings.store'), [
+                ...$payload,
+                'unit_id' => $car->id,
+                'start_date' => $carDate->copy()->addDay()->toDateString(),
+                'start_time' => '13:00',
+            ])->assertRedirect(route('calendar.index', ['mode' => 'manage']))
+            ->assertSessionHasErrors('start_date');
+        $this->assertDatabaseCount('bookings', 2);
+    }
+
     public function test_affiliate_can_add_outside_booking_only_to_an_assigned_listing(): void
     {
         $host = User::factory()->host()->create();
@@ -149,6 +210,7 @@ class ManualBookingTest extends TestCase
         $start = today()->addDays(15);
         $payload = [
             'start_date' => $start->toDateString(),
+            'start_time' => '14:30',
             'number_of_days' => 2,
             'source_channel' => 'booking_com',
             'source_details' => 'BC-1009',
@@ -216,6 +278,7 @@ class ManualBookingTest extends TestCase
         $payload = [
             'unit_id' => $unit->id,
             'start_date' => $start->toDateString(),
+            'start_time' => '08:00',
             'number_of_days' => 1,
             'source_channel' => 'walk_in_phone',
             'external_customer_name' => 'Phone Customer',
