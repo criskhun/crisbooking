@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\Inquiry;
 use App\Models\Unit;
 use App\Services\AppNotificationService;
+use App\Services\SystemBranding;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -32,7 +33,7 @@ class BookingController extends Controller
             'action' => 'TEMPLATE',
             'text' => $booking->unit->name.' booking',
             'dates' => $booking->start_at->copy()->utc()->format('Ymd\THis\Z').'/'.$booking->end_at->copy()->utc()->format('Ymd\THis\Z'),
-            'details' => 'Davao Rent Zone booking #'.$booking->id.' · '.ucfirst($booking->status),
+            'details' => app(SystemBranding::class)->settings()->site_name.' booking #'.$booking->id.' · '.ucfirst($booking->status),
             'location' => $booking->unit->location,
         ]);
 

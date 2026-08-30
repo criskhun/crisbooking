@@ -21,9 +21,9 @@
     @endphp
 
     <header class="availability-page-nav">
-        <a class="brand" href="{{ route('home') }}" aria-label="Davao Rent Zone home">
-            <span class="brand-mark" aria-hidden="true"><img src="{{ asset('images/davao-rent-zone-logo-mark.svg') }}" alt=""></span>
-            <span class="brand-name">Davao Rent Zone</span>
+        <a class="brand" href="{{ route('home') }}" aria-label="{{ $branding->site_name }} home">
+            <span class="brand-mark" aria-hidden="true"><img src="{{ $branding->logo_url }}" alt=""></span>
+            <span class="brand-name">{{ $branding->site_name }}</span>
         </a>
         <a class="availability-back-link" href="{{ route('home', $homeFilters).'#availability-results' }}">← Back to calendar</a>
     </header>

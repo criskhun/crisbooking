@@ -7,8 +7,8 @@
     <main class="auth-shell">
         <section class="auth-brand-panel">
             <a class="brand brand-light" href="{{ route('home') }}">
-                <span class="brand-mark" aria-hidden="true"><img src="{{ asset('images/davao-rent-zone-logo-mark.svg') }}" alt=""></span>
-                <span class="brand-name">Davao Rent Zone</span>
+                <span class="brand-mark" aria-hidden="true"><img src="{{ $branding->logo_url }}" alt=""></span>
+                <span class="brand-name">{{ $branding->site_name }}</span>
             </a>
             <div class="auth-panel-copy">
                 <span class="eyebrow eyebrow-light">Welcome back</span>
@@ -21,8 +21,8 @@
         <section class="auth-form-panel">
             <div class="auth-form-wrap">
                 <a class="mobile-brand brand" href="{{ route('home') }}">
-                    <span class="brand-mark" aria-hidden="true"><img src="{{ asset('images/davao-rent-zone-logo-mark.svg') }}" alt=""></span>
-                    <span class="brand-name">Davao Rent Zone</span>
+                    <span class="brand-mark" aria-hidden="true"><img src="{{ $branding->logo_url }}" alt=""></span>
+                    <span class="brand-name">{{ $branding->site_name }}</span>
                 </a>
                 <div class="form-heading">
                     <span class="form-kicker">Account access</span>
@@ -76,7 +76,7 @@
                     <button class="button button-primary button-full" type="submit">Log in <span aria-hidden="true">→</span></button>
                 </form>
 
-                <p class="form-footer">New to Davao Rent Zone? <a href="{{ route('register') }}">Create an account</a></p>
+                <p class="form-footer">New to {{ $branding->site_name }}? <a href="{{ route('register') }}">Create an account</a></p>
             </div>
         </section>
     </main>

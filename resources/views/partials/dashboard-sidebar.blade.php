@@ -27,8 +27,8 @@
         <span class="sidebar-toggle-arrow" aria-hidden="true">›</span>
     </button>
     <a class="brand brand-light" href="{{ route('dashboard') }}">
-        <span class="brand-mark" aria-hidden="true"><img src="{{ asset('images/davao-rent-zone-logo-mark.svg') }}" alt=""></span>
-        <span class="brand-name">Davao Rent Zone</span>
+        <span class="brand-mark" aria-hidden="true"><img src="{{ $branding->logo_url }}" alt=""></span>
+        <span class="brand-name">{{ $branding->site_name }}</span>
     </a>
     <nav class="sidebar-nav" id="dashboard-navigation">
         <a @class(['active' => request()->routeIs('dashboard')]) href="{{ route('dashboard') }}"><span>⌂</span> Overview</a>
@@ -51,6 +51,7 @@
             <a @class(['active' => request()->routeIs('admin.bookings.*')]) href="{{ route('admin.bookings.index') }}"><span>▦</span> Booking records</a>
             <a @class(['active' => request()->routeIs('admin.support-reports.*')]) href="{{ route('admin.support-reports.index') }}"><span>!</span> Admin reports @if($openSupportReportCount)<b class="sidebar-notification-badge attention" title="{{ $openSupportReportCount }} reports need attention">{{ $openSupportReportCount > 99 ? '99+' : $openSupportReportCount }}</b>@endif</a>
             <a @class(['active' => request()->routeIs('accounts.*')]) href="{{ route('accounts.index') }}"><span>♙</span> Users</a>
+            <a @class(['active' => request()->routeIs('admin.settings.*')]) href="{{ route('admin.settings.edit') }}"><span>⚙</span> System settings</a>
         @else
             <a @class(['active' => request()->routeIs('support.*')]) href="{{ route('support.index') }}"><span>!</span> Contact admin</a>
         @endif

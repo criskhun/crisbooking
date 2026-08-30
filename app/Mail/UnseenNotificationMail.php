@@ -4,6 +4,7 @@ namespace App\Mail;
 
 use App\Models\User;
 use App\Models\UserNotification;
+use App\Services\SystemBranding;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -18,7 +19,7 @@ class UnseenNotificationMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: $this->alert->title.' — Davao Rent Zone');
+        return new Envelope(subject: $this->alert->title.' — '.app(SystemBranding::class)->settings()->site_name);
     }
 
     public function content(): Content

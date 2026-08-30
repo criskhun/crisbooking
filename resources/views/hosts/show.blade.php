@@ -4,14 +4,14 @@
 
 @section('content')
     <header class="public-listing-header host-storefront-header">
-        <a class="brand" href="{{ route('home') }}"><span>DRZ</span><strong>Davao Rent Zone</strong></a>
+        <a class="brand" href="{{ route('home') }}"><span>{{ $branding->short_name }}</span><strong>{{ $branding->site_name }}</strong></a>
         <nav><a href="{{ route('home') }}">Browse rentals</a><details class="public-info-guide"><summary aria-label="How to use this host page">i</summary><div><strong>How to use this page</strong><p>Review the host or business, compare their active listings, then choose <b>View & book</b> for rates, rules, photos, and inquiry options.</p></div></details>@auth<a class="button button-primary button-small" href="{{ route('calendar.index', ['mode' => 'book']) }}">Book now</a>@else<a class="button button-primary button-small" href="{{ route('login') }}">Log in</a>@endauth</nav>
     </header>
 
     <main class="host-storefront-shell">
         <section class="host-storefront-hero" data-guide-feature="host-storefront">
             @include('partials.avatar', ['avatarUser' => $hostUser, 'avatarClass' => 'host-storefront-avatar', 'avatarAlt' => $businessName])
-            <div><span class="eyebrow">Verified Davao Rent Zone host</span><h1>{{ $businessName }}</h1>@if($businessName !== $hostUser->name)<p>Hosted by {{ $hostUser->name }}</p>@endif<p>{{ $hostUser->bio ?: 'Browse this host’s active rentals and services.' }}</p></div>
+            <div><span class="eyebrow">Verified {{ $branding->site_name }} host</span><h1>{{ $businessName }}</h1>@if($businessName !== $hostUser->name)<p>Hosted by {{ $hostUser->name }}</p>@endif<p>{{ $hostUser->bio ?: 'Browse this host’s active rentals and services.' }}</p></div>
             <dl><div><dt>Active listings</dt><dd>{{ $hostUser->units->count() }}</dd></div><div><dt>Host rating</dt><dd>{{ $hostRating ? '★ '.number_format($hostRating, 1) : 'New host' }}</dd></div><div><dt>Location</dt><dd>{{ $hostUser->city ?: 'Davao Region' }}</dd></div></dl>
         </section>
 

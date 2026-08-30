@@ -38,7 +38,7 @@
                         <span class="eyebrow">Hosts</span>
                         <h2>{{ $hostCount }}</h2>
                     </div>
-                    <p>{{ $activeCount }} active · {{ $adminCount }} {{ Str::plural('administrator', $adminCount) }}. Manage roles and account status for everyone registered with Davao Rent Zone.</p>
+                    <p>{{ $activeCount }} active · {{ $adminCount }} {{ Str::plural('administrator', $adminCount) }}. Manage roles and account status for everyone registered with {{ $branding->site_name }}.</p>
                 </div>
 
                 <div class="accounts-table-wrap">

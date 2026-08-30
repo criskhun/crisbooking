@@ -4,6 +4,8 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AdminBookingController;
 use App\Http\Controllers\AdminHostApplicationController;
 use App\Http\Controllers\AdminSupportReportController;
+use App\Http\Controllers\AdminSystemSettingController;
+use App\Http\Controllers\AppManifestController;
 use App\Http\Controllers\AffiliateController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\FacebookAuthController;
@@ -38,6 +40,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
+Route::get('/branding-manifest.webmanifest', AppManifestController::class)->name('app.manifest');
 Route::get('/available', AvailabilityController::class)->name('availability.index');
 
 Route::get('/listings/{unit}', [PublicListingController::class, 'show'])->name('listings.show');
@@ -157,6 +160,8 @@ Route::middleware(['auth', 'active', 'verified', 'host'])->group(function () {
 });
 
 Route::middleware(['auth', 'active', 'verified', 'admin'])->group(function () {
+    Route::get('/admin/settings', [AdminSystemSettingController::class, 'edit'])->name('admin.settings.edit');
+    Route::put('/admin/settings', [AdminSystemSettingController::class, 'update'])->name('admin.settings.update');
     Route::get('/admin/host-applications', [AdminHostApplicationController::class, 'index'])->name('admin.host-applications.index');
     Route::get('/admin/host-applications/{hostApplication}', [AdminHostApplicationController::class, 'show'])->name('admin.host-applications.show');
     Route::patch('/admin/host-applications/{hostApplication}', [AdminHostApplicationController::class, 'review'])->name('admin.host-applications.review');

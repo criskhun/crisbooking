@@ -182,6 +182,7 @@ class AppNotificationService
         }
 
         try {
+            $settings = app(SystemBranding::class)->settings();
             $webPush = new WebPush(['VAPID' => [
                 'subject' => config('services.webpush.subject', config('app.url')),
                 'publicKey' => $publicKey,
@@ -192,8 +193,8 @@ class AppNotificationService
                 'body' => $notification->body,
                 'url' => $notification->url,
                 'notification_id' => $notification->id,
-                'icon' => asset('icons/icon-192.png'),
-                'badge' => asset('icons/icon-192.png'),
+                'icon' => $settings->favicon_path ? $settings->favicon_url : asset('icons/icon-192.png'),
+                'badge' => $settings->favicon_path ? $settings->favicon_url : asset('icons/icon-192.png'),
             ], JSON_THROW_ON_ERROR);
 
             $user->pushSubscriptions()->each(function (StoredPushSubscription $stored) use ($webPush, $payload) {

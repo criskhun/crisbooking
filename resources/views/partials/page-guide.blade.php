@@ -1,5 +1,5 @@
 @php
-    $guideTitle = 'Davao Rent Zone quick guide';
+    $guideTitle = $branding->site_name.' quick guide';
     $guideSteps = [
         ['selector' => '[data-global-listing-search]', 'title' => 'Search anything', 'copy' => 'Find listings by details such as “5 seater car,” “2 BR condo,” a host name, or a business name.'],
         ['selector' => '[data-notification-center]', 'title' => 'See what needs attention', 'copy' => 'Open notifications for inquiries, chats, booking requests, and other updates.'],

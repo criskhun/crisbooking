@@ -57,7 +57,7 @@
                         <label class="management-option">
                             <input type="hidden" name="is_active" value="0">
                             <input type="checkbox" name="is_active" value="1" @checked(old('is_active', $account->is_active))>
-                            <span><strong>Active account</strong><small>Can sign in and use the Davao Rent Zone dashboard.</small></span>
+                            <span><strong>Active account</strong><small>Can sign in and use the {{ $branding->site_name }} dashboard.</small></span>
                         </label>
                     </div>
 

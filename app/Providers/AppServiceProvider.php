@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Services\SystemBranding;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -11,7 +13,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->scoped(SystemBranding::class, fn () => new SystemBranding);
     }
 
     /**
@@ -19,6 +21,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        View::composer('*', function ($view): void {
+            $view->with('branding', app(SystemBranding::class)->settings());
+        });
     }
 }

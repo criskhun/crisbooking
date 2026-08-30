@@ -9,6 +9,7 @@ use App\Models\ProfileImage;
 use App\Models\User;
 use App\Support\PhoneNumber;
 use App\Support\ProfileOptions;
+use App\Services\SystemBranding;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -53,7 +54,7 @@ class ProfileController extends Controller
             throw $exception;
         }
 
-        return back()->with('status', 'Your new profile photo is now used throughout Davao Rent Zone.');
+        return back()->with('status', 'Your new profile photo is now used throughout '.app(SystemBranding::class)->settings()->site_name.'.');
     }
 
     public function selectImage(Request $request, ProfileImage $profileImage): RedirectResponse

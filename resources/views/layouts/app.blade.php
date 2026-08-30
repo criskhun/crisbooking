@@ -1,20 +1,19 @@
 <!DOCTYPE html>
-<html lang="en" data-color-mode="light" data-color-theme="forest">
+<html lang="en" data-color-mode="light" data-color-theme="forest" style="--forest: {{ $branding->primary_color }}; --forest-deep: {{ $branding->secondary_color }}; --lime: {{ $branding->accent_color }};">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#173c34">
-    <meta name="application-name" content="Davao Rent Zone">
+    <meta name="theme-color" content="{{ $branding->primary_color }}">
+    <meta name="application-name" content="{{ $branding->site_name }}">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Davao Rent Zone">
+    <meta name="apple-mobile-web-app-title" content="{{ $branding->short_name }}">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', config('app.name'))</title>
-    <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
-    <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
-    <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="32x32">
-    <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
+    <title>{{ str_replace('Davao Rent Zone', $branding->site_name, trim($__env->yieldContent('title', $branding->site_name))) }}</title>
+    <link rel="manifest" href="{{ route('app.manifest') }}">
+    <link rel="icon" href="{{ $branding->favicon_url }}">
+    <link rel="apple-touch-icon" href="{{ $branding->favicon_path ? $branding->favicon_url : asset('apple-touch-icon.png') }}">
     <script>
         try {
             document.documentElement.dataset.colorMode = localStorage.getItem('mybooking-color-mode') || 'light';
@@ -51,7 +50,7 @@
 
     <div class="global-loading-overlay" data-global-loader aria-hidden="true">
         <div class="global-loading-card" role="status" aria-live="polite" aria-atomic="true">
-            <span class="global-loading-brand" aria-hidden="true"><img src="{{ asset('images/davao-rent-zone-logo-mark.svg') }}" alt=""></span>
+            <span class="global-loading-brand" aria-hidden="true"><img src="{{ $branding->logo_url }}" alt=""></span>
             <span class="global-loading-spinner" aria-hidden="true"></span>
             <strong data-global-loader-title>Loading your workspace</strong>
             <small data-global-loader-message>Please wait while the page gets ready.</small>
@@ -60,10 +59,10 @@
 
     <aside class="pwa-install-banner" data-pwa-install-banner hidden aria-labelledby="pwa-install-title">
         <div class="pwa-install-icon" aria-hidden="true">
-            <img src="{{ asset('icons/icon-192.png') }}" alt="">
+            <img src="{{ $branding->favicon_path ? $branding->favicon_url : asset('icons/icon-192.png') }}" alt="">
         </div>
         <div class="pwa-install-copy">
-            <strong id="pwa-install-title">Install Davao Rent Zone</strong>
+            <strong id="pwa-install-title">Install {{ $branding->site_name }}</strong>
             <p data-pwa-install-message>Use it like an app from your home screen or desktop.</p>
         </div>
         <button class="button button-primary button-small" type="button" data-pwa-install-action>Install app</button>

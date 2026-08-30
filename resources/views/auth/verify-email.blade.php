@@ -7,8 +7,8 @@
     <main class="verification-shell">
         <section class="verification-card">
             <a class="brand" href="{{ route('home') }}">
-                <span class="brand-mark" aria-hidden="true"><img src="{{ asset('images/davao-rent-zone-logo-mark.svg') }}" alt=""></span>
-                <span class="brand-name">Davao Rent Zone</span>
+                <span class="brand-mark" aria-hidden="true"><img src="{{ $branding->logo_url }}" alt=""></span>
+                <span class="brand-name">{{ $branding->site_name }}</span>
             </a>
 
             <span class="verification-icon">✉</span>

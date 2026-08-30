@@ -12,7 +12,7 @@
         $icons = ['car' => '🚗', 'condo' => '🏢', 'driving' => '🛞', 'pet_transport' => '🐾'];
     @endphp
     <header class="public-listing-nav">
-        <a class="brand" href="{{ route('home') }}"><span class="brand-mark"><img src="{{ asset('images/davao-rent-zone-logo-mark.svg') }}" alt=""></span><span class="brand-name">Davao Rent Zone</span></a>
+        <a class="brand" href="{{ route('home') }}"><span class="brand-mark"><img src="{{ $branding->logo_url }}" alt=""></span><span class="brand-name">{{ $branding->site_name }}</span></a>
         <nav>
             @auth
                 <a href="{{ route('dashboard') }}">Dashboard</a>

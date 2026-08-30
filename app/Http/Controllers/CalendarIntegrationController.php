@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\User;
+use App\Services\SystemBranding;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -32,7 +33,9 @@ class CalendarIntegrationController extends Controller
             ->orderBy('start_at')
             ->get();
 
-        return $this->calendarResponse($bookings, 'Davao Rent Zone bookings', 'davao-rent-zone-'.$user->id.'.ics');
+        $siteName = app(SystemBranding::class)->settings()->site_name;
+
+        return $this->calendarResponse($bookings, $siteName.' bookings', Str::slug($siteName).'-'.$user->id.'.ics');
     }
 
     public function booking(Request $request, Booking $booking): Response
@@ -53,10 +56,11 @@ class CalendarIntegrationController extends Controller
 
     private function calendarResponse(mixed $bookings, string $name, string $filename): Response
     {
+        $siteName = app(SystemBranding::class)->settings()->site_name;
         $lines = [
             'BEGIN:VCALENDAR',
             'VERSION:2.0',
-            'PRODID:-//Davao Rent Zone//Booking Calendar//EN',
+            'PRODID:-//'.$this->escape($siteName).'//Booking Calendar//EN',
             'CALSCALE:GREGORIAN',
             'METHOD:PUBLISH',
             'X-WR-CALNAME:'.$this->escape($name),

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Davao Rent Zone — Rentals and services in one place')
+@section('title', $branding->site_name.' — '.($branding->tagline ?: 'Rentals and services in one place'))
 
 @section('content')
     @php
@@ -21,11 +21,11 @@
 
     <main class="landing-shell">
         <nav class="landing-nav" aria-label="Main navigation">
-            <a class="brand" href="{{ route('home') }}" aria-label="Davao Rent Zone home">
+            <a class="brand" href="{{ route('home') }}" aria-label="{{ $branding->site_name }} home">
                 <span class="brand-mark" aria-hidden="true">
-                    <img src="{{ asset('images/davao-rent-zone-logo-mark.svg') }}" alt="">
+                    <img src="{{ $branding->logo_url }}" alt="">
                 </span>
-                <span class="brand-name">Davao Rent Zone</span>
+                <span class="brand-name">{{ $branding->site_name }}</span>
             </a>
 
             <div class="nav-actions">
@@ -52,7 +52,7 @@
                     @auth
                         <a class="button button-primary" href="{{ route('dashboard') }}">Go to dashboard <span aria-hidden="true">→</span></a>
                     @else
-                        <a class="button button-primary" href="{{ route('register') }}">Start with Davao Rent Zone <span aria-hidden="true">→</span></a>
+                        <a class="button button-primary" href="{{ route('register') }}">Start with {{ $branding->site_name }} <span aria-hidden="true">→</span></a>
                         <a class="text-link" href="{{ route('login') }}">I already have an account</a>
                     @endauth
                 </div>
