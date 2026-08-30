@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Booking;
 use App\Models\BookingExpense;
+use App\Models\ServiceProviderApplication;
 use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -17,9 +18,16 @@ class BookingExpenseTest extends TestCase
     {
         $host = User::factory()->host()->create();
         $client = User::factory()->create();
-        $provider = User::factory()->host()->create(['name' => 'Davao Cleaning Partner']);
+        $provider = User::factory()->create(['name' => 'Davao Cleaning Partner']);
         $condo = $this->unit($host, 'Expense Test Condo', 'condo');
-        $cleaningService = $this->unit($provider, 'Turnover Cleaning', 'cleaning', 'service');
+        $providerApplication = ServiceProviderApplication::create([
+            'applicant_user_id' => $provider->id,
+            'host_id' => $host->id,
+            'services' => ['cleaning', 'laundry'],
+            'status' => 'accepted',
+            'application_message' => 'I provide reliable cleaning and laundry assistance.',
+            'reviewed_at' => now(),
+        ]);
         $booking = Booking::create([
             'unit_id' => $condo->id,
             'client_id' => $client->id,
@@ -32,18 +40,37 @@ class BookingExpenseTest extends TestCase
         ]);
 
         $this->actingAs($host)->post(route('bookings.expenses.store', $booking), [
-            'category' => 'cleaning',
-            'amount' => '1,250.00',
-            'service_unit_id' => $cleaningService->id,
-            'scheduled_at' => now()->addDays(4)->setTime(12, 30)->format('Y-m-d H:i:s'),
-            'notes' => 'Turnover cleaning after checkout.',
+            'expenses' => [
+                'cleaning' => [
+                    'enabled' => 1,
+                    'amount' => '1,250.00',
+                    'provider_application_id' => $providerApplication->id,
+                    'scheduled_at' => now()->addDays(4)->setTime(12, 30)->format('Y-m-d H:i:s'),
+                    'notes' => 'Turnover cleaning after checkout.',
+                ],
+                'laundry' => [
+                    'enabled' => 1,
+                    'amount' => '400.00',
+                    'vendor_name' => 'Neighborhood Laundry Shop',
+                ],
+                'drinking_water' => ['enabled' => 0],
+            ],
         ])->assertRedirect()->assertSessionHas('status');
 
-        $expense = BookingExpense::query()->sole();
+        $expense = BookingExpense::query()->where('category', 'cleaning')->sole();
         $this->assertSame($provider->id, $expense->provider_user_id);
-        $this->assertSame($cleaningService->id, $expense->service_unit_id);
+        $this->assertSame($providerApplication->id, $expense->service_provider_application_id);
+        $this->assertNull($expense->service_unit_id);
         $this->assertSame('assigned', $expense->status);
         $this->assertSame('1250.00', $expense->amount);
+        $this->assertDatabaseHas('booking_expenses', [
+            'booking_id' => $booking->id,
+            'category' => 'laundry',
+            'vendor_name' => 'Neighborhood Laundry Shop',
+            'amount' => 400,
+        ]);
+        $this->assertDatabaseCount('booking_expenses', 2);
+        $this->assertDatabaseCount('units', 1);
         $this->assertDatabaseHas('user_notifications', [
             'user_id' => $provider->id,
             'type' => 'service_work_assigned',
@@ -52,16 +79,21 @@ class BookingExpenseTest extends TestCase
         $this->actingAs($host)->get(route('bookings.show', $booking))
             ->assertOk()
             ->assertSee('Booking expenses & assigned services', false)
-            ->assertSee('Turnover Cleaning')
-            ->assertSee('Net ₱3,750.00');
+            ->assertSee('name="expenses[cleaning][enabled]"', false)
+            ->assertSee('name="expenses[laundry][enabled]"', false)
+            ->assertSee('Record all selected expenses')
+            ->assertSee('Davao Cleaning Partner')
+            ->assertSee('Neighborhood Laundry Shop')
+            ->assertSee('Net ₱3,350.00');
         $this->actingAs($client)->get(route('bookings.show', $booking))
             ->assertOk()
             ->assertDontSee('Private operating costs')
-            ->assertDontSee('Turnover Cleaning');
+            ->assertDontSee('Davao Cleaning Partner')
+            ->assertDontSee('Neighborhood Laundry Shop');
 
         $this->actingAs($provider)->get(route('service-work.index'))
             ->assertOk()
-            ->assertSee('Service work & earnings', false)
+            ->assertSee('Service providers & earnings', false)
             ->assertSee('Expense Test Condo')
             ->assertSee('₱1,250.00');
         $this->actingAs($provider)->patch(route('service-work.complete', $expense))
@@ -77,6 +109,42 @@ class BookingExpenseTest extends TestCase
             ->assertOk()
             ->assertSee('Paid earnings')
             ->assertSee('₱1,250.00');
+    }
+
+    public function test_regular_user_can_apply_directly_to_a_host_without_a_service_listing(): void
+    {
+        $host = User::factory()->host()->create(['name' => 'Condo Operations Host']);
+        $applicant = User::factory()->create(['name' => 'Independent Laundry Worker']);
+        $this->unit($host, 'Application Test Condo', 'condo');
+
+        $this->actingAs($applicant)->get(route('service-work.index'))
+            ->assertOk()
+            ->assertSee('Condo Operations Host')
+            ->assertSee('You do not need to create a public service listing.');
+        $this->actingAs($applicant)->post(route('service-provider-applications.store'), [
+            'host_id' => $host->id,
+            'services' => ['cleaning', 'laundry'],
+            'application_message' => 'I have experience preparing condo linens and cleaning rooms.',
+        ])->assertRedirect()->assertSessionHas('status');
+
+        $application = ServiceProviderApplication::query()->sole();
+        $this->assertSame('pending', $application->status);
+        $this->assertSame(['cleaning', 'laundry'], $application->services);
+        $this->assertDatabaseCount('units', 1);
+        $this->actingAs($host)->get(route('service-work.index'))
+            ->assertOk()
+            ->assertSee('Independent Laundry Worker')
+            ->assertSee('Cleaning, Laundry');
+
+        $this->actingAs($host)->patch(route('service-provider-applications.review', $application), [
+            'status' => 'accepted',
+            'review_note' => 'Approved for turnovers.',
+        ])->assertRedirect();
+        $this->assertSame('accepted', $application->fresh()->status);
+        $this->assertDatabaseHas('user_notifications', [
+            'user_id' => $applicant->id,
+            'type' => 'service_provider_application_status',
+        ]);
     }
 
     public function test_only_the_booking_host_or_admin_can_record_expenses(): void

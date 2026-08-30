@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\BookingExpense;
+use App\Models\ServiceProviderApplication;
 use App\Models\Inquiry;
 use App\Models\Unit;
 use App\Services\AppNotificationService;
@@ -28,10 +29,15 @@ class BookingController extends Controller
             || ($booking->isManualBooking() && $booking->affiliatePartnership()->where('marketer_id', $request->user()->id)->exists());
 
         abort_unless($canView, 403);
-        $booking->load(['unit.host', 'unit.images', 'unit.rates', 'client', 'bookedBy', 'inquiry', 'affiliatePartnership.marketer', 'reviews', 'financialEntries.recordedBy', 'financialEntries.revisions.editedBy', 'expenses.recordedBy', 'expenses.provider', 'expenses.serviceUnit']);
+        $booking->load(['unit.host', 'unit.images', 'unit.rates', 'client', 'bookedBy', 'inquiry', 'affiliatePartnership.marketer', 'reviews', 'financialEntries.recordedBy', 'financialEntries.revisions.editedBy', 'expenses.recordedBy', 'expenses.provider', 'expenses.serviceUnit', 'expenses.providerApplication']);
         $canManageExpenses = $request->user()->is_admin || $booking->unit->host_id === $request->user()->id;
-        $serviceProviders = $canManageExpenses
-            ? Unit::query()->with('host:id,name')->where('kind', 'service')->where('is_active', true)->orderBy('category')->orderBy('name')->get()
+        $providerApplications = $canManageExpenses
+            ? ServiceProviderApplication::query()
+                ->with('applicant:id,name')
+                ->where('host_id', $booking->unit->host_id)
+                ->where('status', 'accepted')
+                ->orderBy('id')
+                ->get()
             : collect();
         $expenseCategories = BookingExpense::categoryOptions($booking->unit->category);
 
@@ -43,7 +49,7 @@ class BookingController extends Controller
             'location' => $booking->unit->location,
         ]);
 
-        return view('bookings.show', compact('booking', 'googleCalendarUrl', 'canManageExpenses', 'serviceProviders', 'expenseCategories'));
+        return view('bookings.show', compact('booking', 'googleCalendarUrl', 'canManageExpenses', 'providerApplications', 'expenseCategories'));
     }
 
     public function store(Request $request): RedirectResponse

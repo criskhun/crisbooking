@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\BookingExpense;
+use App\Models\ServiceProviderApplication;
+use App\Models\User;
 use App\Services\AppNotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,8 +27,29 @@ class ServiceWorkController extends Controller
             'payment_pending' => $assignments->where('status', 'completed')->sum('amount'),
             'paid_total' => $assignments->where('status', 'paid')->sum('amount'),
         ];
+        $myApplications = ServiceProviderApplication::query()
+            ->with('host:id,name')
+            ->where('applicant_user_id', $request->user()->id)
+            ->latest()
+            ->get();
+        $receivedApplicationsQuery = ServiceProviderApplication::query()->with('applicant:id,name,email');
+        if (! $request->user()->is_admin) {
+            $receivedApplicationsQuery->where(
+                $request->user()->isHost() ? 'host_id' : 'id',
+                $request->user()->isHost() ? $request->user()->id : 0,
+            );
+        }
+        $receivedApplications = $receivedApplicationsQuery->latest()->get();
+        $availableHosts = User::query()
+            ->where('role', 'host')
+            ->where('is_active', true)
+            ->whereKeyNot($request->user()->id)
+            ->whereHas('units', fn ($units) => $units->whereIn('category', ['car', 'condo'])->where('is_active', true))
+            ->withCount(['units' => fn ($units) => $units->whereIn('category', ['car', 'condo'])->where('is_active', true)])
+            ->orderBy('name')
+            ->get();
 
-        return view('service-work.index', compact('assignments', 'metrics'));
+        return view('service-work.index', compact('assignments', 'metrics', 'myApplications', 'receivedApplications', 'availableHosts'));
     }
 
     public function complete(Request $request, BookingExpense $expense, AppNotificationService $notifications): RedirectResponse

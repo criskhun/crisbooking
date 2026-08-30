@@ -35,6 +35,7 @@ use App\Http\Controllers\PublicListingController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\SalesController;
 use App\Http\Controllers\ServiceWorkController;
+use App\Http\Controllers\ServiceProviderApplicationController;
 use App\Http\Controllers\SupportReportController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\WorkspaceController;
@@ -157,6 +158,8 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     Route::get('/sales', [SalesController::class, 'index'])->name('sales.index');
     Route::get('/service-work', [ServiceWorkController::class, 'index'])->name('service-work.index');
     Route::patch('/service-work/{expense}/complete', [ServiceWorkController::class, 'complete'])->name('service-work.complete');
+    Route::post('/service-provider-applications', [ServiceProviderApplicationController::class, 'store'])->name('service-provider-applications.store');
+    Route::patch('/service-provider-applications/{application}', [ServiceProviderApplicationController::class, 'review'])->name('service-provider-applications.review');
     Route::get('/support', [SupportReportController::class, 'index'])->name('support.index');
     Route::post('/support', [SupportReportController::class, 'store'])->name('support.store');
 });

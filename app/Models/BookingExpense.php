@@ -28,7 +28,7 @@ class BookingExpense extends Model
     ];
 
     protected $fillable = [
-        'booking_id', 'recorded_by_user_id', 'provider_user_id', 'service_unit_id',
+        'booking_id', 'recorded_by_user_id', 'provider_user_id', 'service_unit_id', 'service_provider_application_id',
         'category', 'vendor_name', 'amount', 'status', 'notes', 'scheduled_at',
         'completed_at', 'paid_at',
     ];
@@ -63,9 +63,23 @@ class BookingExpense extends Model
         return $this->belongsTo(Unit::class, 'service_unit_id');
     }
 
+    public function providerApplication(): BelongsTo
+    {
+        return $this->belongsTo(ServiceProviderApplication::class, 'service_provider_application_id');
+    }
+
     public static function categoryOptions(string $bookingCategory): array
     {
         return $bookingCategory === 'car' ? self::CAR_CATEGORIES : self::RESIDENCE_CATEGORIES;
+    }
+
+    public static function compatibleProviderServices(string $expenseCategory): array
+    {
+        return match ($expenseCategory) {
+            'repair' => ['vehicle_maintenance'],
+            'property_maintenance', 'guest_supplies', 'utilities', 'fuel', 'toll_parking' => ['other'],
+            default => [$expenseCategory],
+        };
     }
 
     public function categoryLabel(): string

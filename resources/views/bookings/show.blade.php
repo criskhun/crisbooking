@@ -168,7 +168,7 @@
                         <div class="booking-expense-list">
                             @forelse($booking->expenses as $expense)
                                 <article class="booking-expense-entry status-{{ $expense->status }}">
-                                    <div><small>{{ $expense->categoryLabel() }}</small><strong>{{ $expense->serviceUnit?->name ?? $expense->vendor_name ?? 'Direct expense' }}</strong><span>{{ $expense->provider?->name ? 'Provider: '.$expense->provider->name : 'Recorded by '.$expense->recordedBy?->name }}@if($expense->scheduled_at) · {{ $expense->scheduled_at->format('M j, Y · g:i A') }}@endif</span>@if($expense->notes)<p>{{ $expense->notes }}</p>@endif</div>
+                                    <div><small>{{ $expense->categoryLabel() }}</small><strong>{{ $expense->serviceUnit?->name ?? $expense->provider?->name ?? $expense->vendor_name ?? 'Direct expense' }}</strong><span>{{ $expense->provider?->name ? 'Provider: '.$expense->provider->name : 'Recorded by '.$expense->recordedBy?->name }}@if($expense->scheduled_at) · {{ $expense->scheduled_at->format('M j, Y · g:i A') }}@endif</span>@if($expense->notes)<p>{{ $expense->notes }}</p>@endif</div>
                                     <div class="booking-expense-amount"><b>₱{{ number_format($expense->amount, 2) }}</b><span class="booking-status status-{{ $expense->status }}">{{ $expense->statusLabel() }}</span></div>
                                     <form method="POST" action="{{ route('bookings.expenses.status', [$booking, $expense]) }}">@csrf @method('PATCH')<select name="status" aria-label="Update {{ $expense->categoryLabel() }} status"><option value="recorded" @selected($expense->status === 'recorded')>Recorded</option>@if($expense->provider_user_id)<option value="assigned" @selected($expense->status === 'assigned')>Assigned</option><option value="completed" @selected($expense->status === 'completed')>Completed</option><option value="paid" @selected($expense->status === 'paid')>Paid</option>@endif<option value="cancelled" @selected($expense->status === 'cancelled')>Cancelled</option></select><button class="button button-ghost button-small" type="submit">Update</button></form>
                                 </article>
@@ -176,15 +176,33 @@
                                 <p>No operating expenses have been recorded for this booking.</p>
                             @endforelse
                         </div>
-                        <form method="POST" action="{{ route('bookings.expenses.store', $booking) }}" class="booking-expense-form">
+                        <form method="POST" action="{{ route('bookings.expenses.store', $booking) }}" class="booking-expense-form booking-expense-batch-form" data-expense-batch-form>
                             @csrf
-                            <div class="field-group"><label for="expense_category">Expense</label><select id="expense_category" name="category" required>@foreach($expenseCategories as $value => $label)<option value="{{ $value }}" @selected(old('category') === $value)>{{ $label }}</option>@endforeach</select>@error('category')<p class="error-text">{{ $message }}</p>@enderror</div>
-                            <div class="field-group"><label for="expense_amount">Amount</label><div class="money-input"><span>₱</span><input id="expense_amount" name="amount" type="text" inputmode="decimal" value="{{ old('amount') }}" required data-accounting-input></div>@error('amount')<p class="error-text">{{ $message }}</p>@enderror</div>
-                            <div class="field-group"><label for="service_unit_id">Platform service provider <span class="optional-label">Optional</span></label><select id="service_unit_id" name="service_unit_id"><option value="">No platform provider</option>@foreach($serviceProviders as $providerService)<option value="{{ $providerService->id }}" @selected((int) old('service_unit_id') === $providerService->id)>{{ $providerService->host->name }} · {{ $providerService->name }} ({{ str($providerService->category)->replace('_', ' ')->title() }})</option>@endforeach</select><small class="field-help">Providers use the normal host application, then publish a service listing.</small>@error('service_unit_id')<p class="error-text">{{ $message }}</p>@enderror</div>
-                            <div class="field-group"><label for="expense_vendor_name">Outside vendor <span class="optional-label">Optional</span></label><input id="expense_vendor_name" name="vendor_name" maxlength="120" value="{{ old('vendor_name') }}" placeholder="Cleaner, laundry shop, supplier…">@error('vendor_name')<p class="error-text">{{ $message }}</p>@enderror</div>
-                            <div class="field-group"><label for="expense_scheduled_at">Scheduled service <span class="optional-label">Optional</span></label><input id="expense_scheduled_at" name="scheduled_at" type="datetime-local" value="{{ old('scheduled_at') }}">@error('scheduled_at')<p class="error-text">{{ $message }}</p>@enderror</div>
-                            <div class="field-group"><label for="expense_notes">Details <span class="optional-label">Optional</span></label><input id="expense_notes" name="notes" maxlength="500" value="{{ old('notes') }}" placeholder="Quantity, instructions, receipt reference…">@error('notes')<p class="error-text">{{ $message }}</p>@enderror</div>
-                            <button class="button button-primary" type="submit">Record expense / assign provider</button>
+                            <div class="booking-expense-form-heading"><strong>Select every expense that applies</strong><small>You can record Cleaning, Laundry, Water, and other services together in one submission.</small></div>
+                            @error('expenses')<p class="error-text booking-expense-form-error">{{ $message }}</p>@enderror
+                            <div class="booking-expense-choice-grid">
+                                @foreach($expenseCategories as $value => $label)
+                                    @php
+                                        $expenseEnabled = (bool) old('expenses.'.$value.'.enabled', false);
+                                        $matchingProviders = $providerApplications->filter(
+                                            fn ($application) => collect(\App\Models\BookingExpense::compatibleProviderServices($value))
+                                                ->intersect($application->services)
+                                                ->isNotEmpty()
+                                        );
+                                    @endphp
+                                    <article class="booking-expense-choice" data-expense-choice>
+                                        <label class="booking-expense-choice-toggle"><input type="hidden" name="expenses[{{ $value }}][enabled]" value="0"><input type="checkbox" name="expenses[{{ $value }}][enabled]" value="1" @checked($expenseEnabled) data-expense-choice-toggle><span><strong>{{ $label }}</strong><small>Include this expense</small></span></label>
+                                        <div class="booking-expense-choice-fields" data-expense-choice-fields @unless($expenseEnabled) hidden @endunless>
+                                            <div class="field-group"><label for="expense_amount_{{ $value }}">Amount</label><div class="money-input"><span>₱</span><input id="expense_amount_{{ $value }}" name="expenses[{{ $value }}][amount]" type="text" inputmode="decimal" value="{{ old('expenses.'.$value.'.amount') }}" data-expense-required data-accounting-input></div>@error('expenses.'.$value.'.amount')<p class="error-text">{{ $message }}</p>@enderror</div>
+                                            <div class="field-group"><label for="expense_provider_{{ $value }}">Approved provider <span class="optional-label">Optional</span></label><select id="expense_provider_{{ $value }}" name="expenses[{{ $value }}][provider_application_id]"><option value="">No assigned account</option>@foreach($matchingProviders as $providerApplication)<option value="{{ $providerApplication->id }}" @selected((int) old('expenses.'.$value.'.provider_application_id') === $providerApplication->id)>{{ $providerApplication->applicant->name }}</option>@endforeach</select><small class="field-help">Only users approved by this host for {{ strtolower($label) }} appear here.</small></div>
+                                            <div class="field-group"><label for="expense_vendor_{{ $value }}">Outside vendor <span class="optional-label">Optional</span></label><input id="expense_vendor_{{ $value }}" name="expenses[{{ $value }}][vendor_name]" maxlength="120" value="{{ old('expenses.'.$value.'.vendor_name') }}" placeholder="Name if not a platform provider"></div>
+                                            <div class="field-group"><label for="expense_schedule_{{ $value }}">Schedule <span class="optional-label">Optional</span></label><input id="expense_schedule_{{ $value }}" name="expenses[{{ $value }}][scheduled_at]" type="datetime-local" value="{{ old('expenses.'.$value.'.scheduled_at') }}"></div>
+                                            <div class="field-group booking-expense-choice-note"><label for="expense_notes_{{ $value }}">Details <span class="optional-label">Optional</span></label><input id="expense_notes_{{ $value }}" name="expenses[{{ $value }}][notes]" maxlength="500" value="{{ old('expenses.'.$value.'.notes') }}" placeholder="Quantity, instructions, receipt reference…"></div>
+                                        </div>
+                                    </article>
+                                @endforeach
+                            </div>
+                            <button class="button button-primary" type="submit">Record all selected expenses</button>
                         </form>
                     </section>
                 @endif

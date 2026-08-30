@@ -119,6 +119,23 @@
             syncDeliveryAddress();
         });
 
+        document.querySelectorAll('[data-expense-batch-form]').forEach((form) => {
+            form.querySelectorAll('[data-expense-choice]').forEach((choice) => {
+                const toggle = choice.querySelector('[data-expense-choice-toggle]');
+                const fields = choice.querySelector('[data-expense-choice-fields]');
+                const syncExpenseChoice = () => {
+                    const enabled = Boolean(toggle?.checked);
+                    if (fields) fields.hidden = !enabled;
+                    fields?.querySelectorAll('[data-expense-required]').forEach((input) => {
+                        input.required = enabled;
+                    });
+                    choice.classList.toggle('selected', enabled);
+                };
+                toggle?.addEventListener('change', syncExpenseChoice);
+                syncExpenseChoice();
+            });
+        });
+
         document.querySelectorAll('[data-calendar-color-picker]').forEach((picker) => {
             const enabled = picker.querySelector('[data-calendar-color-enabled]');
             const gradient = picker.querySelector('[data-calendar-gradient-enabled]');
