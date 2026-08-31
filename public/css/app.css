@@ -130,19 +130,19 @@ button, input, select, textarea { font: inherit; }
 .calendar-list-heading small { color: var(--muted); font-size: .68rem; font-weight: 800; text-transform: uppercase; }
 .calendar-list-heading strong { font: 800 .78rem Manrope, sans-serif; }
 .booking-chip { display: flex; align-items: center; gap: .85rem; margin-top: .8rem; padding: .85rem 1rem; border-radius: 13px; }
-.booking-chip i { width: .55rem; height: 2.3rem; border-radius: 9px; }
 .booking-chip div { display: grid; gap: .22rem; min-width: 0; }
 .booking-chip strong { font-size: .78rem; }
 .booking-chip > span:last-child { margin-left: auto; font-weight: 800; }
 .booking-chip { color: var(--ink); text-decoration: none; }
 .availability-listing { border: 1px solid transparent; transition: border-color .18s ease, transform .18s ease; }
 .availability-listing:hover { border-color: color-mix(in srgb, var(--forest) 25%, transparent); transform: translateY(-1px); }
-.listing-icon { display: grid; flex: 0 0 auto; place-items: center; width: 2.35rem; height: 2.35rem; border-radius: 10px; background: rgba(255,255,255,.55); font-size: 1.05rem; }
+.availability-listing .listing-icon { display: grid; flex: 0 0 auto; place-items: center; width: 2.5rem; height: 2.5rem; border: 1px solid rgba(255,255,255,.72); border-radius: 12px; background: rgba(255,255,255,.66); box-shadow: 0 4px 12px rgba(23,60,52,.06); }
+.availability-listing .listing-icon > i { display: block; width: auto; height: auto; margin: 0; border-radius: 0; background: transparent; font-size: 1.12rem; line-height: 1; }
 .listing-review { overflow: hidden; color: var(--muted); font-size: .64rem; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
 .availability-listing small b { color: #8b6a13; }
-.chip-car { background: #eef5e5; }.chip-car i { background: #809c43; }
-.chip-condo { background: #e7f0ef; }.chip-condo i { background: #3e7b70; }
-.chip-service { background: #f2edf8; }.chip-service i { background: #8064a2; }
+.chip-car { background: #eef5e5; }.chip-car .listing-icon { color: #617d26; }
+.chip-condo { background: #e7f0ef; }.chip-condo .listing-icon { color: #2f6f64; }
+.chip-service { background: #f2edf8; }.chip-service .listing-icon { color: #705293; }
 .calendar-list-empty { margin-top: .8rem; padding: 1rem; border-radius: 13px; color: var(--muted); background: #f3f5f4; font-size: .75rem; text-align: center; }
 .see-all-available { display: flex; align-items: center; justify-content: center; gap: .45rem; margin-top: .85rem; padding: .72rem; border: 1px dashed color-mix(in srgb, var(--forest) 34%, transparent); border-radius: 11px; color: var(--forest); font-size: .72rem; font-weight: 800; text-decoration: none; }
 .see-all-available:hover { border-style: solid; background: var(--mint); }
