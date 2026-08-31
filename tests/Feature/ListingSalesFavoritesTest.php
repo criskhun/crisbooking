@@ -161,6 +161,17 @@ class ListingSalesFavoritesTest extends TestCase
             ->assertSee('Excellent service and a very easy booking.');
     }
 
+    public function test_favorite_icon_stays_centered_and_visible_when_selected(): void
+    {
+        $iconStyles = file_get_contents(public_path('css/icon-system-v20.css'));
+
+        $this->assertStringContainsString('.listing-favorite-control .fa-heart {', $iconStyles);
+        $this->assertStringContainsString('place-items: center;', $iconStyles);
+        $this->assertStringContainsString('margin: 0;', $iconStyles);
+        $this->assertStringContainsString('.listing-favorite-control button.is-favorited .fa-heart', $iconStyles);
+        $this->assertStringContainsString('color: #fff;', $iconStyles);
+    }
+
     public function test_sale_is_applied_to_booking_price_without_changing_an_agreed_price(): void
     {
         $host = User::factory()->host()->create();

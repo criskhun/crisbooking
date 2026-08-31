@@ -67,14 +67,22 @@ a > .fa-solid {
 }
 
 .listing-favorite-control .fa-heart {
-    opacity: .62;
+    display: inline-grid;
+    place-items: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin: 0;
+    color: currentColor;
+    line-height: 1;
+    opacity: .82;
     transition: color .18s ease, opacity .18s ease, transform .18s ease;
 }
 
-.listing-favorite-control .fa-heart.is-favorited,
-.listing-favorite-control.is-favorited .fa-heart {
-    color: #b73d51;
+.listing-favorite-control button.is-favorited .fa-heart,
+.listing-favorite-control button .fa-heart.is-favorited {
+    color: #fff;
     opacity: 1;
+    transform: scale(1.05);
 }
 
 .account-status .fa-circle {
