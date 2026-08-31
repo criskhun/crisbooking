@@ -145,7 +145,9 @@ class BookingExpenseTest extends TestCase
             'user_id' => $host->id,
             'type' => 'service_payment_received',
         ]);
-        $this->actingAs($provider)->patch(route('service-work.payment-received', $expense))->assertStatus(422);
+        $this->actingAs($provider)->patch(route('service-work.payment-received', $expense))
+            ->assertRedirect()
+            ->assertSessionHas('status', 'Payment was already confirmed. This service task is closed.');
     }
 
     public function test_regular_user_can_apply_directly_to_a_host_without_a_service_listing(): void
@@ -216,6 +218,45 @@ class BookingExpenseTest extends TestCase
             'amount' => 500,
         ])->assertForbidden();
         $this->assertDatabaseCount('booking_expenses', 0);
+    }
+
+    public function test_provider_can_confirm_a_legacy_paid_job_without_a_payment_proof(): void
+    {
+        $host = User::factory()->host()->create();
+        $provider = User::factory()->create();
+        $condo = $this->unit($host, 'Legacy Provider Payment Condo', 'condo');
+        $booking = Booking::create([
+            'unit_id' => $condo->id,
+            'client_id' => User::factory()->create()->id,
+            'start_at' => now()->subDays(2),
+            'end_at' => now()->subDay(),
+            'status' => 'confirmed',
+            'total_amount' => 3200,
+            'party_size' => 1,
+        ]);
+        $legacyExpense = BookingExpense::create([
+            'booking_id' => $booking->id,
+            'recorded_by_user_id' => $host->id,
+            'provider_user_id' => $provider->id,
+            'category' => 'cleaning',
+            'amount' => 700,
+            'status' => 'paid',
+            'completed_at' => now()->subDay(),
+            'paid_at' => now()->subHours(2),
+            'payment_proof_path' => null,
+        ]);
+
+        $this->actingAs($provider)->patch(route('service-work.payment-received', $legacyExpense))
+            ->assertRedirect()
+            ->assertSessionHas('status', 'Payment receipt confirmed. This service task is now closed.');
+
+        $legacyExpense->refresh();
+        $this->assertSame('payment_received', $legacyExpense->status);
+        $this->assertNotNull($legacyExpense->payment_received_at);
+        $this->assertDatabaseHas('user_notifications', [
+            'user_id' => $host->id,
+            'type' => 'service_payment_received',
+        ]);
     }
 
     private function unit(User $host, string $name, string $category, string $kind = 'unit'): Unit

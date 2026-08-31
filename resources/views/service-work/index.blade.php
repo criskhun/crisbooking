@@ -9,6 +9,7 @@
         <main class="dashboard-main">
             <header class="dashboard-header"><div><span class="eyebrow">Direct host applications</span><h1>Service providers & earnings</h1><p>Apply directly to property and vehicle hosts. You do not need to create a public service listing.</p></div>@include('partials.user-badge')</header>
             @if(session('status'))<div class="flash-message account-alert">{{ session('status') }}</div>@endif
+            @if($errors->any())<div class="flash-message error-alert" role="alert">{{ $errors->first() }}</div>@endif
 
             @if($receivedApplications->isNotEmpty())
                 <section class="service-work-panel service-application-panel">

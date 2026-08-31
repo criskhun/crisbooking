@@ -101,12 +101,25 @@ class ServiceWorkController extends Controller
     public function confirmPayment(Request $request, BookingExpense $expense, AppNotificationService $notifications): RedirectResponse
     {
         abort_unless($expense->provider_user_id === $request->user()->id, 403);
-        DB::transaction(function () use ($expense, $request) {
+        $result = DB::transaction(function () use ($expense, $request) {
             $locked = BookingExpense::query()->lockForUpdate()->findOrFail($expense->id);
             abort_unless($locked->provider_user_id === $request->user()->id, 403);
-            abort_unless($locked->status === 'paid' && $locked->payment_proof_path, 422, 'The host must mark this job paid and attach proof first.');
+            if ($locked->status === 'payment_received') {
+                return 'already_confirmed';
+            }
+            if ($locked->status !== 'paid') {
+                return 'not_paid';
+            }
             $locked->update(['status' => 'payment_received', 'payment_received_at' => now()]);
+
+            return 'confirmed';
         });
+        if ($result === 'already_confirmed') {
+            return back()->with('status', 'Payment was already confirmed. This service task is closed.');
+        }
+        if ($result === 'not_paid') {
+            return back()->withErrors(['payment' => 'The host must mark this job paid before you can confirm receipt.']);
+        }
         $expense->refresh()->loadMissing('booking.unit.host');
         $notifications->send(
             $expense->booking->unit->host,
