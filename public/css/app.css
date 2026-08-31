@@ -1,10 +1,13 @@
 :root {
+    --system-primary: #173c34;
+    --system-secondary: #0f2d27;
+    --system-accent: #d9ed8b;
     --ink: #18231f;
     --muted: #66736e;
-    --forest: #173c34;
-    --forest-deep: #0f2d27;
+    --forest: var(--system-primary);
+    --forest-deep: var(--system-secondary);
     --mint: #dceee7;
-    --lime: #d9ed8b;
+    --lime: var(--system-accent);
     --cream: #f6f3ea;
     --paper: #fffefa;
     --line: #dfe5e1;
@@ -26,6 +29,7 @@
     color-scheme: light;
 }
 
+html[data-color-theme="forest"] { --forest: #173c34; --forest-deep: #0f2d27; --mint: #dceee7; --lime: #d9ed8b; }
 html[data-color-theme="ocean"] { --forest: #17476a; --forest-deep: #0b304c; --mint: #dceef7; --lime: #a8dcf2; }
 html[data-color-theme="violet"] { --forest: #49306f; --forest-deep: #321f52; --mint: #eee5fa; --lime: #d9c2ff; }
 html[data-color-theme="sunset"] { --forest: #77382b; --forest-deep: #56251b; --mint: #f8e5da; --lime: #ffc58d; }
@@ -323,7 +327,8 @@ button, input, select, textarea { font: inherit; }
 .theme-option[aria-pressed="true"] { border-color: var(--forest); background: var(--mint); }
 .theme-option:focus-visible { outline: 3px solid color-mix(in srgb, var(--forest) 22%, transparent); outline-offset: 1px; }
 .theme-swatch { width: 1.05rem; height: 1.05rem; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 0 1px rgba(26, 38, 33, .2); }
-.theme-swatch-forest { background: #286153; }.theme-swatch-ocean { background: #2877a7; }.theme-swatch-violet { background: #7350a3; }.theme-swatch-sunset { background: #b55d42; }
+.theme-option-system { grid-column: 1 / -1; }
+.theme-swatch-system { background: linear-gradient(135deg, var(--system-primary) 0 55%, var(--system-accent) 55% 100%); }.theme-swatch-forest { background: #286153; }.theme-swatch-ocean { background: #2877a7; }.theme-swatch-violet { background: #7350a3; }.theme-swatch-sunset { background: #b55d42; }
 .theme-check { color: var(--forest); opacity: 0; font-weight: 900; }
 .theme-option[aria-pressed="true"] .theme-check { opacity: 1; }
 .flash-dashboard { margin: 1.5rem 0 0; }

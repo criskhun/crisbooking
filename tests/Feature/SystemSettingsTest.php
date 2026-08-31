@@ -51,13 +51,26 @@ class SystemSettingsTest extends TestCase
         $this->get(route('home'))
             ->assertOk()
             ->assertSee('Cris Booking Hub')
-            ->assertSee('--forest: #123456', false);
+            ->assertSee('data-color-theme="system"', false)
+            ->assertSee('--system-primary: #123456', false);
 
         $this->get(route('app.manifest'))
             ->assertOk()
             ->assertJsonPath('name', 'Cris Booking Hub')
             ->assertJsonPath('short_name', 'CBH')
             ->assertJsonPath('theme_color', '#123456');
+    }
+
+    public function test_users_can_choose_a_personal_theme_or_return_to_the_system_default(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('data-theme-option="system"', false)
+            ->assertSee('System default')
+            ->assertSee("localStorage.getItem('mybooking-color-theme') || 'system'", false);
     }
 
     public function test_admin_can_upload_and_restore_brand_assets(): void

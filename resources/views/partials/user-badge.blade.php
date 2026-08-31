@@ -54,7 +54,12 @@
             <fieldset class="theme-picker">
                 <legend>Color theme</legend>
                 <div class="theme-options">
-                    <button class="theme-option" type="button" data-theme-option="forest" aria-pressed="true">
+                    <button class="theme-option theme-option-system" type="button" data-theme-option="system" aria-pressed="true">
+                        <span class="theme-swatch theme-swatch-system" aria-hidden="true"></span>
+                        <span>System default</span>
+                        <span class="theme-check" aria-hidden="true">✓</span>
+                    </button>
+                    <button class="theme-option" type="button" data-theme-option="forest" aria-pressed="false">
                         <span class="theme-swatch theme-swatch-forest" aria-hidden="true"></span>
                         <span>Forest</span>
                         <span class="theme-check" aria-hidden="true">✓</span>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-color-mode="light" data-color-theme="forest" style="--forest: {{ $branding->primary_color }}; --forest-deep: {{ $branding->secondary_color }}; --lime: {{ $branding->accent_color }};">
+<html lang="en" data-color-mode="light" data-color-theme="system" data-system-theme-color="{{ $branding->primary_color }}" style="--system-primary: {{ $branding->primary_color }}; --system-secondary: {{ $branding->secondary_color }}; --system-accent: {{ $branding->accent_color }};">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -17,7 +17,7 @@
     <script>
         try {
             document.documentElement.dataset.colorMode = localStorage.getItem('mybooking-color-mode') || 'light';
-            document.documentElement.dataset.colorTheme = localStorage.getItem('mybooking-color-theme') || 'forest';
+            document.documentElement.dataset.colorTheme = localStorage.getItem('mybooking-color-theme') || 'system';
         } catch (error) {}
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">

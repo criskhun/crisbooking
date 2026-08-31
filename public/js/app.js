@@ -2,15 +2,17 @@
     const root = document.documentElement;
     const modeKey = 'mybooking-color-mode';
     const themeKey = 'mybooking-color-theme';
-    const validThemes = ['forest', 'ocean', 'violet', 'sunset'];
+    const validThemes = ['system', 'forest', 'ocean', 'violet', 'sunset'];
     const themeColors = {
         light: {
+            system: root.dataset.systemThemeColor || '#173c34',
             forest: '#173c34',
             ocean: '#17476a',
             violet: '#49306f',
             sunset: '#77382b',
         },
         dark: {
+            system: '#101512',
             forest: '#101512',
             ocean: '#10151a',
             violet: '#141119',
@@ -26,13 +28,13 @@
 
     const updateThemeColor = () => {
         const mode = root.dataset.colorMode === 'dark' ? 'dark' : 'light';
-        const theme = validThemes.includes(root.dataset.colorTheme) ? root.dataset.colorTheme : 'forest';
+        const theme = validThemes.includes(root.dataset.colorTheme) ? root.dataset.colorTheme : 'system';
         document.querySelector('meta[name="theme-color"]')?.setAttribute('content', themeColors[mode][theme]);
     };
 
     const syncControls = (message = '') => {
         const isDark = root.dataset.colorMode === 'dark';
-        const activeTheme = validThemes.includes(root.dataset.colorTheme) ? root.dataset.colorTheme : 'forest';
+        const activeTheme = validThemes.includes(root.dataset.colorTheme) ? root.dataset.colorTheme : 'system';
         const darkModeToggle = document.querySelector('#dark-mode-toggle');
 
         if (darkModeToggle) {
@@ -53,7 +55,7 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         if (!validThemes.includes(root.dataset.colorTheme)) {
-            root.dataset.colorTheme = 'forest';
+            root.dataset.colorTheme = 'system';
         }
 
         if (!['light', 'dark'].includes(root.dataset.colorMode)) {
