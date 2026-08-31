@@ -8,8 +8,10 @@ use App\Services\AppNotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ServiceProviderApplicationController extends Controller
 {
@@ -20,6 +22,8 @@ class ServiceProviderApplicationController extends Controller
             'services' => ['required', 'array', 'min:1'],
             'services.*' => ['required', Rule::in(array_keys(ServiceProviderApplication::SERVICE_OPTIONS))],
             'application_message' => ['required', 'string', 'min:10', 'max:2000'],
+            'application_images' => ['nullable', 'array', 'max:6'],
+            'application_images.*' => ['file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ]);
         $host = User::query()
             ->whereKey($validated['host_id'])
@@ -36,6 +40,12 @@ class ServiceProviderApplicationController extends Controller
         if ($existing?->status === 'accepted') {
             throw ValidationException::withMessages(['host_id' => 'This host has already approved you as a service provider.']);
         }
+        $existingImages = $existing?->application_images ?? [];
+        if (count($existingImages) + count($validated['application_images'] ?? []) > 6) {
+            throw ValidationException::withMessages([
+                'application_images' => 'You can keep up to 6 application images. Submit fewer images.',
+            ]);
+        }
 
         $application = ServiceProviderApplication::query()->updateOrCreate(
             ['applicant_user_id' => $request->user()->id, 'host_id' => $host->id],
@@ -47,6 +57,21 @@ class ServiceProviderApplicationController extends Controller
                 'reviewed_at' => null,
             ],
         );
+        $storedPaths = [];
+        try {
+            $newImages = collect($validated['application_images'] ?? [])->map(function ($image) use ($application, &$storedPaths) {
+                $path = $image->store('service-provider-applications/'.$application->id, 'local');
+                $storedPaths[] = $path;
+
+                return ['path' => $path, 'name' => $image->getClientOriginalName()];
+            })->all();
+            if ($newImages !== []) {
+                $application->update(['application_images' => [...$existingImages, ...$newImages]]);
+            }
+        } catch (\Throwable $exception) {
+            Storage::disk('local')->delete($storedPaths);
+            throw $exception;
+        }
         $notifications->send(
             $host,
             'service_provider_application',
@@ -89,5 +114,22 @@ class ServiceProviderApplicationController extends Controller
         return back()->with('status', $application->status === 'accepted'
             ? $application->applicant->name.' can now be assigned to applicable booking expenses.'
             : 'The service-provider application was declined.');
+    }
+
+    public function image(Request $request, ServiceProviderApplication $application, int $image): StreamedResponse
+    {
+        abort_unless(
+            $request->user()->is_admin
+                || $application->applicant_user_id === $request->user()->id
+                || $application->host_id === $request->user()->id,
+            403,
+        );
+        $file = ($application->application_images ?? [])[$image] ?? null;
+        abort_unless($file && Storage::disk('local')->exists($file['path']), 404);
+
+        return Storage::disk('local')->response($file['path'], $file['name'] ?? null, [
+            'Cache-Control' => 'private, no-store, max-age=0',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 }

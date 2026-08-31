@@ -10,8 +10,10 @@ use App\Services\AppNotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BookingExpenseController extends Controller
 {
@@ -109,17 +111,45 @@ class BookingExpenseController extends Controller
         $this->authorizeManager($request, $booking);
         $validated = $request->validate([
             'status' => ['required', Rule::in(['recorded', 'assigned', 'completed', 'paid', 'cancelled'])],
+            'payment_proof' => ['required_if:status,paid', 'nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
         ]);
 
-        DB::transaction(function () use ($expense, $validated) {
-            $locked = BookingExpense::query()->lockForUpdate()->findOrFail($expense->id);
-            $status = $validated['status'];
-            $locked->update([
-                'status' => $status,
-                'completed_at' => in_array($status, ['completed', 'paid'], true) ? ($locked->completed_at ?: now()) : null,
-                'paid_at' => $status === 'paid' ? now() : null,
-            ]);
-        });
+        if ($validated['status'] === 'paid') {
+            abort_unless($expense->provider_user_id && $expense->status === 'completed', 422, 'A provider must complete this task before it can be marked paid.');
+        }
+        if ($expense->provider_user_id && $validated['status'] === 'completed' && $expense->status !== 'completed') {
+            abort(422, 'The assigned provider must mark this task completed.');
+        }
+        abort_if($expense->status === 'payment_received', 422, 'This task is already closed.');
+
+        $proof = $validated['payment_proof'] ?? null;
+        $proofPath = $proof?->store('booking-expenses/'.$expense->id.'/payment', 'local');
+
+        try {
+            DB::transaction(function () use ($expense, $validated, $proof, $proofPath) {
+                $locked = BookingExpense::query()->lockForUpdate()->findOrFail($expense->id);
+                $status = $validated['status'];
+                abort_if($locked->status === 'payment_received', 422, 'This task is already closed.');
+                if ($status === 'paid') {
+                    abort_unless($locked->provider_user_id && $locked->status === 'completed', 422, 'A provider must complete this task before it can be marked paid.');
+                }
+                if ($locked->provider_user_id && $status === 'completed' && $locked->status !== 'completed') {
+                    abort(422, 'The assigned provider must mark this task completed.');
+                }
+                $locked->update([
+                    'status' => $status,
+                    'completed_at' => in_array($status, ['completed', 'paid'], true) ? ($locked->completed_at ?: now()) : null,
+                    'paid_at' => $status === 'paid' ? now() : null,
+                    'payment_proof_path' => $status === 'paid' ? $proofPath : $locked->payment_proof_path,
+                    'payment_proof_name' => $status === 'paid' ? $proof?->getClientOriginalName() : $locked->payment_proof_name,
+                ]);
+            });
+        } catch (\Throwable $exception) {
+            if ($proofPath) {
+                Storage::disk('local')->delete($proofPath);
+            }
+            throw $exception;
+        }
 
         if ($expense->provider_user_id) {
             $notifications->send(
@@ -133,6 +163,24 @@ class BookingExpenseController extends Controller
         }
 
         return back()->with('status', 'Expense status updated.');
+    }
+
+    public function paymentProof(Request $request, Booking $booking, BookingExpense $expense): StreamedResponse
+    {
+        abort_unless($expense->booking_id === $booking->id, 404);
+        $booking->loadMissing('unit');
+        abort_unless(
+            $request->user()->is_admin
+                || $booking->unit->host_id === $request->user()->id
+                || $expense->provider_user_id === $request->user()->id,
+            403,
+        );
+        abort_unless($expense->payment_proof_path && Storage::disk('local')->exists($expense->payment_proof_path), 404);
+
+        return Storage::disk('local')->response($expense->payment_proof_path, $expense->payment_proof_name, [
+            'Cache-Control' => 'private, no-store, max-age=0',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     private function authorizeManager(Request $request, Booking $booking): void

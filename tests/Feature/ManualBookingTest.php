@@ -237,8 +237,12 @@ class ManualBookingTest extends TestCase
             'mode' => 'manage',
             'month' => $month->format('Y-m'),
         ]))->assertOk()
-            ->assertSee('data-booking-id="'.$condoBooking->id.'" data-segment-start="'.$condoDate->format('Y-m-d').'" data-segment-end="'.$condoDate->copy()->addDay()->format('Y-m-d').'"', false)
-            ->assertSee('data-booking-id="'.$carBooking->id.'" data-segment-start="'.$carDate->format('Y-m-d').'" data-segment-end="'.$carDate->copy()->addDay()->format('Y-m-d').'"', false);
+            ->assertSee('data-booking-id="'.$condoBooking->id.'"', false)
+            ->assertSee('data-segment-start="'.$condoDate->format('Y-m-d').'"', false)
+            ->assertSee('data-segment-end="'.$condoDate->copy()->addDay()->format('Y-m-d').'"', false)
+            ->assertSee('data-booking-id="'.$carBooking->id.'"', false)
+            ->assertSee('data-segment-start="'.$carDate->format('Y-m-d').'"', false)
+            ->assertSee('data-segment-end="'.$carDate->copy()->addDay()->format('Y-m-d').'"', false);
 
         $this->actingAs($host)->from(route('calendar.index', ['mode' => 'manage']))
             ->post(route('calendar.manual-bookings.store'), [

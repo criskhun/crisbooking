@@ -123,6 +123,17 @@
             form.querySelectorAll('[data-expense-choice]').forEach((choice) => {
                 const toggle = choice.querySelector('[data-expense-choice-toggle]');
                 const fields = choice.querySelector('[data-expense-choice-fields]');
+                const provider = choice.querySelector('[data-expense-provider-select]');
+                const vendorField = choice.querySelector('[data-expense-vendor-field]');
+                const vendorInput = vendorField?.querySelector('input');
+                const syncExpenseProvider = () => {
+                    const hasApprovedProvider = Boolean(provider?.value);
+                    if (vendorField) vendorField.hidden = hasApprovedProvider;
+                    if (vendorInput) {
+                        vendorInput.disabled = hasApprovedProvider;
+                        if (hasApprovedProvider) vendorInput.value = '';
+                    }
+                };
                 const syncExpenseChoice = () => {
                     const enabled = Boolean(toggle?.checked);
                     if (fields) fields.hidden = !enabled;
@@ -132,7 +143,9 @@
                     choice.classList.toggle('selected', enabled);
                 };
                 toggle?.addEventListener('change', syncExpenseChoice);
+                provider?.addEventListener('change', syncExpenseProvider);
                 syncExpenseChoice();
+                syncExpenseProvider();
             });
         });
 

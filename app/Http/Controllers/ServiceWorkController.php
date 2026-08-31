@@ -8,7 +8,10 @@ use App\Models\User;
 use App\Services\AppNotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ServiceWorkController extends Controller
 {
@@ -20,12 +23,12 @@ class ServiceWorkController extends Controller
             ->latest('scheduled_at')
             ->latest()
             ->get();
-        $active = $assignments->whereIn('status', ['assigned', 'completed']);
+        $active = $assignments->whereIn('status', ['assigned', 'completed', 'paid']);
         $metrics = [
             'active_count' => $active->count(),
             'assigned_total' => $assignments->where('status', '!=', 'cancelled')->sum('amount'),
             'payment_pending' => $assignments->where('status', 'completed')->sum('amount'),
-            'paid_total' => $assignments->where('status', 'paid')->sum('amount'),
+            'paid_total' => $assignments->whereIn('status', ['paid', 'payment_received'])->sum('amount'),
         ];
         $myApplications = ServiceProviderApplication::query()
             ->with('host:id,name')
@@ -56,7 +59,32 @@ class ServiceWorkController extends Controller
     {
         abort_unless($expense->provider_user_id === $request->user()->id, 403);
         abort_unless($expense->status === 'assigned', 422, 'Only assigned work can be marked completed.');
-        $expense->update(['status' => 'completed', 'completed_at' => now()]);
+        $validated = $request->validate([
+            'completion_images' => ['nullable', 'array', 'max:6'],
+            'completion_images.*' => ['file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+        ]);
+        $storedPaths = [];
+        try {
+            $images = collect($validated['completion_images'] ?? [])->map(function ($image) use ($expense, &$storedPaths) {
+                $path = $image->store('booking-expenses/'.$expense->id.'/completion', 'local');
+                $storedPaths[] = $path;
+
+                return ['path' => $path, 'name' => $image->getClientOriginalName()];
+            })->all();
+            DB::transaction(function () use ($expense, $images, $request) {
+                $locked = BookingExpense::query()->lockForUpdate()->findOrFail($expense->id);
+                abort_unless($locked->provider_user_id === $request->user()->id, 403);
+                abort_unless($locked->status === 'assigned', 422, 'Only assigned work can be marked completed.');
+                $locked->update([
+                    'status' => 'completed',
+                    'completed_at' => now(),
+                    'completion_images' => $images ?: null,
+                ]);
+            });
+        } catch (\Throwable $exception) {
+            Storage::disk('local')->delete($storedPaths);
+            throw $exception;
+        }
         $expense->loadMissing('booking.unit.host');
         $notifications->send(
             $expense->booking->unit->host,
@@ -68,5 +96,45 @@ class ServiceWorkController extends Controller
         );
 
         return back()->with('status', 'Work marked completed. The booking host was notified.');
+    }
+
+    public function confirmPayment(Request $request, BookingExpense $expense, AppNotificationService $notifications): RedirectResponse
+    {
+        abort_unless($expense->provider_user_id === $request->user()->id, 403);
+        DB::transaction(function () use ($expense, $request) {
+            $locked = BookingExpense::query()->lockForUpdate()->findOrFail($expense->id);
+            abort_unless($locked->provider_user_id === $request->user()->id, 403);
+            abort_unless($locked->status === 'paid' && $locked->payment_proof_path, 422, 'The host must mark this job paid and attach proof first.');
+            $locked->update(['status' => 'payment_received', 'payment_received_at' => now()]);
+        });
+        $expense->refresh()->loadMissing('booking.unit.host');
+        $notifications->send(
+            $expense->booking->unit->host,
+            'service_payment_received',
+            'Provider confirmed payment',
+            $request->user()->name.' confirmed payment for '.$expense->categoryLabel().' on booking #'.$expense->booking_id.'. The task is now closed.',
+            route('bookings.show', $expense->booking_id),
+            'booking-expense:'.$expense->id.':payment-received',
+        );
+
+        return back()->with('status', 'Payment receipt confirmed. This service task is now closed.');
+    }
+
+    public function completionImage(Request $request, BookingExpense $expense, int $image): StreamedResponse
+    {
+        $expense->loadMissing('booking.unit');
+        abort_unless(
+            $request->user()->is_admin
+                || $expense->provider_user_id === $request->user()->id
+                || $expense->booking->unit->host_id === $request->user()->id,
+            403,
+        );
+        $file = ($expense->completion_images ?? [])[$image] ?? null;
+        abort_unless($file && Storage::disk('local')->exists($file['path']), 404);
+
+        return Storage::disk('local')->response($file['path'], $file['name'] ?? null, [
+            'Cache-Control' => 'private, no-store, max-age=0',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 }

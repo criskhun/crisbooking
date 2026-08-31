@@ -8,6 +8,8 @@ use App\Models\ServiceProviderApplication;
 use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class BookingExpenseTest extends TestCase
@@ -16,6 +18,7 @@ class BookingExpenseTest extends TestCase
 
     public function test_host_can_record_a_booking_expense_assign_a_provider_and_track_the_providers_earnings(): void
     {
+        Storage::fake('local');
         $host = User::factory()->host()->create();
         $client = User::factory()->create();
         $provider = User::factory()->create(['name' => 'Davao Cleaning Partner']);
@@ -45,6 +48,7 @@ class BookingExpenseTest extends TestCase
                     'enabled' => 1,
                     'amount' => '1,250.00',
                     'provider_application_id' => $providerApplication->id,
+                    'vendor_name' => 'This vendor must be ignored',
                     'scheduled_at' => now()->addDays(4)->setTime(12, 30)->format('Y-m-d H:i:s'),
                     'notes' => 'Turnover cleaning after checkout.',
                 ],
@@ -61,6 +65,7 @@ class BookingExpenseTest extends TestCase
         $this->assertSame($provider->id, $expense->provider_user_id);
         $this->assertSame($providerApplication->id, $expense->service_provider_application_id);
         $this->assertNull($expense->service_unit_id);
+        $this->assertNull($expense->vendor_name);
         $this->assertSame('assigned', $expense->status);
         $this->assertSame('1250.00', $expense->amount);
         $this->assertDatabaseHas('booking_expenses', [
@@ -81,6 +86,8 @@ class BookingExpenseTest extends TestCase
             ->assertSee('Booking expenses & assigned services', false)
             ->assertSee('name="expenses[cleaning][enabled]"', false)
             ->assertSee('name="expenses[laundry][enabled]"', false)
+            ->assertSee('data-expense-provider-select', false)
+            ->assertSee('data-expense-vendor-field', false)
             ->assertSee('Record all selected expenses')
             ->assertSee('Davao Cleaning Partner')
             ->assertSee('Neighborhood Laundry Shop')
@@ -96,23 +103,54 @@ class BookingExpenseTest extends TestCase
             ->assertSee('Service providers & earnings', false)
             ->assertSee('Expense Test Condo')
             ->assertSee('₱1,250.00');
-        $this->actingAs($provider)->patch(route('service-work.complete', $expense))
+        $this->actingAs($provider)->patch(route('service-work.complete', $expense), [
+            'completion_images' => [
+                UploadedFile::fake()->image('cleaned-room.jpg'),
+                UploadedFile::fake()->image('fresh-linens.png'),
+            ],
+        ])
             ->assertRedirect();
+        $expense->refresh();
+        $this->assertSame('completed', $expense->status);
+        $this->assertCount(2, $expense->completion_images);
+        Storage::disk('local')->assertExists(collect($expense->completion_images)->pluck('path')->all());
+        $this->actingAs($host)->get(route('service-work.completion-images.show', [$expense, 0]))->assertOk();
+        $this->actingAs($client)->get(route('service-work.completion-images.show', [$expense, 0]))->assertForbidden();
+
+        $this->actingAs($host)->from(route('bookings.show', $booking))->patch(route('bookings.expenses.status', [$booking, $expense]), [
+            'status' => 'paid',
+        ])->assertRedirect(route('bookings.show', $booking))->assertSessionHasErrors('payment_proof');
         $this->assertSame('completed', $expense->fresh()->status);
 
         $this->actingAs($host)->patch(route('bookings.expenses.status', [$booking, $expense]), [
             'status' => 'paid',
+            'payment_proof' => UploadedFile::fake()->image('provider-transfer.jpg'),
         ])->assertRedirect();
-        $this->assertSame('paid', $expense->fresh()->status);
-        $this->assertNotNull($expense->fresh()->paid_at);
+        $expense->refresh();
+        $this->assertSame('paid', $expense->status);
+        $this->assertNotNull($expense->paid_at);
+        Storage::disk('local')->assertExists($expense->payment_proof_path);
+        $this->actingAs($provider)->get(route('bookings.expenses.payment-proof', [$booking, $expense]))->assertOk();
+        $this->actingAs($client)->get(route('bookings.expenses.payment-proof', [$booking, $expense]))->assertForbidden();
         $this->actingAs($provider)->get(route('service-work.index'))
             ->assertOk()
             ->assertSee('Paid earnings')
-            ->assertSee('₱1,250.00');
+            ->assertSee('₱1,250.00')
+            ->assertSee('Confirm payment received');
+        $this->actingAs($provider)->patch(route('service-work.payment-received', $expense))->assertRedirect();
+        $expense->refresh();
+        $this->assertSame('payment_received', $expense->status);
+        $this->assertNotNull($expense->payment_received_at);
+        $this->assertDatabaseHas('user_notifications', [
+            'user_id' => $host->id,
+            'type' => 'service_payment_received',
+        ]);
+        $this->actingAs($provider)->patch(route('service-work.payment-received', $expense))->assertStatus(422);
     }
 
     public function test_regular_user_can_apply_directly_to_a_host_without_a_service_listing(): void
     {
+        Storage::fake('local');
         $host = User::factory()->host()->create(['name' => 'Condo Operations Host']);
         $applicant = User::factory()->create(['name' => 'Independent Laundry Worker']);
         $this->unit($host, 'Application Test Condo', 'condo');
@@ -125,16 +163,26 @@ class BookingExpenseTest extends TestCase
             'host_id' => $host->id,
             'services' => ['cleaning', 'laundry'],
             'application_message' => 'I have experience preparing condo linens and cleaning rooms.',
+            'application_images' => [
+                UploadedFile::fake()->image('previous-cleaning.jpg'),
+                UploadedFile::fake()->image('laundry-sample.webp'),
+            ],
         ])->assertRedirect()->assertSessionHas('status');
 
         $application = ServiceProviderApplication::query()->sole();
         $this->assertSame('pending', $application->status);
         $this->assertSame(['cleaning', 'laundry'], $application->services);
+        $this->assertCount(2, $application->application_images);
+        Storage::disk('local')->assertExists(collect($application->application_images)->pluck('path')->all());
         $this->assertDatabaseCount('units', 1);
         $this->actingAs($host)->get(route('service-work.index'))
             ->assertOk()
             ->assertSee('Independent Laundry Worker')
-            ->assertSee('Cleaning, Laundry');
+            ->assertSee('Cleaning, Laundry')
+            ->assertSee('Application images:');
+        $this->actingAs($host)->get(route('service-provider-applications.images.show', [$application, 0]))->assertOk();
+        $otherUser = User::factory()->create();
+        $this->actingAs($otherUser)->get(route('service-provider-applications.images.show', [$application, 0]))->assertForbidden();
 
         $this->actingAs($host)->patch(route('service-provider-applications.review', $application), [
             'status' => 'accepted',

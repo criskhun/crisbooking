@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\BookingExpense;
 use App\Models\InquiryMessage;
+use App\Models\ServiceProviderApplication;
 use App\Models\UnitImage;
 use App\Models\User;
 use App\Services\AppNotificationService;
@@ -112,6 +114,20 @@ class AccountController extends Controller
             $query->where('client_id', $account->id)
                 ->orWhereHas('unit', fn ($units) => $units->where('host_id', $account->id));
         })->pluck('payment_proof_path');
+        $serviceEvidencePaths = BookingExpense::query()
+            ->whereHas('booking', fn ($query) => $query->where('client_id', $account->id)
+                ->orWhereHas('unit', fn ($units) => $units->where('host_id', $account->id)))
+            ->get(['completion_images', 'payment_proof_path'])
+            ->flatMap(fn (BookingExpense $expense) => [
+                ...collect($expense->completion_images)->pluck('path')->all(),
+                $expense->payment_proof_path,
+            ])->filter()->values();
+        $providerApplicationImagePaths = ServiceProviderApplication::query()
+            ->where('applicant_user_id', $account->id)
+            ->orWhere('host_id', $account->id)
+            ->get(['application_images'])
+            ->flatMap(fn (ServiceProviderApplication $application) => collect($application->application_images)->pluck('path'))
+            ->filter()->values();
         $account->delete();
         Storage::disk('public')->delete($photoPaths->all());
         Storage::disk('public')->delete($profileImagePaths->all());
@@ -125,6 +141,8 @@ class AccountController extends Controller
         Storage::disk('local')->delete($hostApplicationIdentityPaths);
         Storage::disk('local')->delete($inquiryAttachmentPaths->all());
         Storage::disk('local')->delete($paymentProofPaths->all());
+        Storage::disk('local')->delete($serviceEvidencePaths->all());
+        Storage::disk('local')->delete($providerApplicationImagePaths->all());
 
         return redirect()->route('accounts.index')->with('status', "{$name}'s account was deleted.");
     }

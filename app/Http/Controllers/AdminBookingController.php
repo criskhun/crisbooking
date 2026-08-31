@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\BookingDeletion;
+use App\Models\BookingExpense;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\AppNotificationService;
@@ -116,11 +117,17 @@ class AdminBookingController extends Controller
             }
 
             $proofPath = $locked->payment_proof_path;
+            $serviceEvidencePaths = $locked->expenses()->get(['completion_images', 'payment_proof_path'])
+                ->flatMap(fn (BookingExpense $expense) => [
+                    ...collect($expense->completion_images)->pluck('path')->all(),
+                    $expense->payment_proof_path,
+                ])->filter()->values()->all();
             $locked->delete();
 
             return [
                 'deletion_id' => $deletion->id,
                 'proof_path' => $proofPath,
+                'service_evidence_paths' => $serviceEvidencePaths,
                 'affiliate_id' => $locked->affiliatePartnership?->marketer_id,
             ];
         });
@@ -128,6 +135,7 @@ class AdminBookingController extends Controller
         if ($removal['proof_path']) {
             Storage::disk('local')->delete($removal['proof_path']);
         }
+        Storage::disk('local')->delete($removal['service_evidence_paths']);
 
         $deletion = BookingDeletion::query()->with(['host', 'client'])->findOrFail($removal['deletion_id']);
         $affiliate = $removal['affiliate_id'] ? User::query()->find($removal['affiliate_id']) : null;

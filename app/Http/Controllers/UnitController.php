@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\BookingExpense;
 use App\Models\InquiryMessage;
 use App\Models\Unit;
 use App\Models\UnitDraft;
@@ -311,6 +312,12 @@ class UnitController extends Controller
         $wifiQrPath = $unit->wifi_qr_path;
         $inquiryAttachmentPaths = InquiryMessage::query()->whereNotNull('attachment_path')->whereHas('inquiry', fn ($query) => $query->where('unit_id', $unit->id))->pluck('attachment_path');
         $paymentProofPaths = Booking::query()->where('unit_id', $unit->id)->whereNotNull('payment_proof_path')->pluck('payment_proof_path');
+        $serviceEvidencePaths = BookingExpense::query()->whereHas('booking', fn ($query) => $query->where('unit_id', $unit->id))
+            ->get(['completion_images', 'payment_proof_path'])
+            ->flatMap(fn (BookingExpense $expense) => [
+                ...collect($expense->completion_images)->pluck('path')->all(),
+                $expense->payment_proof_path,
+            ])->filter()->values();
         DB::transaction(fn () => $unit->delete());
         Storage::disk('public')->delete($photoPaths->all());
         if ($wifiQrPath) {
@@ -318,6 +325,7 @@ class UnitController extends Controller
         }
         Storage::disk('local')->delete($inquiryAttachmentPaths->all());
         Storage::disk('local')->delete($paymentProofPaths->all());
+        Storage::disk('local')->delete($serviceEvidencePaths->all());
 
         $status = $recordCount > 0
             ? "{$name} and its {$recordCount} booking or inquiry ".Str::plural('record', $recordCount).' were permanently deleted.'
