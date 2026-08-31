@@ -88,9 +88,12 @@
         white-space: normal !important;
     }
 
-    .sidebar-nav a span {
-        display: inline !important;
-        flex: 0 0 auto !important;
+    .sidebar-nav-icon {
+        display: inline-block !important;
+        flex: 0 0 1.1rem !important;
+        width: 1.1rem !important;
+        color: inherit !important;
+        text-align: center !important;
     }
 
     .sidebar-nav .sidebar-label {
@@ -132,9 +135,9 @@
     .sidebar-toggle-glyph {
         grid-area: 1 / 1 !important;
         display: block !important;
-        width: 100% !important;
-        height: 100% !important;
-        fill: currentColor !important;
+        color: inherit !important;
+        font-size: 1.15rem !important;
+        line-height: 1 !important;
         transition: opacity .18s ease, transform .22s ease !important;
     }
 

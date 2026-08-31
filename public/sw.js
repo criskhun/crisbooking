@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'davao-rent-zone-v13';
+const CACHE_VERSION = 'davao-rent-zone-v14';
 const OFFLINE_URL = new URL('./offline.html', self.registration.scope).href;
 const PRECACHE_URLS = [
     './offline.html',
@@ -9,6 +9,9 @@ const PRECACHE_URLS = [
     './css/mobile-form-v7.css',
     './css/profile-controls-v8.css',
     './css/address-combobox-v9.css',
+    './vendor/fontawesome/css/fontawesome.min.css',
+    './vendor/fontawesome/css/solid.min.css',
+    './vendor/fontawesome/webfonts/fa-solid-900.woff2',
     './js/app.js',
     './js/address-combobox-v9.js',
     './js/maps.js',
@@ -47,7 +50,7 @@ const isSafeStaticAsset = (url) => {
     if (!url.pathname.startsWith(scopePath)) return false;
 
     const relativePath = url.pathname.slice(scopePath.length);
-    return ['css/', 'js/', 'images/', 'icons/'].some((directory) => relativePath.startsWith(directory))
+    return ['css/', 'js/', 'images/', 'icons/', 'vendor/'].some((directory) => relativePath.startsWith(directory))
         || ['manifest.webmanifest', 'apple-touch-icon.png', 'favicon.ico', 'favicon.svg'].includes(relativePath);
 };
 

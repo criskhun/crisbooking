@@ -33,7 +33,7 @@ class ProgressiveWebAppTest extends TestCase
         $this->assertSame('./', $manifest['start_url']);
         $this->assertNotEmpty($manifest['icons']);
 
-        foreach (['sw.js', 'offline.html', 'js/pwa.js', 'css/mobile-shell-v5.css', 'css/mobile-menu-v6.css', 'css/mobile-form-v7.css', 'css/profile-controls-v8.css', 'css/address-combobox-v9.css', 'js/address-combobox-v9.js', 'js/mobile-shell-v5.js', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-192.png', 'icons/icon-maskable-512.png'] as $asset) {
+        foreach (['sw.js', 'offline.html', 'js/pwa.js', 'css/mobile-shell-v5.css', 'css/mobile-menu-v6.css', 'css/mobile-form-v7.css', 'css/profile-controls-v8.css', 'css/address-combobox-v9.css', 'js/address-combobox-v9.js', 'js/mobile-shell-v5.js', 'vendor/fontawesome/css/fontawesome.min.css', 'vendor/fontawesome/css/solid.min.css', 'vendor/fontawesome/webfonts/fa-solid-900.woff2', 'vendor/fontawesome/LICENSE.txt', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-192.png', 'icons/icon-maskable-512.png'] as $asset) {
             $this->assertFileExists(public_path($asset));
         }
 

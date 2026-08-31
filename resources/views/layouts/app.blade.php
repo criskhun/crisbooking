@@ -23,6 +23,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+    @auth
+        <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/fontawesome.min.css') }}?v={{ filemtime(public_path('vendor/fontawesome/css/fontawesome.min.css')) }}">
+        <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/solid.min.css') }}?v={{ filemtime(public_path('vendor/fontawesome/css/solid.min.css')) }}">
+    @endauth
     <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/mobile-shell-v5.css') }}">
     <link rel="stylesheet" href="{{ asset('css/mobile-menu-v6.css') }}?v={{ filemtime(public_path('css/mobile-menu-v6.css')) }}">
