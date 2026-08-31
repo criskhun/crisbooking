@@ -1134,7 +1134,10 @@
             const start = form.querySelector('[data-manual-booking-start]');
             const startTime = form.querySelector('[data-manual-booking-time]');
             const startTimeHelp = form.querySelector('[data-manual-booking-time-help]');
-            const days = form.querySelector('[data-manual-booking-days]');
+            const durationUnit = form.querySelector('[data-manual-booking-duration-unit]');
+            const durationQuantity = form.querySelector('[data-manual-booking-quantity]');
+            const durationQuantityLabel = form.querySelector('[data-manual-booking-quantity-label]');
+            const durationQuantityHelp = form.querySelector('[data-manual-booking-quantity-help]');
             const duration = form.querySelector('[data-manual-booking-duration]');
             const paymentOption = form.querySelector('[data-manual-payment-option]');
             const downpayment = form.querySelector('[data-manual-downpayment]');
@@ -1162,8 +1165,9 @@
                 if (!unit || !startTime) return;
                 const selectedUnit = unit.selectedOptions[0];
                 const isCondo = selectedUnit?.dataset.unitCategory === 'condo';
+                const isDaily = durationUnit?.value !== 'hour';
 
-                if (isCondo) {
+                if (isCondo && isDaily) {
                     if (!startTime.readOnly) flexibleStartTime = startTime.value || flexibleStartTime;
                     startTime.value = selectedUnit.dataset.startTime || '14:00';
                     startTime.readOnly = true;
@@ -1173,23 +1177,37 @@
                 } else {
                     if (startTime.readOnly) startTime.value = flexibleStartTime;
                     startTime.readOnly = false;
-                    if (startTimeHelp) startTimeHelp.textContent = 'For a one-day rental, the booking ends at this time on the following date.';
+                    if (startTimeHelp) startTimeHelp.textContent = isDaily
+                        ? 'A daily booking ends at this time on the final date.'
+                        : 'Hourly booking: this exact start time plus the selected number of hours.';
                 }
             };
             const syncDuration = () => {
-                if (!duration || !days) return;
-                const count = Math.max(1, Number(days.value) || 1);
-                let message = `${count} ${count === 1 ? 'day' : 'days'} will be blocked.`;
+                if (!duration || !durationQuantity) return;
+                const isHourly = durationUnit?.value === 'hour';
+                const count = Math.max(1, Number(durationQuantity.value) || 1);
+                const unitLabel = isHourly ? (count === 1 ? 'hour' : 'hours') : (count === 1 ? 'day' : 'days');
+                let message = `${count} ${unitLabel} will be blocked.`;
                 if (start?.value) {
                     const selectedUnit = unit?.selectedOptions[0];
-                    const endTime = selectedUnit?.dataset.unitCategory === 'condo'
+                    const endTime = selectedUnit?.dataset.unitCategory === 'condo' && !isHourly
                         ? (selectedUnit.dataset.endTime || '12:00')
                         : (startTime?.value || '12:00');
                     const departure = new Date(`${start.value}T${endTime}:00`);
-                    departure.setDate(departure.getDate() + count);
+                    if (isHourly) departure.setHours(departure.getHours() + count);
+                    else departure.setDate(departure.getDate() + count);
                     message += ` Ends ${departure.toLocaleString('en-PH', {month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit'})}.`;
                 }
                 duration.textContent = message;
+            };
+
+            const syncDurationUnit = () => {
+                const isHourly = durationUnit?.value === 'hour';
+                if (durationQuantity) durationQuantity.max = isHourly ? '8760' : '365';
+                if (durationQuantityLabel) durationQuantityLabel.textContent = isHourly ? 'Number of hours' : 'Number of days';
+                if (durationQuantityHelp) durationQuantityHelp.textContent = isHourly ? 'Maximum 8,760 hours.' : 'Maximum 365 days.';
+                syncUnitTimes();
+                syncDuration();
             };
 
             const syncUnit = () => {
@@ -1227,10 +1245,12 @@
                 if (!startTime.readOnly) flexibleStartTime = startTime.value || flexibleStartTime;
                 syncDuration();
             });
-            days?.addEventListener('input', syncDuration);
+            durationUnit?.addEventListener('change', syncDurationUnit);
+            durationQuantity?.addEventListener('input', syncDuration);
             paymentOption?.addEventListener('change', syncPayment);
             fulfillmentMethod?.addEventListener('change', syncUnit);
             syncUnit();
+            syncDurationUnit();
             syncPayment();
         });
 
@@ -1305,6 +1325,30 @@
             };
             input.addEventListener('change', applyFixedTime);
             applyFixedTime();
+        });
+
+        document.querySelectorAll('[data-manual-correction-form]').forEach((form) => {
+            const packageSelect = form.querySelector('[data-manual-correction-package]');
+            const dateInputs = Array.from(form.querySelectorAll('[data-manual-correction-date]'));
+            const helpTexts = Array.from(form.querySelectorAll('[data-manual-correction-time-help]'));
+            const usesExactTimes = () => ['hour', '12_hours'].includes(packageSelect?.value);
+            const syncCorrectionTimes = (applyTimes = false) => {
+                const exact = usesExactTimes();
+                if (applyTimes && !exact) {
+                    dateInputs.forEach((input) => {
+                        const date = input.value.slice(0, 10);
+                        if (date && input.dataset.condoFixedTime) input.value = `${date}T${input.dataset.condoFixedTime}`;
+                    });
+                }
+                helpTexts.forEach((help) => {
+                    help.textContent = exact
+                        ? 'Hourly packages keep the exact date and time entered.'
+                        : 'Daily packages use this listing’s fixed check-in and check-out times.';
+                });
+            };
+            packageSelect?.addEventListener('change', () => syncCorrectionTimes(true));
+            dateInputs.forEach((input) => input.addEventListener('change', () => syncCorrectionTimes(true)));
+            syncCorrectionTimes(true);
         });
 
         const realtimeChat = document.querySelector('[data-realtime-chat]');

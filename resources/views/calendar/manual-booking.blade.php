@@ -1,9 +1,9 @@
-<details class="manual-booking-card" data-manual-booking-card @if($errors->hasAny(['unit_id', 'start_date', 'start_time', 'number_of_days', 'source_channel', 'source_details', 'external_customer_name', 'fulfillment_method', 'delivery_address', 'total_amount', 'payment_option', 'initial_payment_amount', 'security_deposit_amount', 'party_size', 'affiliate_partnership_id', 'notes'])) open @endif>
+<details class="manual-booking-card" data-manual-booking-card @if($errors->hasAny(['unit_id', 'start_date', 'start_time', 'duration_unit', 'duration_quantity', 'source_channel', 'source_details', 'external_customer_name', 'fulfillment_method', 'delivery_address', 'total_amount', 'payment_option', 'initial_payment_amount', 'security_deposit_amount', 'party_size', 'affiliate_partnership_id', 'notes'])) open @endif>
     <summary>
         <span aria-hidden="true">＋</span>
         <div>
             <strong>Add an outside booking</strong>
-            <small>Block an owned or assigned listing and include the sale in your records.</small>
+            <small>Block an owned or assigned listing’s exact schedule and include the sale in your records.</small>
         </div>
         <b>Add booking</b>
     </summary>
@@ -32,13 +32,19 @@
         <div class="field-group">
             <label for="manual_start_time">Pickup or start time</label>
             <input id="manual_start_time" name="start_time" type="time" value="{{ old('start_time', '12:00') }}" required data-manual-booking-time>
-            <small class="field-help" data-manual-booking-time-help>For a one-day rental, the booking ends at this time on the following date.</small>
+            <small class="field-help" data-manual-booking-time-help>Daily bookings end at this time on the final date; hourly bookings use the exact number of hours.</small>
             @error('start_time')<p class="error-text">{{ $message }}</p>@enderror
         </div>
         <div class="field-group">
-            <label for="manual_number_of_days">Number of days</label>
-            <input id="manual_number_of_days" name="number_of_days" type="number" min="1" max="365" value="{{ old('number_of_days', 1) }}" required data-manual-booking-days>
-            @error('number_of_days')<p class="error-text">{{ $message }}</p>@enderror
+            <label for="manual_duration_unit">Charge duration by</label>
+            <select id="manual_duration_unit" name="duration_unit" required data-manual-booking-duration-unit><option value="day" @selected(old('duration_unit', 'day') === 'day')>Daily</option><option value="hour" @selected(old('duration_unit') === 'hour')>Hourly</option></select>
+            @error('duration_unit')<p class="error-text">{{ $message }}</p>@enderror
+        </div>
+        <div class="field-group">
+            <label for="manual_duration_quantity" data-manual-booking-quantity-label>Number of days</label>
+            <input id="manual_duration_quantity" name="duration_quantity" type="number" min="1" max="365" value="{{ old('duration_quantity', old('number_of_days', 1)) }}" required data-manual-booking-quantity>
+            <small class="field-help" data-manual-booking-quantity-help>Maximum 365 days.</small>
+            @error('duration_quantity')<p class="error-text">{{ $message }}</p>@enderror
         </div>
         <div class="manual-booking-duration" aria-live="polite" data-manual-booking-duration>1 day will be blocked.</div>
         <div class="field-group" data-manual-fulfillment hidden>
@@ -125,8 +131,8 @@
             @error('notes')<p class="error-text">{{ $message }}</p>@enderror
         </div>
         <div class="manual-booking-submit">
-            <small>Saved as confirmed so these dates become unavailable immediately.</small>
-            <button class="button button-primary" type="submit">Add & block dates</button>
+            <small>Saved as confirmed so this exact date and time range becomes unavailable immediately.</small>
+            <button class="button button-primary" type="submit">Add & block time</button>
         </div>
     </form>
 </details>

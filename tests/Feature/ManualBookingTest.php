@@ -105,7 +105,7 @@ class ManualBookingTest extends TestCase
                 'party_size' => 1,
             ])->assertRedirect(route('calendar.index', ['mode' => 'manage']))
             ->assertSessionHasErrors([
-                'start_date' => 'The selected listing already has a booking during part of that date range.',
+                'start_date' => 'The selected listing already has a booking during part of that date and time range.',
             ]);
         $this->assertDatabaseCount('bookings', 1);
 
@@ -187,7 +187,7 @@ class ManualBookingTest extends TestCase
         $this->actingAs($host)->get(route('bookings.show', $booking))
             ->assertOk()
             ->assertSee('Outside booking recorded')
-            ->assertSee('Days blocked')
+            ->assertSee('Time blocked')
             ->assertSee('Airbnb · AIR-48291')
             ->assertSee('Offline Affiliate')
             ->assertSee('Cancel outside booking & release dates', false);
@@ -253,6 +253,86 @@ class ManualBookingTest extends TestCase
             ])->assertRedirect(route('calendar.index', ['mode' => 'manage']))
             ->assertSessionHasErrors('start_date');
         $this->assertDatabaseCount('bookings', 2);
+    }
+
+    public function test_host_can_record_an_hourly_outside_service_with_an_exact_end_time(): void
+    {
+        $host = User::factory()->host()->create();
+        $service = $this->unit($host, 'Three Hour Driving Service', 'driving');
+        $startDate = today()->addDays(11);
+
+        $this->actingAs($host)->get(route('calendar.index', ['mode' => 'manage']))
+            ->assertOk()
+            ->assertSee('name="duration_unit"', false)
+            ->assertSee('value="hour"', false)
+            ->assertSee('Number of days');
+
+        $this->actingAs($host)->post(route('calendar.manual-bookings.store'), [
+            'unit_id' => $service->id,
+            'start_date' => $startDate->toDateString(),
+            'start_time' => '08:30',
+            'duration_unit' => 'hour',
+            'duration_quantity' => 3,
+            'source_channel' => 'direct',
+            'external_customer_name' => 'Hourly Service Customer',
+            'total_amount' => 1800,
+            'party_size' => 1,
+        ])->assertRedirect();
+
+        $booking = Booking::query()->sole();
+        $this->assertSame($startDate->format('Y-m-d').' 08:30', $booking->start_at->format('Y-m-d H:i'));
+        $this->assertSame($startDate->format('Y-m-d').' 11:30', $booking->end_at->format('Y-m-d H:i'));
+        $this->assertSame('hour', $booking->rate_period);
+        $this->assertSame(3, $booking->rate_quantity);
+        $this->assertSame('3 hours', $booking->durationDisplayLabel());
+
+        $this->actingAs($host)->get(route('bookings.show', $booking))
+            ->assertOk()
+            ->assertSee('Time blocked')
+            ->assertSee('3 hours')
+            ->assertSee('8:30 AM')
+            ->assertSee('11:30 AM');
+    }
+
+    public function test_twelve_hour_car_rental_spans_calendar_dates_and_blocks_only_its_exact_hours(): void
+    {
+        $host = User::factory()->host()->create();
+        $car = $this->unit($host, 'Twelve Hour Rental Car', 'car');
+        $startDate = today()->addMonth()->startOfMonth()->addDays(4);
+        $payload = [
+            'unit_id' => $car->id,
+            'start_date' => $startDate->toDateString(),
+            'start_time' => '14:00',
+            'duration_unit' => 'hour',
+            'duration_quantity' => 12,
+            'source_channel' => 'direct',
+            'total_amount' => 2500,
+            'party_size' => 2,
+        ];
+
+        $this->actingAs($host)->post(route('calendar.manual-bookings.store'), $payload)->assertRedirect();
+        $booking = Booking::query()->sole();
+        $this->assertSame($startDate->format('Y-m-d').' 14:00', $booking->start_at->format('Y-m-d H:i'));
+        $this->assertSame($startDate->copy()->addDay()->format('Y-m-d').' 02:00', $booking->end_at->format('Y-m-d H:i'));
+        $this->assertSame('12 hours', $booking->durationDisplayLabel());
+
+        $this->actingAs($host)->get(route('calendar.index', [
+            'mode' => 'manage',
+            'month' => $startDate->format('Y-m'),
+        ]))->assertOk()
+            ->assertSee('data-booking-id="'.$booking->id.'"', false)
+            ->assertSee('data-segment-start="'.$startDate->format('Y-m-d').'"', false)
+            ->assertSee('data-segment-end="'.$startDate->copy()->addDay()->format('Y-m-d').'"', false);
+
+        $this->actingAs($host)->from(route('calendar.index', ['mode' => 'manage']))
+            ->post(route('calendar.manual-bookings.store'), [
+                ...$payload,
+                'start_date' => $startDate->copy()->addDay()->toDateString(),
+                'start_time' => '01:00',
+                'duration_quantity' => 2,
+            ])->assertRedirect(route('calendar.index', ['mode' => 'manage']))
+            ->assertSessionHasErrors('start_date');
+        $this->assertDatabaseCount('bookings', 1);
     }
 
     public function test_legacy_midnight_outside_condo_booking_times_are_repaired_from_the_listing(): void

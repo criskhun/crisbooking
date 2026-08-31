@@ -198,6 +198,26 @@ class Booking extends Model
         return max(1, (int) $this->start_at->copy()->startOfDay()->diffInDays($this->end_at->copy()->startOfDay()));
     }
 
+    public function durationDisplayLabel(): string
+    {
+        if ($this->rate_period === 'hour') {
+            $hours = max(1, (int) $this->rate_quantity);
+
+            return $hours.' '.str('hour')->plural($hours);
+        }
+
+        if ($this->rate_period === '12_hours') {
+            $packages = max(1, (int) $this->rate_quantity);
+            $hours = 12 * $packages;
+
+            return $hours.' '.str('hour')->plural($hours);
+        }
+
+        $days = $this->durationDays();
+
+        return $days.' '.str('day')->plural($days);
+    }
+
     public function hasPendingChangeRequest(): bool
     {
         return $this->change_request_status === 'pending';
@@ -220,6 +240,7 @@ class Booking extends Model
         }
 
         $minutesPerPackage = match ($this->rate_period) {
+            'hour' => 60,
             '12_hours' => 720,
             'day' => 1440,
             'week' => 10080,

@@ -39,7 +39,7 @@
                                     <td><strong>#{{ $booking->id }}</strong><small class="table-subcopy">{{ $booking->isManualBooking() ? 'Outside booking' : 'Platform booking' }}</small></td>
                                     <td><strong>{{ $booking->unit->name }}</strong><small class="table-subcopy">{{ $booking->unit->host->name }} · {{ str($booking->unit->category)->replace('_',' ')->title() }}</small></td>
                                     <td><strong>{{ $booking->customerDisplayName() }}</strong><small class="table-subcopy">{{ $booking->isManualBooking() ? $booking->sourceDisplayLabel() : $booking->client->email }}</small></td>
-                                    <td><strong>{{ $booking->start_at->format('M j, Y') }} → {{ $booking->end_at->format('M j, Y') }}</strong><small class="table-subcopy">{{ $booking->durationDays() }} {{ Str::plural('day', $booking->durationDays()) }}</small></td>
+                                    <td><strong>{{ $booking->start_at->format('M j, Y') }} → {{ $booking->end_at->format('M j, Y') }}</strong><small class="table-subcopy">{{ $booking->durationDisplayLabel() }}</small></td>
                                     <td><span class="booking-status status-{{ $booking->status }}">{{ $booking->statusLabel() }}</span></td>
                                     <td><strong>₱{{ number_format((float) $booking->total_amount, 2) }}</strong></td>
                                     <td>

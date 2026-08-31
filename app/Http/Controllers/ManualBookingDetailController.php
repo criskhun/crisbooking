@@ -15,6 +15,7 @@ use Illuminate\Validation\ValidationException;
 class ManualBookingDetailController extends Controller
 {
     private const PACKAGE_LABELS = [
+        'hour' => '1 hour',
         '12_hours' => '12 hours',
         'day' => '1 day',
         'week' => '1 week',
@@ -32,7 +33,7 @@ class ManualBookingDetailController extends Controller
             'external_customer_name' => ['nullable', 'string', 'max:120'],
             'affiliate_partnership_id' => ['nullable', 'integer', 'exists:affiliate_partnerships,id'],
             'package_period' => ['nullable', Rule::in(array_keys(self::PACKAGE_LABELS))],
-            'package_quantity' => ['nullable', 'integer', 'min:1', 'max:365'],
+            'package_quantity' => ['nullable', 'integer', 'min:1', 'max:8760'],
             'correction_reason' => ['required', 'string', 'min:5', 'max:500'],
         ]);
 
@@ -55,7 +56,10 @@ class ManualBookingDetailController extends Controller
 
             $start = Carbon::parse($validated['start_at']);
             $end = Carbon::parse($validated['end_at']);
-            [$start, $end] = $unit->standardizeBookingPeriod($start, $end);
+            $correctedPackagePeriod = $validated['package_period'] ?? $lockedBooking->rate_period;
+            if (! ($unit->category === 'condo' && in_array($correctedPackagePeriod, ['hour', '12_hours'], true))) {
+                [$start, $end] = $unit->standardizeBookingPeriod($start, $end);
+            }
 
             if ($end->lte($start)) {
                 throw ValidationException::withMessages([
@@ -114,6 +118,11 @@ class ManualBookingDetailController extends Controller
 
                 $period = $validated['package_period'];
                 $quantity = (int) $validated['package_quantity'];
+                if ($period !== 'hour' && $quantity > 365) {
+                    throw ValidationException::withMessages([
+                        'package_quantity' => 'This package quantity can be up to 365.',
+                    ]);
+                }
                 if ($period !== $lockedBooking->rate_period || $quantity !== (int) $lockedBooking->rate_quantity) {
                     $unitPrice = round((float) $lockedBooking->total_amount / $quantity, 2);
                     $rate = $unit->rates

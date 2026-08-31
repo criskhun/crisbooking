@@ -17,6 +17,11 @@ class ManualBookingController extends Controller
 {
     public function store(Request $request, AppNotificationService $notifications): RedirectResponse
     {
+        $request->merge([
+            'duration_unit' => $request->input('duration_unit', 'day'),
+            'duration_quantity' => $request->input('duration_quantity', $request->input('number_of_days')),
+        ]);
+
         foreach (['total_amount', 'initial_payment_amount', 'security_deposit_amount'] as $moneyField) {
             if ($request->filled($moneyField)) {
                 $request->merge([$moneyField => str_replace([',', '₱', ' '], '', (string) $request->input($moneyField))]);
@@ -29,7 +34,8 @@ class ManualBookingController extends Controller
             // be reflected in both the calendar and the sales dashboard.
             'start_date' => ['required', 'date_format:Y-m-d'],
             'start_time' => ['required', 'date_format:H:i'],
-            'number_of_days' => ['required', 'integer', 'min:1', 'max:365'],
+            'duration_unit' => ['required', Rule::in(['day', 'hour'])],
+            'duration_quantity' => ['required', 'integer', 'min:1', 'max:8760'],
             'source_channel' => ['required', Rule::in(array_keys(Booking::MANUAL_SOURCE_OPTIONS))],
             'source_details' => ['nullable', 'string', 'max:160'],
             'external_customer_name' => ['nullable', 'string', 'max:120'],
@@ -67,7 +73,13 @@ class ManualBookingController extends Controller
                 ]);
             }
 
-            $days = (int) $validated['number_of_days'];
+            $durationUnit = $validated['duration_unit'];
+            $durationQuantity = (int) $validated['duration_quantity'];
+            if ($durationUnit === 'day' && $durationQuantity > 365) {
+                throw ValidationException::withMessages([
+                    'duration_quantity' => 'A daily outside booking can be up to 365 days.',
+                ]);
+            }
             $startDate = Carbon::createFromFormat('!Y-m-d', $validated['start_date'])->startOfDay();
             $fulfillmentMethod = null;
             $deliveryAddress = null;
@@ -83,15 +95,17 @@ class ManualBookingController extends Controller
                 }
             }
 
-            if ($unit->category === 'condo') {
+            if ($durationUnit === 'day' && $unit->category === 'condo') {
                 [$start, $end] = $unit->standardizeBookingPeriod(
                     $startDate,
-                    $startDate->copy()->addDays($days),
+                    $startDate->copy()->addDays($durationQuantity),
                 );
             } else {
                 [$startHour, $startMinute] = array_map('intval', explode(':', $validated['start_time']));
                 $start = $startDate->setTime($startHour, $startMinute);
-                $end = $start->copy()->addDays($days);
+                $end = $durationUnit === 'hour'
+                    ? $start->copy()->addHours($durationQuantity)
+                    : $start->copy()->addDays($durationQuantity);
             }
 
             $conflict = $unit->bookings()->blocking()
@@ -101,7 +115,7 @@ class ManualBookingController extends Controller
 
             if ($conflict) {
                 throw ValidationException::withMessages([
-                    'start_date' => 'The selected listing already has a booking during part of that date range.',
+                    'start_date' => 'The selected listing already has a booking during part of that date and time range.',
                 ]);
             }
 
@@ -121,8 +135,8 @@ class ManualBookingController extends Controller
                 'start_at' => $start,
                 'end_at' => $end,
                 'status' => 'confirmed',
-                'rate_period' => 'day',
-                'rate_quantity' => $days,
+                'rate_period' => $durationUnit,
+                'rate_quantity' => $durationQuantity,
                 'total_amount' => $totalAmount,
                 'security_deposit_amount' => round((float) ($validated['security_deposit_amount'] ?? 0), 2),
                 'party_size' => $partySize,
@@ -181,7 +195,7 @@ class ManualBookingController extends Controller
                 $booking->unit->host,
                 'manual_booking_created',
                 'Affiliate added an outside booking',
-                $booking->customerDisplayName().' reserved '.$booking->unit->name.' for '.$booking->durationDays().' '.str('day')->plural($booking->durationDays()).'.',
+                $booking->customerDisplayName().' reserved '.$booking->unit->name.' for '.$booking->durationDisplayLabel().'.',
                 route('calendar.index', ['mode' => 'manage', 'month' => $booking->start_at->format('Y-m'), 'date' => $booking->start_at->format('Y-m-d')]),
                 'booking:'.$booking->id.':manual-created:host',
             );
@@ -191,7 +205,7 @@ class ManualBookingController extends Controller
             'mode' => 'manage',
             'month' => $booking->start_at->format('Y-m'),
             'date' => $booking->start_at->format('Y-m-d'),
-        ])->with('status', 'Outside booking added. The listing is now blocked for '.$booking->durationDays().' '.str('day')->plural($booking->durationDays()).'.');
+        ])->with('status', 'Outside booking added. The listing is now blocked for '.$booking->durationDisplayLabel().'.');
     }
 
     private function affiliatePartnershipFor(mixed $actor, Unit $unit, ?int $requestedPartnershipId): ?AffiliatePartnership
