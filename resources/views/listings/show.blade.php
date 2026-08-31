@@ -9,7 +9,6 @@
         $salePrice = $unit->discountedPrice($startingPrice);
         $referralCode = $affiliate?->referral_code;
         $shareUrl = $unit->publicUrl($referralCode);
-        $icons = ['car' => '🚗', 'condo' => '🏢', 'driving' => '🛞', 'pet_transport' => '🐾'];
     @endphp
     <header class="public-listing-nav">
         <a class="brand" href="{{ route('home') }}"><span class="brand-mark"><img src="{{ $branding->logo_url }}" alt=""></span><span class="brand-name">{{ $branding->site_name }}</span></a>
@@ -33,16 +32,16 @@
                 @forelse($unit->images as $image)
                     <img src="{{ Storage::disk('public')->url($image->path) }}" alt="{{ $unit->name }} photo {{ $loop->iteration }}">
                 @empty
-                    @if($unit->photo_path)<img src="{{ Storage::disk('public')->url($unit->photo_path) }}" alt="{{ $unit->name }}">@else<div class="public-listing-placeholder">{{ $icons[$unit->category] ?? '◇' }}</div>@endif
+                    @if($unit->photo_path)<img src="{{ Storage::disk('public')->url($unit->photo_path) }}" alt="{{ $unit->name }}">@else<div class="public-listing-placeholder"><x-category-icon :category="$unit->category" /></div>@endif
                 @endforelse
             </div>
             <div class="public-listing-summary">
                 @include('partials.listing-favorite', ['favoriteUnit' => $unit, 'favoriteClass' => 'public-summary-favorite'])
                 <span class="eyebrow">{{ str($unit->category)->replace('_', ' ')->title() }} · Verified host</span>
                 <h1>{{ $unit->name }}</h1>
-                <p class="public-listing-location">⌖ {{ $unit->location ?: 'Location arranged with the host' }} @if($unit->listing_reviews_count)<span>★ {{ number_format((float) $unit->listing_reviews_avg_rating, 1) }} ({{ $unit->listing_reviews_count }} {{ Str::plural('review', $unit->listing_reviews_count) }})</span>@else<span>New listing</span>@endif</p>
+                <p class="public-listing-location"><x-fa-icon name="location-dot" /> {{ $unit->location ?: 'Location arranged with the host' }} @if($unit->listing_reviews_count)<span><x-fa-icon name="star" class="fa-rating" /> {{ number_format((float) $unit->listing_reviews_avg_rating, 1) }} ({{ $unit->listing_reviews_count }} {{ Str::plural('review', $unit->listing_reviews_count) }})</span>@else<span>New listing</span>@endif</p>
                 <p>{{ $unit->description ?: 'Contact the host to learn more about this rental or service.' }}</p>
-                <div class="public-listing-price"><small>Starting from</small>@if($unit->hasSale())<del>₱{{ number_format($startingPrice, 2) }}</del>@endif<strong>₱{{ number_format($salePrice, 2) }}</strong><span>{{ $unit->isPackageRental() ? 'per package' : '/ '.$unit->pricing_unit }}</span>@if($unit->hasSale())<em>✓ {{ number_format((float) $unit->sale_percentage, 0) }}% host sale applied</em>@endif</div>
+                <div class="public-listing-price"><small>Starting from</small>@if($unit->hasSale())<del>₱{{ number_format($startingPrice, 2) }}</del>@endif<strong>₱{{ number_format($salePrice, 2) }}</strong><span>{{ $unit->isPackageRental() ? 'per package' : '/ '.$unit->pricing_unit }}</span>@if($unit->hasSale())<em><x-fa-icon name="check" /> {{ number_format((float) $unit->sale_percentage, 0) }}% host sale applied</em>@endif</div>
                 <div class="public-share-row">
                     <input type="text" value="{{ $shareUrl }}" readonly aria-label="Shareable listing link" data-share-url>
                     <button class="button button-ghost" type="button" data-copy-share-link>Copy link</button>
@@ -75,10 +74,10 @@
 
                 @if($unit->rules)<section><span class="eyebrow">Before you book</span><h2>{{ $unit->category === 'condo' ? 'House rules' : ($unit->category === 'car' ? 'Rental rules' : 'Service rules') }}</h2><p>{!! nl2br(e($unit->rules)) !!}</p></section>@endif
                 <section class="public-listing-reviews">
-                    <span class="eyebrow">Guest feedback</span><h2>@if($unit->listing_reviews_count)★ {{ number_format((float) $unit->listing_reviews_avg_rating, 1) }} from {{ $unit->listing_reviews_count }} {{ Str::plural('review', $unit->listing_reviews_count) }}@else No unit ratings yet @endif</h2>
+                    <span class="eyebrow">Guest feedback</span><h2>@if($unit->listing_reviews_count)<x-fa-icon name="star" class="fa-rating" /> {{ number_format((float) $unit->listing_reviews_avg_rating, 1) }} from {{ $unit->listing_reviews_count }} {{ Str::plural('review', $unit->listing_reviews_count) }}@else No unit ratings yet @endif</h2>
                     <div class="public-review-grid">
                         @forelse($unit->listingReviews->take(6) as $review)
-                            <article><header><strong>{{ $review->reviewer->name }}</strong><span>★ {{ number_format((float) $review->rating, 1) }}</span></header>@if($review->comment)<p>“{{ $review->comment }}”</p>@endif<small>{{ $review->created_at->format('M Y') }}</small></article>
+                            <article><header><strong>{{ $review->reviewer->name }}</strong><span><x-fa-icon name="star" class="fa-rating" /> {{ number_format((float) $review->rating, 1) }}</span></header>@if($review->comment)<p>“{{ $review->comment }}”</p>@endif<small>{{ $review->created_at->format('M Y') }}</small></article>
                         @empty
                             <p class="public-review-empty">Completed guests can rate this unit after their stay or service.</p>
                         @endforelse

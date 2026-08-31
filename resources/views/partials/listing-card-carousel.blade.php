@@ -2,7 +2,6 @@
     $carouselUnit = $carouselUnit ?? $unit ?? $listing;
     $carouselLinkUrl = $carouselLinkUrl ?? route('listings.show', $carouselUnit);
     $carouselLinkClass = trim($carouselLinkClass ?? 'listing-card-carousel-link');
-    $carouselPlaceholder = $carouselPlaceholder ?? '◇';
     $carouselImages = $carouselUnit->images
         ->pluck('path')
         ->push($carouselUnit->photo_path)
@@ -24,13 +23,13 @@
                 @if($index > 0) loading="lazy" @endif
             >
         @empty
-            <span class="listing-card-carousel-placeholder" aria-hidden="true">{{ $carouselPlaceholder }}</span>
+            <span class="listing-card-carousel-placeholder" aria-hidden="true"><x-category-icon :category="$carouselUnit->category" /></span>
         @endforelse
     </a>
 
     @if($carouselCount > 1)
-        <button class="listing-card-carousel-nav previous" type="button" data-listing-carousel-previous aria-label="Previous photo of {{ $carouselUnit->name }}">‹</button>
-        <button class="listing-card-carousel-nav next" type="button" data-listing-carousel-next aria-label="Next photo of {{ $carouselUnit->name }}">›</button>
+        <button class="listing-card-carousel-nav previous icon-only-button" type="button" data-listing-carousel-previous aria-label="Previous photo of {{ $carouselUnit->name }}"><x-fa-icon name="chevron-left" /></button>
+        <button class="listing-card-carousel-nav next icon-only-button" type="button" data-listing-carousel-next aria-label="Next photo of {{ $carouselUnit->name }}"><x-fa-icon name="chevron-right" /></button>
         <div class="listing-card-carousel-dots" role="group" aria-label="Choose a photo of {{ $carouselUnit->name }}">
             @foreach($carouselImages as $index => $imagePath)
                 <button

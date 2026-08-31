@@ -24,18 +24,17 @@
                     @forelse($favorites as $unit)
                         @php
                             $startingPrice = $unit->startingPrice();
-                            $categoryIcon = ['car' => '🚗', 'condo' => '🏢', 'cleaning' => '🧹', 'driving' => '🛞', 'massage' => '💆', 'consultancy' => '💬'][$unit->category] ?? '◇';
                         @endphp
                         <article class="favorite-listing-card" data-favorite-card>
                             <div class="favorite-listing-media">
-                                @include('partials.listing-card-carousel', ['carouselUnit' => $unit, 'carouselPlaceholder' => $categoryIcon])
+                                @include('partials.listing-card-carousel', ['carouselUnit' => $unit])
                                 @if($unit->hasSale())<span class="listing-sale-badge">{{ number_format((float) $unit->sale_percentage, 0) }}% off</span>@endif
                                 @include('partials.listing-favorite', ['favoriteUnit' => $unit])
                             </div>
                             <div class="favorite-listing-copy">
-                                <div class="favorite-listing-meta"><span>{{ str($unit->category)->replace('_', ' ')->title() }}</span>@if($unit->listing_reviews_count)<strong>★ {{ number_format((float) $unit->listing_reviews_avg_rating, 1) }} <small>({{ $unit->listing_reviews_count }})</small></strong>@else<small>New listing</small>@endif</div>
+                                <div class="favorite-listing-meta"><span>{{ str($unit->category)->replace('_', ' ')->title() }}</span>@if($unit->listing_reviews_count)<strong><x-fa-icon name="star" class="fa-rating" /> {{ number_format((float) $unit->listing_reviews_avg_rating, 1) }} <small>({{ $unit->listing_reviews_count }})</small></strong>@else<small>New listing</small>@endif</div>
                                 <h3><a href="{{ route('listings.show', $unit) }}">{{ $unit->name }}</a></h3>
-                                <p>⌖ {{ $unit->location ?: 'Location arranged with host' }}</p>
+                                <p><x-fa-icon name="location-dot" /> {{ $unit->location ?: 'Location arranged with host' }}</p>
                                 <small>Hosted by {{ $unit->host->publicHostName() }}{{ $unit->capacity ? ' · Up to '.$unit->capacity.' '.Str::plural('person', $unit->capacity) : '' }}</small>
                                 <footer>
                                     <span><small>From</small>@if($unit->hasSale())<del>₱{{ number_format($startingPrice, 2) }}</del>@endif<strong>₱{{ number_format($unit->discountedPrice($startingPrice), 2) }}</strong>@if($unit->hasSale())<em>Save {{ number_format((float) $unit->sale_percentage, 0) }}%</em>@endif</span>
@@ -45,7 +44,7 @@
                         </article>
                     @empty
                         <div class="favorites-empty">
-                            <span aria-hidden="true">♡</span><h2>No favorites yet</h2><p>Tap the heart on any listing to save it here for easy comparison later.</p><a class="button button-primary" href="{{ route('calendar.index', ['mode' => 'book']) }}">Find a listing</a>
+                            <span><x-fa-icon name="heart" /></span><h2>No favorites yet</h2><p>Tap the heart on any listing to save it here for easy comparison later.</p><a class="button button-primary" href="{{ route('calendar.index', ['mode' => 'book']) }}">Find a listing</a>
                         </div>
                     @endforelse
                 </div>

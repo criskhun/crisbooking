@@ -1405,7 +1405,8 @@ class BookingCalendarTest extends TestCase
             ->assertSee('data-segment-start="'.$start->format('Y-m-d').'"', false)
             ->assertSee('data-segment-end="'.$end->format('Y-m-d').'"', false)
             ->assertSee('3:00 PM')
-            ->assertSee('→ 10:00 AM')
+            ->assertSee('fa-arrow-right', false)
+            ->assertSee('10:00 AM')
             ->assertSee('Check times');
     }
 

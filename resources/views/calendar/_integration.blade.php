@@ -6,7 +6,7 @@
     $googleSubscribeUrl = $calendarFeedUrl ? 'https://calendar.google.com/calendar/render?cid='.urlencode($webcalUrl) : null;
 @endphp
 <details class="calendar-integration-card">
-    <summary><span>▣</span><div><strong>Connect your calendar</strong><small>Sync bookings with Google Calendar or iPhone / Apple Calendar</small></div><b>Set up</b></summary>
+    <summary><span><x-fa-icon name="calendar-plus" /></span><div><strong>Connect your calendar</strong><small>Sync bookings with Google Calendar or iPhone / Apple Calendar</small></div><b>Set up</b></summary>
     <div class="calendar-integration-body">
         @if ($calendarFeedUrl)
             <p>This private subscription includes pending requests, payment steps, and confirmed bookings, and updates automatically when your calendar app refreshes.</p>

@@ -287,10 +287,10 @@
         </div>
         @error('car_fulfillment_options')<p class="error-text">{{ $message }}</p>@enderror
         <div class="custom-accessory-panel" data-custom-accessories>
-            <div class="private-detail-heading"><span>＋</span><div><strong>Other included accessories</strong><small>Add equipment that is not in the standard checklist.</small></div><button class="map-action-button" type="button" data-add-accessory>Add accessory</button></div>
+            <div class="private-detail-heading"><span><x-fa-icon name="plus" /></span><div><strong>Other included accessories</strong><small>Add equipment that is not in the standard checklist.</small></div><button class="map-action-button" type="button" data-add-accessory>Add accessory</button></div>
             <div class="custom-accessory-list" data-accessory-list>
                 @foreach(count($customAccessories) ? $customAccessories : [''] as $accessory)
-                    <div class="custom-accessory-row"><input name="custom_accessories[]" value="{{ $accessory }}" maxlength="80" placeholder="e.g. Portable tire inflator"><button type="button" data-remove-accessory aria-label="Remove accessory">×</button></div>
+                    <div class="custom-accessory-row"><input name="custom_accessories[]" value="{{ $accessory }}" maxlength="80" placeholder="e.g. Portable tire inflator"><button class="icon-only-button" type="button" data-remove-accessory aria-label="Remove accessory"><x-fa-icon name="xmark" /></button></div>
                 @endforeach
             </div>
             @error('custom_accessories.*')<p class="error-text">{{ $message }}</p>@enderror
@@ -312,7 +312,7 @@
             </div>
         </div>
         <div class="private-detail-panel" data-gps-details-section>
-            <div class="private-detail-heading"><span>🔒</span><div><strong>Private GPS access</strong><small>Encrypted and visible only in the host’s listing manager.</small></div></div>
+            <div class="private-detail-heading"><span><x-fa-icon name="lock" /></span><div><strong>Private GPS access</strong><small>Encrypted and visible only in the host’s listing manager.</small></div></div>
             <div class="detail-field-grid">
                 <div class="field-group"><label for="gps_device_name">GPS device or app name</label><input id="gps_device_name" name="gps[device_name]" value="{{ $gpsDetails['device_name'] ?? '' }}" maxlength="120" placeholder="e.g. SinoTrack GPS">@error('gps.device_name')<p class="error-text">{{ $message }}</p>@enderror</div>
                 <div class="field-group"><label for="gps_login_url">Login website <span class="optional-label">Optional</span></label><input id="gps_login_url" name="gps[login_url]" type="url" value="{{ $gpsDetails['login_url'] ?? '' }}" maxlength="500" placeholder="https://…">@error('gps.login_url')<p class="error-text">{{ $message }}</p>@enderror</div>
@@ -341,7 +341,7 @@
         </div>
         <div class="amenity-config-grid">
             <div class="private-detail-panel amenity-config-panel" data-wifi-details-section>
-                <div class="private-detail-heading"><span>🔒</span><div><strong>Private Wi-Fi access</strong><small>Clients receive this only after their booking is confirmed.</small></div></div>
+                <div class="private-detail-heading"><span><x-fa-icon name="lock" /></span><div><strong>Private Wi-Fi access</strong><small>Clients receive this only after their booking is confirmed.</small></div></div>
                 <div class="detail-field-grid">
                     <div class="field-group"><label for="wifi_ssid">Wi-Fi name (SSID)</label><input id="wifi_ssid" name="wifi[ssid]" value="{{ $wifiDetails['ssid'] ?? '' }}" maxlength="120" autocomplete="off">@error('wifi.ssid')<p class="error-text">{{ $message }}</p>@enderror</div>
                     <div class="field-group"><label for="wifi_password">Wi-Fi password</label><input id="wifi_password" name="wifi[password]" type="password" value="{{ $wifiDetails['password'] ?? '' }}" maxlength="500" autocomplete="new-password"><button class="field-reveal-button" type="button" data-password-reveal>Show password</button>@error('wifi.password')<p class="error-text">{{ $message }}</p>@enderror</div>

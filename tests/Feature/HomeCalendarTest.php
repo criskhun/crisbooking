@@ -35,7 +35,8 @@ class HomeCalendarTest extends TestCase
             ->assertSee('Top Rated Car')
             ->assertSee('Available Condo')
             ->assertDontSee('Lower Rated Car')
-            ->assertSee('★ 5.0')
+            ->assertSee('fa-star fa-rating', false)
+            ->assertSee('5.0')
             ->assertSee('Excellent car and a very smooth rental experience.')
             ->assertSee('See all 3 available');
     }

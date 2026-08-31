@@ -25,7 +25,7 @@
             <section class="host-application-shell">
                 @if ($application)
                     <div class="application-status-card status-{{ $application->status }}">
-                        <span aria-hidden="true">{{ $application->status === 'approved' ? '✓' : ($application->status === 'rejected' ? '×' : '!') }}</span>
+                        <span><x-fa-icon :name="$application->status === 'approved' ? 'check' : ($application->status === 'rejected' ? 'xmark' : 'triangle-exclamation')" /></span>
                         <div>
                             <small>Application #{{ $application->id }} · {{ $application->statusLabel() }}</small>
                             <h2>{{ $application->status === 'submitted' && $application->needsIdentityImages() ? 'Add your identity selfies to continue.' : match($application->status) {
@@ -135,7 +135,7 @@
 
                         <dialog class="selfie-camera-dialog" data-selfie-camera-dialog aria-labelledby="selfie-camera-title">
                             <div class="selfie-camera-panel">
-                                <header><div><span class="eyebrow">Live camera</span><h2 id="selfie-camera-title" data-camera-title>Take selfie</h2></div><button type="button" data-camera-close aria-label="Close camera">×</button></header>
+                                <header><div><span class="eyebrow">Live camera</span><h2 id="selfie-camera-title" data-camera-title>Take selfie</h2></div><button class="icon-only-button" type="button" data-camera-close aria-label="Close camera"><x-fa-icon name="xmark" /></button></header>
                                 <p data-camera-instructions>Center your face inside the guide.</p>
                                 <div class="camera-capture-stage" data-camera-stage>
                                     <video data-camera-video autoplay muted playsinline></video>

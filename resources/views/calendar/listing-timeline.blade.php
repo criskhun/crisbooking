@@ -9,7 +9,7 @@
     </div>
 
     @if ($units->isEmpty())
-        <div class="listing-timeline-empty"><span>☷</span><strong>No listings match these filters.</strong><p>Clear the filters or choose another category.</p></div>
+        <div class="listing-timeline-empty"><span><x-fa-icon name="bars" /></span><strong>No listings match these filters.</strong><p>Clear the filters or choose another category.</p></div>
     @else
         <div class="listing-timeline-scroll" tabindex="0" aria-label="Horizontally scrollable listing timeline for {{ $month->format('F Y') }}">
             <div class="listing-timeline-grid" style="--timeline-days: {{ $timelineDays->count() }}; --timeline-rows: {{ $units->count() }};">
@@ -25,7 +25,7 @@
                 @foreach ($units as $unit)
                     @php
                         $timelineRow = $loop->index + 2;
-                        $unitMeta = $calendarCategoryMeta[$unit->category] ?? ['theme' => 'other', 'icon' => '✦', 'label' => str($unit->category)->replace('_', ' ')->title()];
+                        $unitMeta = $calendarCategoryMeta[$unit->category] ?? ['theme' => 'other', 'icon' => 'shapes', 'label' => str($unit->category)->replace('_', ' ')->title()];
                         $unitBookings = $bookings->where('unit_id', $unit->id)->whereIn('status', ['pending', 'pre_approved', 'payment_submitted', 'confirmed']);
                         $unitStyle = $calendarUnitStyles[$unit->id] ?? null;
                     @endphp
@@ -33,7 +33,7 @@
                         @if ($unit->primaryImagePath())
                             <img src="{{ Storage::disk('public')->url($unit->primaryImagePath()) }}" alt="">
                         @else
-                            <span class="listing-timeline-placeholder" aria-hidden="true">{{ $unitMeta['icon'] }}</span>
+                            <span class="listing-timeline-placeholder"><x-fa-icon :name="$unitMeta['icon']" /></span>
                         @endif
                         <div><strong>{{ $unit->name }}</strong><small>{{ $unitMeta['label'] }}{{ $unit->location ? ' · '.$unit->location : '' }}</small></div>
                         <i @class(['active' => $unit->is_active]) title="{{ $unit->is_active ? 'Active listing' : 'Inactive listing' }}"></i>
@@ -75,13 +75,13 @@
                                aria-label="Reserved from {{ $timelineBooking->start_at->format('M j, g:i A') }} to {{ $timelineBooking->end_at->format('M j, g:i A') }}"
                            @endif
                            title="{{ $timelineCanOpenBooking ? $timelineBooking->statusLabel().': '.$timelineBooking->customerDisplayName() : 'Reserved' }} · {{ $timelineBooking->start_at->format('M j, g:i A') }} to {{ $timelineBooking->end_at->format('M j, g:i A') }}">
-                            <span aria-hidden="true">{{ $timelineCanOpenBooking ? $unitMeta['icon'] : '●' }}</span><strong>{{ $timelineLabel }}</strong>
+                            <span>@if($timelineCanOpenBooking)<x-fa-icon :name="$unitMeta['icon']" />@else<x-fa-icon name="circle" />@endif</span><strong>{{ $timelineLabel }}</strong>
                             @if ($timelineCanOpenBooking)<small>{{ $timelineBooking->start_at->format('M j') }}–{{ $timelineBooking->end_at->format('M j') }}</small>@endif
                         </a>
                     @endforeach
                 @endforeach
             </div>
         </div>
-        <p class="listing-timeline-help"><span aria-hidden="true">↔</span> Scroll sideways to see every date. Select an open date to review that day.</p>
+        <p class="listing-timeline-help"><x-fa-icon name="left-right" /> Scroll sideways to see every date. Select an open date to review that day.</p>
     @endif
 </section>

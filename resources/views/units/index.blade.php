@@ -9,7 +9,7 @@
         <main class="dashboard-main">
             <header class="dashboard-header">
                 <div><span class="form-kicker">{{ auth()->user()->is_admin ? 'Administrator listing moderation' : 'Host inventory' }}</span><h1>Units & services</h1></div>
-                <div class="header-actions"><a class="button button-primary button-small" href="{{ route('units.create') }}">＋ Register listing</a>@include('partials.user-badge')</div>
+                <div class="header-actions"><a class="button button-primary button-small" href="{{ route('units.create') }}"><x-fa-icon name="plus" /> Register listing</a>@include('partials.user-badge')</div>
             </header>
 
             <section class="listing-section">
@@ -26,17 +26,16 @@
                 <div class="listing-grid">
                     @forelse ($units as $unit)
                         @php
-                            $icons = ['car' => '🚗', 'condo' => '🏢', 'cleaning' => '🧹', 'laundry' => '🧺', 'delivery' => '🚚', 'car_wash' => '🫧', 'vehicle_maintenance' => '🛠', 'driving' => '🛞', 'pet_transport' => '🐾', 'other' => '◇'];
                             $isBooked = $unit->active_bookings_count > 0;
                             $recordCount = $unit->bookings_count + $unit->inquiries_count;
                         @endphp
                         <article class="listing-card">
                             <div class="listing-photo">
-                                @include('partials.listing-card-carousel', ['carouselUnit' => $unit, 'carouselLinkUrl' => route('units.edit', $unit), 'carouselPlaceholder' => $icons[$unit->category] ?? '◇'])
+                                @include('partials.listing-card-carousel', ['carouselUnit' => $unit, 'carouselLinkUrl' => route('units.edit', $unit)])
                                 @if($unit->hasSale())<span class="listing-sale-badge">{{ number_format((float) $unit->sale_percentage, 0) }}% sale</span>@endif
                             </div>
                             <div class="listing-card-top">
-                                <span class="listing-icon">{{ $icons[$unit->category] ?? '◇' }}</span>
+                                <span class="listing-icon"><x-category-icon :category="$unit->category" /></span>
                                 @if (! $unit->is_active)
                                     <span class="availability-badge unavailable">Unavailable</span>
                                 @elseif ($isBooked)
@@ -70,7 +69,7 @@
                             @endif
                             @if ($unit->category === 'car' && in_array('gps', $unit->car_details['accessories'] ?? [], true) && $unit->gps_details)
                                 <details class="private-gps-preview">
-                                    <summary>🔒 Host-only GPS access</summary>
+                                    <summary><x-fa-icon name="lock" /> Host-only GPS access</summary>
                                     <dl>
                                         <div><dt>GPS</dt><dd>{{ $unit->gps_details['device_name'] ?? 'Not specified' }}</dd></div>
                                         <div><dt>Username</dt><dd>{{ $unit->gps_details['username'] ?? 'Not specified' }}</dd></div>
@@ -82,7 +81,7 @@
                             @endif
                             @if ($unit->category === 'condo' && in_array('wifi', $unit->property_details['amenities'] ?? [], true) && $unit->wifi_details)
                                 <details class="private-gps-preview private-wifi-preview">
-                                    <summary>🔒 Private Wi-Fi access</summary>
+                                    <summary><x-fa-icon name="lock" /> Private Wi-Fi access</summary>
                                     <dl>
                                         <div><dt>SSID</dt><dd>{{ $unit->wifi_details['ssid'] ?? 'Not specified' }}</dd></div>
                                         <div><dt>Password</dt><dd>{{ $unit->wifi_details['password'] ?? 'Not specified' }}</dd></div>
@@ -97,7 +96,7 @@
                             <div class="listing-meta">
                                 <span><small>Rate</small><strong>{{ $unit->isPackageRental() ? ($unit->hasRentalRates() ? $unit->rates->count().' '.Str::plural('rental package', $unit->rates->count()) : 'Rates need setup') : '₱'.number_format($unit->discountedPrice($unit->price), 2).' / '.$unit->pricing_unit }}</strong></span>
                                 <span><small>Location</small><strong>{{ $unit->location ?: 'Not specified' }}</strong></span>
-                                <span><small>Unit rating</small><strong>{{ $unit->listing_reviews_count ? '★ '.number_format((float) $unit->listing_reviews_avg_rating, 1).' ('.$unit->listing_reviews_count.')' : 'No ratings yet' }}</strong></span>
+                                <span><small>Unit rating</small><strong>@if($unit->listing_reviews_count)<x-fa-icon name="star" class="fa-rating" /> {{ number_format((float) $unit->listing_reviews_avg_rating, 1) }} ({{ $unit->listing_reviews_count }})@else No ratings yet @endif</strong></span>
                             </div>
                             @if ($unit->isPackageRental())
                                 @php
@@ -133,7 +132,7 @@
                             </div>
                         </article>
                     @empty
-                        <div class="empty-listing-state"><span>＋</span><h2>Register your first listing</h2><p>Add a unit or service so clients can see its availability and book it.</p><a class="button button-primary" href="{{ route('units.create') }}">Register listing</a></div>
+                        <div class="empty-listing-state"><span><x-fa-icon name="plus" /></span><h2>Register your first listing</h2><p>Add a unit or service so clients can see its availability and book it.</p><a class="button button-primary" href="{{ route('units.create') }}">Register listing</a></div>
                     @endforelse
                 </div>
             </section>

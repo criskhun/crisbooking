@@ -685,7 +685,8 @@
                 remove.type = 'button';
                 remove.dataset.removeAccessory = '';
                 remove.setAttribute('aria-label', 'Remove accessory');
-                remove.textContent = '×';
+                remove.className = 'icon-only-button';
+                remove.innerHTML = '<i class="fa-solid fa-xmark" aria-hidden="true"></i>';
                 row.append(input, remove);
                 list?.append(row);
                 input.focus();
@@ -1313,7 +1314,8 @@
                     if (typeof calendarBookingDialog.showModal !== 'function') return;
                     event.preventDefault();
 
-                    setDialogText('[data-calendar-dialog-icon]', bookingLink.dataset.categoryIcon);
+                    const dialogIcon = bookingDialog.querySelector('[data-calendar-dialog-icon]');
+                    if (dialogIcon) dialogIcon.className = `fa-solid fa-${bookingLink.dataset.categoryIcon || 'shapes'} calendar-dialog-icon`;
                     setDialogText('[data-calendar-dialog-category]', bookingLink.dataset.category);
                     setDialogText('[data-calendar-dialog-unit]', bookingLink.dataset.unit);
                     setDialogText('[data-calendar-dialog-client]', bookingLink.dataset.client);
@@ -1707,7 +1709,7 @@
                 toast.type = 'button';
                 toast.className = 'notification-toast';
                 const icon = document.createElement('span');
-                icon.textContent = notification.type === 'booking_request' ? '◷' : '✦';
+                icon.innerHTML = `<i class="fa-solid fa-${notification.type === 'booking_request' ? 'clock' : 'bell'}" aria-hidden="true"></i>`;
                 const copy = document.createElement('span');
                 const title = document.createElement('strong');
                 title.textContent = notification.title;
@@ -1738,7 +1740,7 @@
                     item.type = 'button';
                     item.className = `notification-item${notification.read ? '' : ' unread'}`;
                     const marker = document.createElement('span');
-                    marker.textContent = notification.type === 'booking_request' ? '◷' : '✦';
+                    marker.innerHTML = `<i class="fa-solid fa-${notification.type === 'booking_request' ? 'clock' : 'bell'}" aria-hidden="true"></i>`;
                     const copy = document.createElement('span');
                     const title = document.createElement('strong');
                     title.textContent = notification.title;
@@ -2453,7 +2455,8 @@
                         photoLink.append(image);
                     } else {
                         const icon = document.createElement('span');
-                        icon.textContent = item.category === 'Car' ? '🚗' : (item.category === 'Condo' ? '🏢' : '◇');
+                        const iconName = item.category === 'Car' ? 'car-side' : (item.category === 'Condo' ? 'building' : 'shapes');
+                        icon.innerHTML = `<i class="fa-solid fa-${iconName}" aria-hidden="true"></i>`;
                         photoLink.append(icon);
                     }
                     const copy = document.createElement('div');
@@ -2554,7 +2557,9 @@
                 title.textContent = guideSteps[guideIndex].title;
                 copy.textContent = guideSteps[guideIndex].copy;
                 hint.hidden = false;
-                hint.querySelector('[data-guide-demo-next]').textContent = guideIndex === guideSteps.length - 1 ? 'Done ✓' : 'Next →';
+                hint.querySelector('[data-guide-demo-next]').innerHTML = guideIndex === guideSteps.length - 1
+                    ? 'Done <i class="fa-solid fa-check" aria-hidden="true"></i>'
+                    : 'Next <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>';
             };
 
             pageGuide.querySelector('[data-page-guide-open]')?.addEventListener('click', () => dialog.showModal());
@@ -2596,7 +2601,7 @@
                     button.setAttribute('aria-pressed', result.favorited ? 'true' : 'false');
                     button.setAttribute('aria-label', label);
                     button.title = label;
-                    if (icon) icon.textContent = result.favorited ? '♥' : '♡';
+                    icon?.classList.toggle('is-favorited', result.favorited);
                     const favoriteCard = form.closest('[data-favorite-card]');
                     if (favoriteCard && !result.favorited) {
                         favoriteCard.remove();

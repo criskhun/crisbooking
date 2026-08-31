@@ -1,0 +1,297 @@
+/* Master icon system: all application symbols use the bundled Font Awesome font. */
+.fa-ui,
+.fa-solid,
+.fa-regular,
+.fa-brands {
+    display: inline-block;
+    flex: 0 0 auto;
+    line-height: 1;
+    text-align: center;
+}
+
+.fa-icon-circle {
+    display: inline-grid;
+    place-items: center;
+    width: 2.35rem;
+    height: 2.35rem;
+    border-radius: 50%;
+}
+
+.fa-category-icon {
+    color: var(--forest);
+    font-size: 1.05rem;
+}
+
+.fa-inline-label {
+    margin-right: .32rem;
+    color: currentColor;
+    font-size: .9em;
+}
+
+.fa-rating,
+.fa-rating-stars {
+    color: #d3951d;
+}
+
+.fa-rating-stars {
+    display: inline-flex;
+    align-items: center;
+    gap: .12em;
+    letter-spacing: 0;
+}
+
+.fa-rating-stars .is-empty {
+    color: #cbd5d1;
+    opacity: .65;
+}
+
+.icon-only-button {
+    display: inline-grid;
+    place-items: center;
+}
+
+.button > .fa-solid,
+.button > .fa-regular,
+button > .fa-solid,
+a > .fa-solid {
+    margin-right: .32rem;
+}
+
+.icon-only-button > .fa-solid,
+.listing-card-carousel-nav > .fa-solid,
+.booking-photo-nav > .fa-solid,
+.calendar-navigation > a > .fa-solid,
+.calendar-arrows > a > .fa-solid,
+.listing-favorite-control > .fa-solid {
+    margin-right: 0;
+}
+
+.listing-favorite-control .fa-heart {
+    opacity: .62;
+    transition: color .18s ease, opacity .18s ease, transform .18s ease;
+}
+
+.listing-favorite-control .fa-heart.is-favorited,
+.listing-favorite-control.is-favorited .fa-heart {
+    color: #b73d51;
+    opacity: 1;
+}
+
+.account-status .fa-circle {
+    width: auto;
+    height: auto;
+    border-radius: 0;
+    color: #5ca483;
+    background: transparent;
+    font-size: .48rem;
+}
+
+.account-status.status-suspended .fa-circle {
+    color: #c56b62;
+    background: transparent;
+}
+
+.account-actions a,
+.account-actions button {
+    display: inline-flex;
+    align-items: center;
+    gap: .15rem;
+}
+
+:root body input,
+:root body select,
+:root body textarea,
+:root body button {
+    box-sizing: border-box;
+    font: inherit;
+}
+
+:root body .field-group,
+:root body .availability-field {
+    min-width: 0;
+}
+
+:root body .field-group > label,
+:root body .availability-field > label {
+    line-height: 1.35;
+}
+
+.listing-card-carousel-placeholder > .fa-solid,
+.public-listing-placeholder > .fa-solid,
+.availability-photo-placeholder > .fa-solid,
+.affiliate-link-placeholder > .fa-solid,
+.calendar-profile-card > span > .fa-solid {
+    font-size: 1.45rem;
+}
+
+.listing-card-carousel-nav {
+    font-family: inherit !important;
+    font-size: .85rem !important;
+}
+
+.review-star-options label {
+    display: inline-grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+}
+
+.review-star-options label .fa-star {
+    font-size: 1.45rem;
+}
+
+.searchable-combobox > .fa-chevron-down {
+    position: absolute;
+    top: 50%;
+    right: 1rem;
+    color: var(--muted);
+    font-size: .72rem;
+    pointer-events: none;
+    transform: translateY(-50%);
+}
+
+.searchable-combobox.is-open > .fa-chevron-down {
+    transform: translateY(-50%) rotate(180deg);
+}
+
+/* Master checkbox/radio alignment complements the shared text-control system. */
+:root body input[type="checkbox"],
+:root body input[type="radio"] {
+    width: 1.05rem;
+    height: 1.05rem;
+    margin: 0;
+    accent-color: var(--forest);
+}
+
+:root body label:has(> input[type="checkbox"]),
+:root body label:has(> input[type="radio"]) {
+    align-items: center;
+}
+
+:root body button:focus-visible,
+:root body a:focus-visible,
+:root body [role="button"]:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--forest) 28%, transparent);
+    outline-offset: 3px;
+}
+
+@media (max-width: 740px) {
+    .fa-icon-circle {
+        width: 2.2rem;
+        height: 2.2rem;
+    }
+
+    .icon-only-button {
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+    }
+
+    :root body .field-group,
+    :root body .finance-control,
+    :root body .money-input {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    :root body input,
+    :root body select,
+    :root body textarea {
+        max-width: 100%;
+    }
+
+    .accounts-section .accounts-summary {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: .75rem;
+        padding: 1rem;
+    }
+
+    .accounts-section .accounts-summary p {
+        grid-column: 1 / -1;
+    }
+
+    .accounts-section .account-summary-stat + .account-summary-stat {
+        padding-left: .75rem;
+    }
+
+    .accounts-section .accounts-table-wrap {
+        overflow: visible;
+        padding: .75rem;
+    }
+
+    .accounts-section .accounts-table,
+    .accounts-section .accounts-table tbody,
+    .accounts-section .accounts-table tr,
+    .accounts-section .accounts-table td {
+        display: block;
+        width: 100%;
+        min-width: 0;
+    }
+
+    .accounts-section .accounts-table thead {
+        display: none;
+    }
+
+    .accounts-section .accounts-table tr {
+        padding: .9rem;
+        border: 1px solid var(--card-line);
+        border-radius: 14px;
+        background: var(--surface);
+    }
+
+    .accounts-section .accounts-table tr + tr {
+        margin-top: .75rem;
+    }
+
+    .accounts-section .accounts-table td {
+        display: grid;
+        grid-template-columns: minmax(6.5rem, .8fr) minmax(0, 1.2fr);
+        align-items: center;
+        gap: .75rem;
+        padding: .55rem 0;
+        border-top: 1px solid var(--row-line);
+    }
+
+    .accounts-section .accounts-table td:first-child {
+        display: block;
+        padding-top: 0;
+        padding-bottom: .85rem;
+        border-top: 0;
+    }
+
+    .accounts-section .accounts-table td:nth-child(2)::before { content: "Role"; }
+    .accounts-section .accounts-table td:nth-child(3)::before { content: "Status"; }
+    .accounts-section .accounts-table td:nth-child(4)::before { content: "Email"; }
+    .accounts-section .accounts-table td:nth-child(5)::before { content: "Sign-up"; }
+    .accounts-section .accounts-table td:nth-child(6)::before { content: "Registered"; }
+    .accounts-section .accounts-table td:nth-child(7)::before { content: "Actions"; }
+
+    .accounts-section .accounts-table td::before {
+        color: var(--muted);
+        font-size: .64rem;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+
+    .accounts-section .account-actions {
+        flex-wrap: wrap;
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 480px) {
+    .accounts-section .accounts-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .accounts-section .accounts-summary p {
+        grid-column: auto;
+    }
+
+    .accounts-section .account-summary-stat + .account-summary-stat {
+        padding-top: .75rem;
+        padding-left: 0;
+        border-top: 1px solid var(--row-line);
+        border-left: 0;
+    }
+}

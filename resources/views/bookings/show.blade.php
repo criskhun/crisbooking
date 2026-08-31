@@ -38,11 +38,11 @@
     <div class="dashboard-shell">
         @include('partials.dashboard-sidebar')
         <main class="dashboard-main">
-            <header class="dashboard-header"><div><a class="back-link" href="{{ route('calendar.index', $isClient ? ['mode' => 'book'] : ['mode' => 'manage']) }}">← Back to {{ $isClient ? 'my bookings' : 'calendar' }}</a><h1>Booking details</h1></div>@include('partials.user-badge')</header>
+            <header class="dashboard-header"><div><a class="back-link" href="{{ route('calendar.index', $isClient ? ['mode' => 'book'] : ['mode' => 'manage']) }}"><x-fa-icon name="arrow-left" /> Back to {{ $isClient ? 'my bookings' : 'calendar' }}</a><h1>Booking details</h1></div>@include('partials.user-badge')</header>
 
             <section class="booking-detail-shell">
                 @if (session('status'))<div class="flash-message account-alert">{{ session('status') }}</div>@endif
-                <div class="booking-detail-status status-{{ $booking->status }}"><span>{{ $booking->status === 'confirmed' ? '✓' : (in_array($booking->status, ['pending', 'pre_approved', 'payment_submitted'], true) ? '◷' : '×') }}</span><div><small>{{ $booking->statusLabel() }} booking #{{ $booking->id }}</small><h2>{{ $statusTitle }}</h2><p>{{ $statusDescription }}</p></div>@if ($booking->inquiry)<a class="button button-primary" href="{{ route('inquiries.show', $booking->inquiry) }}">Open booking chat</a>@endif</div>
+                <div class="booking-detail-status status-{{ $booking->status }}"><span><x-fa-icon :name="$booking->status === 'confirmed' ? 'check' : (in_array($booking->status, ['pending', 'pre_approved', 'payment_submitted'], true) ? 'clock' : 'xmark')" /></span><div><small>{{ $booking->statusLabel() }} booking #{{ $booking->id }}</small><h2>{{ $statusTitle }}</h2><p>{{ $statusDescription }}</p></div>@if ($booking->inquiry)<a class="button button-primary" href="{{ route('inquiries.show', $booking->inquiry) }}">Open booking chat</a>@endif</div>
 
                 <div class="booking-detail-layout">
                     <div class="booking-detail-main">
@@ -61,10 +61,10 @@
                                         <span class="booking-gallery-label">View photo</span>
                                     </button>
                                 @else
-                                    <span>{{ ['car' => '🚗', 'condo' => '🏢', 'driving' => '🛞', 'pet_transport' => '🐾'][$unit->category] ?? '◇' }}</span>
+                                    <span><x-category-icon :category="$unit->category" /></span>
                                 @endif
                             </div>
-                            <div class="booking-unit-copy"><span class="eyebrow">{{ str($unit->category)->replace('_', ' ')->title() }}</span><h2>{{ $unit->name }}</h2><p class="booking-unit-location">⌖ {{ $unit->location ?: 'Location arranged with host' }}</p><p>{{ $unit->description ?: 'No additional listing description was provided.' }}</p></div>
+                            <div class="booking-unit-copy"><span class="eyebrow">{{ str($unit->category)->replace('_', ' ')->title() }}</span><h2>{{ $unit->name }}</h2><p class="booking-unit-location"><x-fa-icon name="location-dot" /> {{ $unit->location ?: 'Location arranged with host' }}</p><p>{{ $unit->description ?: 'No additional listing description was provided.' }}</p></div>
                             <div class="booking-unit-facts">
                                 <span><small>Host</small><strong>{{ $unit->host->name }}</strong></span>
                                 <span><small>Capacity</small><strong>{{ $unit->capacity ? 'Up to '.$unit->capacity : 'Ask host' }}</strong></span>
@@ -172,7 +172,7 @@
                                     <dl>@foreach($revision->changedDetails() as $change)<div><dt>{{ $change['label'] }}</dt><dd><span>{{ $change['before'] }}</span><b>→</b><strong>{{ $change['after'] }}</strong></dd></div>@endforeach</dl>
                                 </article>
                             @empty
-                                <div class="booking-correction-empty"><span>✓</span><p><strong>No reservation corrections yet.</strong> The original outside-booking details are still in use.</p></div>
+                                <div class="booking-correction-empty"><span><x-fa-icon name="check" /></span><p><strong>No reservation corrections yet.</strong> The original outside-booking details are still in use.</p></div>
                             @endforelse
                         </div>
                     </section>
@@ -312,18 +312,18 @@
 
                 @if (! $booking->isManualBooking() && $booking->status === 'confirmed' && $booking->end_at->isPast())
                     <section class="booking-review-card">
-                        <div class="booking-change-heading"><span>★</span><div><small>Completed booking</small><h2>Review {{ $reviewPartner->name }}</h2><p>Your rating and comment will appear on their {{ $isClient ? 'host' : 'client' }} profile.</p></div></div>
+                        <div class="booking-change-heading"><span><x-fa-icon name="star" /></span><div><small>Completed booking</small><h2>Review {{ $reviewPartner->name }}</h2><p>Your rating and comment will appear on their {{ $isClient ? 'host' : 'client' }} profile.</p></div></div>
                         @if ($myBookingReview)
-                            <div class="review-submitted"><strong>{{ str_repeat('★', $myBookingReview->rating) }}{{ str_repeat('☆', 5 - $myBookingReview->rating) }}</strong><p>{{ $myBookingReview->comment }}</p><small>Review published {{ $myBookingReview->created_at->format('M j, Y') }}</small></div>
+                            <div class="review-submitted"><strong><x-rating-stars :rating="$myBookingReview->rating" /></strong><p>{{ $myBookingReview->comment }}</p><small>Review published {{ $myBookingReview->created_at->format('M j, Y') }}</small></div>
                         @else
-                            <form method="POST" action="{{ route('bookings.reviews.store', $booking) }}" class="review-form">@csrf<fieldset><legend>Your rating</legend><div class="review-star-options">@foreach(range(5, 1) as $star)<input id="booking-rating-{{ $star }}" name="rating" type="radio" value="{{ $star }}" required><label for="booking-rating-{{ $star }}" title="{{ $star }} stars">★</label>@endforeach</div></fieldset><div class="field-group"><label for="review_comment">Public comment</label><textarea id="review_comment" name="comment" rows="4" minlength="10" maxlength="1500" required placeholder="Describe your experience with this booking partner…">{{ old('comment') }}</textarea>@error('comment')<p class="error-text">{{ $message }}</p>@enderror</div><button class="button button-primary" type="submit">Publish review</button></form>
+                            <form method="POST" action="{{ route('bookings.reviews.store', $booking) }}" class="review-form">@csrf<fieldset><legend>Your rating</legend><div class="review-star-options">@foreach(range(5, 1) as $star)<input id="booking-rating-{{ $star }}" name="rating" type="radio" value="{{ $star }}" required><label for="booking-rating-{{ $star }}" title="{{ $star }} stars"><x-fa-icon name="star" /></label>@endforeach</div></fieldset><div class="field-group"><label for="review_comment">Public comment</label><textarea id="review_comment" name="comment" rows="4" minlength="10" maxlength="1500" required placeholder="Describe your experience with this booking partner…">{{ old('comment') }}</textarea>@error('comment')<p class="error-text">{{ $message }}</p>@enderror</div><button class="button button-primary" type="submit">Publish review</button></form>
                         @endif
                     </section>
                 @endif
 
                 @if ($booking->change_request_status)
                     <section class="booking-change-state status-{{ $booking->change_request_status }}">
-                        <span>{{ $booking->change_request_status === 'pending' ? '◷' : ($booking->change_request_status === 'approved' ? '✓' : '×') }}</span>
+                        <span><x-fa-icon :name="$booking->change_request_status === 'pending' ? 'clock' : ($booking->change_request_status === 'approved' ? 'check' : 'xmark')" /></span>
                         <div>
                             <small>Schedule change request</small>
                             <h2>{{ match ($booking->change_request_status) { 'pending' => 'Waiting for host approval', 'approved' => 'Change approved', default => 'Change declined' } }}</h2>
@@ -348,7 +348,7 @@
 
                 @if ($isClient && in_array($booking->status, ['pending', 'pre_approved', 'payment_submitted', 'confirmed'], true) && $booking->end_at->isFuture() && ! $booking->hasPendingChangeRequest())
                     <section class="booking-change-card">
-                        <div class="booking-change-heading"><span>↻</span><div><small>Changes require host approval</small><h2>Request new dates or pax</h2><p>Your current reservation remains unchanged while the host reviews availability.</p></div></div>
+                        <div class="booking-change-heading"><span><x-fa-icon name="rotate" /></span><div><small>Changes require host approval</small><h2>Request new dates or pax</h2><p>Your current reservation remains unchanged while the host reviews availability.</p></div></div>
                         <form method="POST" action="{{ route('bookings.change-request', $booking) }}" class="booking-change-form">
                             @csrf @method('PATCH')
                             @if ($unit->isPackageRental())<input type="hidden" name="change_duration_pricing" value="1">@endif
@@ -393,12 +393,12 @@
                     <div class="booking-photo-viewer-panel">
                         <header>
                             <div><span class="eyebrow">Booking photos</span><h2 id="booking-gallery-title">{{ $unit->name }}</h2></div>
-                            <div class="booking-photo-viewer-actions"><span data-booking-gallery-count>1 / {{ $viewerImages->count() }}</span><button type="button" data-booking-gallery-close aria-label="Close photo viewer">×</button></div>
+                            <div class="booking-photo-viewer-actions"><span data-booking-gallery-count>1 / {{ $viewerImages->count() }}</span><button class="icon-only-button" type="button" data-booking-gallery-close aria-label="Close photo viewer"><x-fa-icon name="xmark" /></button></div>
                         </header>
                         <div class="booking-photo-stage">
-                            @if ($viewerImages->count() > 1)<button type="button" class="booking-photo-nav previous" data-booking-gallery-previous aria-label="Previous photo">‹</button>@endif
+                            @if ($viewerImages->count() > 1)<button type="button" class="booking-photo-nav previous" data-booking-gallery-previous aria-label="Previous photo"><x-fa-icon name="chevron-left" /></button>@endif
                             <img src="{{ $viewerImages->first()['src'] }}" alt="{{ $viewerImages->first()['alt'] }} 1" data-booking-gallery-image>
-                            @if ($viewerImages->count() > 1)<button type="button" class="booking-photo-nav next" data-booking-gallery-next aria-label="Next photo">›</button>@endif
+                            @if ($viewerImages->count() > 1)<button type="button" class="booking-photo-nav next" data-booking-gallery-next aria-label="Next photo"><x-fa-icon name="chevron-right" /></button>@endif
                         </div>
                         @if ($viewerImages->count() > 1)
                             <div class="booking-photo-thumbnails" aria-label="Choose a photo">

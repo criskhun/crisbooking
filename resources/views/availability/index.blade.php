@@ -12,7 +12,6 @@
             'driving' => 'Driving',
             'other' => 'Other services',
         ];
-        $categoryIcons = ['car' => '🚗', 'condo' => '🏢', 'driving' => '🛞', 'other' => '◇'];
         $homeFilters = [
             'start_date' => $startDate->toDateString(),
             'end_date' => $endDate->toDateString(),
@@ -25,13 +24,13 @@
             <span class="brand-mark" aria-hidden="true"><img src="{{ $branding->logo_url }}" alt=""></span>
             <span class="brand-name">{{ $branding->site_name }}</span>
         </a>
-        <a class="availability-back-link" href="{{ route('home', $homeFilters).'#availability-results' }}">← Back to calendar</a>
+        <a class="availability-back-link" href="{{ route('home', $homeFilters).'#availability-results' }}"><x-fa-icon name="arrow-left" /> Back to calendar</a>
     </header>
 
     <main class="availability-page">
         <form class="availability-sticky-filter" method="GET" action="{{ route('availability.index') }}" aria-label="Change availability filters" data-results-filter>
             <div class="availability-filter-title">
-                <span aria-hidden="true">⌕</span>
+                <x-fa-icon name="magnifying-glass" />
                 <div><small>Search filters</small><strong>Change your dates or category</strong></div>
             </div>
             <div class="availability-field">
@@ -71,8 +70,8 @@
                 <div class="listing-view-heading-actions">
                     <span class="availability-sort-note">Highest rated first</span>
                     <div class="listing-view-toggle" role="group" aria-label="Choose listing view">
-                        <button type="button" data-listing-view-select="grid" aria-pressed="true"><span aria-hidden="true">▦</span> Grid</button>
-                        <button type="button" data-listing-view-select="map" aria-pressed="false"><span aria-hidden="true">⌖</span> Map</button>
+                        <button type="button" data-listing-view-select="grid" aria-pressed="true"><x-fa-icon name="table-cells-large" /> Grid</button>
+                        <button type="button" data-listing-view-select="map" aria-pressed="false"><x-fa-icon name="map-location-dot" /> Map</button>
                     </div>
                 </div>
             </div>
@@ -89,7 +88,7 @@
                 @endphp
                 <article class="available-unit-card">
                     <div class="available-unit-media">
-                        @include('partials.listing-card-carousel', ['carouselUnit' => $listing, 'carouselLinkClass' => 'available-unit-photo', 'carouselPlaceholder' => $categoryIcons[$group]])
+                        @include('partials.listing-card-carousel', ['carouselUnit' => $listing, 'carouselLinkClass' => 'available-unit-photo'])
                         @if($listing->hasSale())<span class="listing-sale-badge">{{ number_format((float) $listing->sale_percentage, $listing->sale_percentage == (int) $listing->sale_percentage ? 0 : 1) }}% off</span>@endif
                         @include('partials.listing-favorite', ['favoriteUnit' => $listing])
                     </div>
@@ -97,7 +96,7 @@
                         <div class="available-unit-meta">
                             <span>{{ $listing->location ?: $categoryLabels[$group] }}</span>
                             @if($listing->listing_reviews_count)
-                                <strong>★ {{ number_format((float) $listing->listing_reviews_avg_rating, 1) }} <small>({{ $listing->listing_reviews_count }})</small></strong>
+                                <strong><x-fa-icon name="star" class="fa-rating" /> {{ number_format((float) $listing->listing_reviews_avg_rating, 1) }} <small>({{ $listing->listing_reviews_count }})</small></strong>
                             @else
                                 <strong>New listing</strong>
                             @endif
@@ -105,9 +104,9 @@
                         <h2><a href="{{ route('listings.show', $listing) }}">{{ $listing->name }}</a></h2>
                         <p class="available-unit-location">{{ $categoryLabels[$group] }} · {{ $listing->capacity ? $listing->capacity.' '.Str::plural('guest', $listing->capacity) : 'Ask host for capacity' }}</p>
                         <div class="available-unit-amenities" aria-label="Listing highlights">
-                            @if(in_array('wifi', $property['amenities'] ?? [], true))<span title="Wi-Fi">⌁ Wi-Fi</span>@endif
-                            @if(in_array('pool', $property['amenities'] ?? [], true))<span title="Swimming pool">≈ Pool</span>@endif
-                            @if(in_array('parking', $property['amenities'] ?? [], true))<span title="Parking">P Parking</span>@endif
+                            @if(in_array('wifi', $property['amenities'] ?? [], true))<span title="Wi-Fi"><x-fa-icon name="wifi" /> Wi-Fi</span>@endif
+                            @if(in_array('pool', $property['amenities'] ?? [], true))<span title="Swimming pool"><x-fa-icon name="person-swimming" /> Pool</span>@endif
+                            @if(in_array('parking', $property['amenities'] ?? [], true))<span title="Parking"><x-fa-icon name="square-parking" /> Parking</span>@endif
                             @if($listing->category === 'condo' && isset($property['bedrooms']))<span>{{ $property['bedrooms'] }} BR</span>@endif
                             @if($listing->category === 'car' && isset($car['transmission']))<span>{{ str($car['transmission'])->title() }}</span>@endif
                             @if($listing->category === 'car' && isset($car['year']))<span>{{ $car['year'] }}</span>@endif
@@ -118,14 +117,14 @@
                             <p class="available-unit-review">No reviews yet. Be among the first to book this listing.</p>
                         @endif
                         <div class="available-unit-footer">
-                            <span><small>From</small>@if($listing->hasSale())<del>₱{{ number_format($startingPrice, 2) }}</del>@endif<strong>₱{{ number_format($salePrice, 2) }}</strong><em>{{ $listing->isPackageRental() ? 'per package' : 'per '.$listing->pricing_unit }}</em>@if($listing->hasSale())<b>✓ Save {{ number_format((float) $listing->sale_percentage, 0) }}% direct</b>@endif</span>
-                            <a href="{{ route('listings.show', $listing) }}">View listing <span aria-hidden="true">→</span></a>
+                            <span><small>From</small>@if($listing->hasSale())<del>₱{{ number_format($startingPrice, 2) }}</del>@endif<strong>₱{{ number_format($salePrice, 2) }}</strong><em>{{ $listing->isPackageRental() ? 'per package' : 'per '.$listing->pricing_unit }}</em>@if($listing->hasSale())<b><x-fa-icon name="check" /> Save {{ number_format((float) $listing->sale_percentage, 0) }}% direct</b>@endif</span>
+                            <a href="{{ route('listings.show', $listing) }}">View listing <x-fa-icon name="arrow-right" /></a>
                         </div>
                     </div>
                 </article>
             @empty
                 <div class="availability-page-empty">
-                    <span aria-hidden="true">⌕</span>
+                    <x-fa-icon name="magnifying-glass" />
                     <h2>No available listings found</h2>
                     <p>Change the dates or category in the filter above and try again.</p>
                     <a href="{{ route('home', $homeFilters) }}" class="button button-ghost button-small">Return to calendar</a>

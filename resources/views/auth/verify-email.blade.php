@@ -11,7 +11,7 @@
                 <span class="brand-name">{{ $branding->site_name }}</span>
             </a>
 
-            <span class="verification-icon">✉</span>
+            <span class="verification-icon"><x-fa-icon name="envelope" /></span>
             <span class="form-kicker">One last step</span>
             <h1>Verify your email address</h1>
             <p>We sent a verification link to <strong>{{ auth()->user()->email }}</strong>. Open that email and select the verification button to activate your account.</p>

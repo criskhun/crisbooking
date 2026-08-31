@@ -21,7 +21,7 @@
             @endif
 
             @unless (auth()->user()->hasCompleteProfile())
-                <div class="profile-required-banner"><span>!</span><div><strong>Complete your verification profile</strong><p>Contact details and a government-issued ID are required before you can {{ auth()->user()->isHost() ? 'publish listings and answer booking inquiries' : 'inquire or request a booking' }}.</p></div><a class="button button-primary" href="{{ route('profile.edit') }}">Complete profile</a></div>
+                <div class="profile-required-banner"><span><x-fa-icon name="triangle-exclamation" /></span><div><strong>Complete your verification profile</strong><p>Contact details and a government-issued ID are required before you can {{ auth()->user()->isHost() ? 'publish listings and answer booking inquiries' : 'inquire or request a booking' }}.</p></div><a class="button button-primary" href="{{ route('profile.edit') }}">Complete profile</a></div>
             @endunless
 
             @if (auth()->user()->isClient())
@@ -36,8 +36,8 @@
                     </div>
 
                     <div class="market-category-row">
-                        @foreach (['car' => ['🚗', 'Cars'], 'condo' => ['🏢', 'Stays'], 'driving' => ['🛞', 'Drivers'], 'pet_transport' => ['🐾', 'Pet transport']] as $category => [$icon, $label])
-                            <a href="{{ route('calendar.index', ['category' => $category]) }}"><span>{{ $icon }}</span><strong>{{ $label }}</strong><small>Browse availability →</small></a>
+                        @foreach (['car' => 'Cars', 'condo' => 'Stays', 'driving' => 'Drivers', 'pet_transport' => 'Pet transport'] as $category => $label)
+                            <a href="{{ route('calendar.index', ['category' => $category]) }}"><span><x-category-icon :category="$category" /></span><strong>{{ $label }}</strong><small>Browse availability <x-fa-icon name="arrow-right" /></small></a>
                         @endforeach
                     </div>
 
@@ -55,11 +55,11 @@
                             @forelse ($marketingUnits as $unit)
                                 @php($startingPrice = $unit->isPackageRental() ? $unit->rates->min('price') : $unit->price)
                                 <article class="marketing-unit-card">
-                                    <div class="marketing-unit-photo">@if($unit->primaryImagePath())<img src="{{ Storage::disk('public')->url($unit->primaryImagePath()) }}" alt="{{ $unit->name }}">@else<span>{{ ['car' => '🚗', 'condo' => '🏢', 'driving' => '🛞', 'pet_transport' => '🐾'][$unit->category] ?? '◇' }}</span>@endif<small>Verified host</small></div>
+                                    <div class="marketing-unit-photo">@if($unit->primaryImagePath())<img src="{{ Storage::disk('public')->url($unit->primaryImagePath()) }}" alt="{{ $unit->name }}">@else<span><x-category-icon :category="$unit->category" /></span>@endif<small>Verified host</small></div>
                                     <div class="marketing-unit-copy"><span>{{ str($unit->category)->replace('_', ' ')->title() }} · {{ $unit->location ?: 'Location arranged' }}</span><h3>{{ $unit->name }}</h3><p>{{ Str::limit($unit->description ?: 'Ask the host for more details about this option.', 88) }}</p><div><span><small>From</small><strong>₱{{ number_format($startingPrice, 2) }}</strong></span><a href="{{ route('listings.show', $unit) }}">View listing</a></div></div>
                                 </article>
                             @empty
-                                <div class="overview-empty"><span>◇</span><strong>New listings are coming soon.</strong><p>Check the booking page for all currently available services.</p></div>
+                                <div class="overview-empty"><span><x-fa-icon name="shapes" /></span><strong>New listings are coming soon.</strong><p>Check the booking page for all currently available services.</p></div>
                             @endforelse
                         </div>
                     </section>
@@ -71,13 +71,13 @@
                 </section>
             @else
                 <section class="host-overview">
-                    <div class="host-control-hero"><div><span class="eyebrow">Rental control center</span><h2>Manage rentals, requests, and live availability.</h2><p>Your operational overview shows what is occupied now, what starts next, and which requests need attention. You can also book listings offered by other hosts.</p></div><div><a class="button button-primary" href="{{ route('units.create') }}">＋ Add listing</a><a class="button button-ghost" href="{{ route('calendar.index', ['mode' => 'manage']) }}">Open availability calendar</a><a class="button button-ghost" href="{{ route('calendar.index', ['mode' => 'book']) }}">Book another host</a></div></div>
+                    <div class="host-control-hero"><div><span class="eyebrow">Rental control center</span><h2>Manage rentals, requests, and live availability.</h2><p>Your operational overview shows what is occupied now, what starts next, and which requests need attention. You can also book listings offered by other hosts.</p></div><div><a class="button button-primary" href="{{ route('units.create') }}"><x-fa-icon name="plus" /> Add listing</a><a class="button button-ghost" href="{{ route('calendar.index', ['mode' => 'manage']) }}">Open availability calendar</a><a class="button button-ghost" href="{{ route('calendar.index', ['mode' => 'book']) }}">Book another host</a></div></div>
 
                     <div class="stat-grid host-stat-grid">
-                        <article><span class="stat-icon car">●</span><small>Today's rentals</small><strong>{{ $todayCount }}</strong><p>{{ $todayCount ? 'Active on today’s schedule' : 'No rental scheduled today' }}</p></article>
-                        <article><span class="stat-icon condo">●</span><small>Upcoming rentals</small><strong>{{ $upcomingCount }}</strong><p>Across {{ $unitCount }} {{ Str::plural('listing', $unitCount) }}</p></article>
-                        <article><span class="stat-icon driving">●</span><small>Confirmed this month</small><strong>₱{{ number_format($monthSales, 0) }}</strong><p>Approved booking value</p></article>
-                        <article><span class="stat-icon pet">●</span><small>Pending approval value</small><strong>₱{{ number_format($pendingBalance, 0) }}</strong><p>Review requests and inquiries</p></article>
+                        <article><span class="stat-icon car"><x-fa-icon name="calendar-day" /></span><small>Today's rentals</small><strong>{{ $todayCount }}</strong><p>{{ $todayCount ? 'Active on today’s schedule' : 'No rental scheduled today' }}</p></article>
+                        <article><span class="stat-icon condo"><x-fa-icon name="calendar-days" /></span><small>Upcoming rentals</small><strong>{{ $upcomingCount }}</strong><p>Across {{ $unitCount }} {{ Str::plural('listing', $unitCount) }}</p></article>
+                        <article><span class="stat-icon driving"><x-fa-icon name="chart-line" /></span><small>Confirmed this month</small><strong>₱{{ number_format($monthSales, 0) }}</strong><p>Approved booking value</p></article>
+                        <article><span class="stat-icon pet"><x-fa-icon name="hourglass-half" /></span><small>Pending approval value</small><strong>₱{{ number_format($pendingBalance, 0) }}</strong><p>Review requests and inquiries</p></article>
                     </div>
 
                     <section class="overview-section">
@@ -86,9 +86,9 @@
                             @forelse($hostUnits as $unit)
                                 @php($activeBooking = $unit->bookings->first(fn ($booking) => $booking->start_at->lte(now()) && $booking->end_at->gt(now())))
                                 @php($nextBooking = $unit->bookings->first(fn ($booking) => $booking->start_at->gt(now())))
-                                <article><div class="host-unit-status"><span>{{ ['car' => '🚗', 'condo' => '🏢', 'driving' => '🛞', 'pet_transport' => '🐾'][$unit->category] ?? '◇' }}</span><em class="{{ $activeBooking ? 'occupied' : ($unit->is_active ? 'available' : 'inactive') }}">{{ $activeBooking ? 'Occupied now' : ($unit->is_active ? 'Available now' : 'Not published') }}</em></div><h3>{{ $unit->name }}</h3><p>{{ $unit->location ?: 'Location arranged with client' }}</p><div class="host-unit-next"><small>{{ $activeBooking ? 'Returns' : ($nextBooking ? 'Next booking' : 'Schedule') }}</small><strong>{{ $activeBooking ? $activeBooking->end_at->format('M j, g:i A') : ($nextBooking ? $nextBooking->start_at->format('M j, g:i A') : 'Open') }}</strong></div><a href="{{ route('calendar.index', ['month' => ($activeBooking?->start_at ?? $nextBooking?->start_at ?? now())->format('Y-m')]) }}">View availability →</a></article>
+                                <article><div class="host-unit-status"><span><x-category-icon :category="$unit->category" /></span><em class="{{ $activeBooking ? 'occupied' : ($unit->is_active ? 'available' : 'inactive') }}">{{ $activeBooking ? 'Occupied now' : ($unit->is_active ? 'Available now' : 'Not published') }}</em></div><h3>{{ $unit->name }}</h3><p>{{ $unit->location ?: 'Location arranged with client' }}</p><div class="host-unit-next"><small>{{ $activeBooking ? 'Returns' : ($nextBooking ? 'Next booking' : 'Schedule') }}</small><strong>{{ $activeBooking ? $activeBooking->end_at->format('M j, g:i A') : ($nextBooking ? $nextBooking->start_at->format('M j, g:i A') : 'Open') }}</strong></div><a href="{{ route('calendar.index', ['month' => ($activeBooking?->start_at ?? $nextBooking?->start_at ?? now())->format('Y-m')]) }}">View availability <x-fa-icon name="arrow-right" /></a></article>
                             @empty
-                                <div class="overview-empty"><span>＋</span><strong>No rental units registered yet.</strong><p>Add your first listing to begin accepting inquiries.</p></div>
+                                <div class="overview-empty"><span><x-fa-icon name="plus" /></span><strong>No rental units registered yet.</strong><p>Add your first listing to begin accepting inquiries.</p></div>
                             @endforelse
                         </div>
                     </section>

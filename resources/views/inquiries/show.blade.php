@@ -7,7 +7,7 @@
     <div class="dashboard-shell">
         @include('partials.dashboard-sidebar')
         <main class="dashboard-main">
-            <header class="dashboard-header"><div><a class="back-link" href="{{ $inquiry->booking ? route('bookings.show', $inquiry->booking) : route('inquiries.index') }}">← {{ $inquiry->booking ? 'Back to booking details' : 'All inquiries' }}</a><h1>{{ $inquiry->unit->name }}</h1></div>@include('partials.user-badge')</header>
+            <header class="dashboard-header"><div><a class="back-link" href="{{ $inquiry->booking ? route('bookings.show', $inquiry->booking) : route('inquiries.index') }}"><x-fa-icon name="arrow-left" /> {{ $inquiry->booking ? 'Back to booking details' : 'All inquiries' }}</a><h1>{{ $inquiry->unit->name }}</h1></div>@include('partials.user-badge')</header>
             <section class="conversation-layout">
                 @php $canAttachImages = $inquiry->booking?->status === 'confirmed'; @endphp
                 <div class="chat-card" data-realtime-chat data-messages-url="{{ route('inquiries.messages.index', $inquiry) }}" data-typing-url="{{ route('inquiries.typing', $inquiry) }}">
@@ -20,7 +20,7 @@
                         @endforeach
                         @if ($inquiry->booking)
                             <article class="chat-booking-request" data-booking-request-id="{{ $inquiry->booking->id }}">
-                                <span>{{ in_array($inquiry->booking->status, ['pending', 'pre_approved', 'payment_submitted'], true) ? '◷' : ($inquiry->booking->status === 'confirmed' ? '✓' : '×') }}</span>
+                                <span><x-fa-icon :name="in_array($inquiry->booking->status, ['pending', 'pre_approved', 'payment_submitted'], true) ? 'clock' : ($inquiry->booking->status === 'confirmed' ? 'check' : 'xmark')" /></span>
                                 <div><small>Booking request</small><strong>{{ auth()->id() === $inquiry->host_id ? $inquiry->client->name.' requested this booking.' : 'Your booking request was sent.' }}</strong><p>{{ $inquiry->booking->start_at->format('M j, Y · g:i A') }} – {{ $inquiry->booking->end_at->format('M j, Y · g:i A') }} · ₱{{ number_format($inquiry->booking->total_amount, 2) }}</p><a href="{{ route('bookings.show', $inquiry->booking) }}">View request</a></div>
                                 <em class="booking-status status-{{ $inquiry->booking->status }}">{{ $inquiry->booking->statusLabel() }}</em>
                             </article>
@@ -34,16 +34,16 @@
                                 <label for="message" class="sr-only">Message</label>
                                 <textarea id="message" name="message" rows="3" maxlength="2000" placeholder="Write a message…" @required(! $canAttachImages)>{{ old('message') }}</textarea>
                                 <div class="chat-composer-tools">
-                                    <button class="chat-tool-button" type="button" data-emoji-toggle aria-expanded="false" aria-label="Add emoji">☺ <span>Emoji</span></button>
+                                    <button class="chat-tool-button" type="button" data-emoji-toggle aria-expanded="false" aria-label="Add emoji"><x-fa-icon name="face-smile" /> <span>Emoji</span></button>
                                     <div class="emoji-picker" data-emoji-picker hidden>
                                         @foreach (['😀','😂','😊','😍','👍','🙏','🎉','❤️','🚗','🏢','📍','🕐','✅','❓','👋','🐾'] as $emoji)<button type="button" data-emoji="{{ $emoji }}" aria-label="Add {{ $emoji }}">{{ $emoji }}</button>@endforeach
                                     </div>
                                     @if ($canAttachImages)
-                                        <label class="chat-tool-button chat-attachment-button" for="attachment">▧ <span>Attach image</span></label>
+                                        <label class="chat-tool-button chat-attachment-button" for="attachment"><x-fa-icon name="image" /> <span>Attach image</span></label>
                                         <input id="attachment" name="attachment" type="file" accept="image/jpeg,image/png,image/webp" data-chat-attachment>
                                         <small data-attachment-name></small>
                                     @else
-                                        <span class="chat-attachment-locked" title="Image attachments unlock after booking approval">🔒 Images unlock after approval</span>
+                                        <span class="chat-attachment-locked" title="Image attachments unlock after booking approval"><x-fa-icon name="lock" /> Images unlock after approval</span>
                                     @endif
                                 </div>
                             </div>
@@ -54,7 +54,7 @@
                 </div>
                 <aside class="inquiry-context-card" data-live-inquiry-context>
                     @php $partner = auth()->id() === $inquiry->client_id ? $inquiry->host : $inquiry->client; @endphp
-                    <div class="context-partner">@include('partials.avatar', ['avatarUser' => $partner, 'avatarClass' => 'context-partner-avatar'])<div><small>{{ auth()->id() === $inquiry->client_id ? 'Host' : 'Booking customer' }}</small><strong>{{ $partner->name }}</strong><em>✓ Profile complete</em></div></div>
+                    <div class="context-partner">@include('partials.avatar', ['avatarUser' => $partner, 'avatarClass' => 'context-partner-avatar'])<div><small>{{ auth()->id() === $inquiry->client_id ? 'Host' : 'Booking customer' }}</small><strong>{{ $partner->name }}</strong><em><x-fa-icon name="check" /> Profile complete</em></div></div>
                     <a class="button button-ghost" href="{{ route('profiles.show', $partner) }}">View validation profile</a>
                     <div class="context-details"><span><small>Listing</small><strong>{{ $inquiry->unit->name }}</strong></span><span><small>Desired schedule</small><strong>{{ $inquiry->desired_start_at->format('M j') }} – {{ $inquiry->desired_end_at->format('M j, Y') }}</strong></span><span><small>Party</small><strong>{{ $inquiry->party_size }} {{ Str::plural('person', $inquiry->party_size) }}</strong></span></div>
                     @php
@@ -74,9 +74,9 @@
                         <p>Standard pricing applies unless the client and host both accept a negotiated proposal.</p>
                     </section>
                     <section class="price-negotiation-panel">
-                        <div class="price-negotiation-heading"><span>↔</span><div><small>Price negotiation</small><strong>{{ $inquiry->booking ? ($inquiry->agreed_price !== null ? 'Booked at the agreed ₱'.number_format($inquiry->agreed_price, 2) : 'Closed after booking request') : ($inquiry->agreed_price !== null ? 'Agreed at ₱'.number_format($inquiry->agreed_price, 2) : ($pendingPriceProposal ? 'A proposal needs attention' : 'Optional — request only when needed')) }}</strong></div></div>
-                        @if ($inquiry->booking)<p class="agreed-price-note">✓ Price negotiation closed when booking request #{{ $inquiry->booking->id }} was submitted. No proposal action is needed.</p>@endif
-                        @if ($inquiry->agreed_price !== null && ! $inquiry->booking)<p class="agreed-price-note">✓ This price is locked as the booking subtotal. Required listing charges, if any, are added separately.</p>@endif
+                        <div class="price-negotiation-heading"><span><x-fa-icon name="left-right" /></span><div><small>Price negotiation</small><strong>{{ $inquiry->booking ? ($inquiry->agreed_price !== null ? 'Booked at the agreed ₱'.number_format($inquiry->agreed_price, 2) : 'Closed after booking request') : ($inquiry->agreed_price !== null ? 'Agreed at ₱'.number_format($inquiry->agreed_price, 2) : ($pendingPriceProposal ? 'A proposal needs attention' : 'Optional — request only when needed')) }}</strong></div></div>
+                        @if ($inquiry->booking)<p class="agreed-price-note"><x-fa-icon name="check" /> Price negotiation closed when booking request #{{ $inquiry->booking->id }} was submitted. No proposal action is needed.</p>@endif
+                        @if ($inquiry->agreed_price !== null && ! $inquiry->booking)<p class="agreed-price-note"><x-fa-icon name="check" /> This price is locked as the booking subtotal. Required listing charges, if any, are added separately.</p>@endif
                         @if ($pendingPriceProposal)
                             <article class="price-proposal-current"><small>{{ $pendingPriceProposal->proposed_by === auth()->id() ? 'Your proposal' : $pendingPriceProposal->proposer->name.' proposed' }}</small><strong>₱{{ number_format($pendingPriceProposal->amount, 2) }}</strong>@if($pendingPriceProposal->note)<p>{{ $pendingPriceProposal->note }}</p>@endif
                                 @if ($pendingPriceProposal->proposed_by !== auth()->id())<div><form method="POST" action="{{ route('price-proposals.review', $pendingPriceProposal) }}">@csrf @method('PATCH')<button class="button button-primary" name="decision" value="accept" type="submit">Accept price</button></form><form method="POST" action="{{ route('price-proposals.review', $pendingPriceProposal) }}">@csrf @method('PATCH')<button class="button button-ghost" name="decision" value="decline" type="submit">Decline</button></form></div>@else<em>Waiting for {{ auth()->id() === $inquiry->client_id ? 'host' : 'client' }} approval</em>@endif
@@ -90,7 +90,7 @@
                     @if ($inquiry->booking)
                         <div class="inquiry-booking-state"><small>Booking request</small><strong>{{ $inquiry->booking->statusLabel() }}</strong><span>₱{{ number_format($inquiry->booking->total_amount, 2) }}</span></div>
                         <a class="button button-primary button-full booking-detail-return" href="{{ route('bookings.show', $inquiry->booking) }}">View booking details</a>
-                        @if ($canAttachImages)<small class="context-note">✓ Booking approved — private image attachments are now enabled in chat.</small>@endif
+                        @if ($canAttachImages)<small class="context-note"><x-fa-icon name="check" /> Booking approved — private image attachments are now enabled in chat.</small>@endif
                     @elseif (auth()->id() === $inquiry->client_id)
                         <a class="button button-primary button-full" href="{{ route('calendar.index', ['mode' => 'book', 'category' => $inquiry->unit->category, 'search' => 1, 'search_start' => $inquiry->desired_start_at->format('Y-m-d\TH:i'), 'search_end' => $inquiry->desired_end_at->format('Y-m-d\TH:i'), 'party_size' => $inquiry->party_size, 'selected_unit' => $inquiry->unit_id]) }}#booking-selection">Continue to booking</a>
                         <small class="context-note">You have completed the required inquiry and may now request the booking.</small>

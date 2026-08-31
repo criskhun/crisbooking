@@ -36,13 +36,13 @@
     }
 @endphp
 <div class="page-guide" data-page-guide>
-    <button class="page-guide-button" type="button" data-page-guide-open aria-label="Open page guide">i</button>
+    <button class="page-guide-button" type="button" data-page-guide-open aria-label="Open page guide"><x-fa-icon name="info" /></button>
     <dialog class="page-guide-dialog" data-page-guide-dialog aria-labelledby="page-guide-title">
-        <div class="page-guide-dialog-heading"><span>i</span><div><small>Information & demo</small><h2 id="page-guide-title">{{ $guideTitle }}</h2></div><button type="button" data-page-guide-close aria-label="Close guide">×</button></div>
+        <div class="page-guide-dialog-heading"><span><x-fa-icon name="info" /></span><div><small>Information & demo</small><h2 id="page-guide-title">{{ $guideTitle }}</h2></div><button class="icon-only-button" type="button" data-page-guide-close aria-label="Close guide"><x-fa-icon name="xmark" /></button></div>
         <p>Use the short walkthrough below whenever you are unsure what to do.</p>
         <ol>@foreach($guideSteps as $step)<li><button type="button" data-guide-focus="{{ $step['selector'] }}"><span>{{ $loop->iteration }}</span><strong>{{ $step['title'] }}</strong><small>{{ $step['copy'] }}</small></button></li>@endforeach</ol>
         <footer><button class="button button-primary" type="button" data-guide-start>Start guided demo</button><button class="button button-ghost" type="button" data-page-guide-close>Close</button></footer>
         <script type="application/json" data-guide-steps>@json($guideSteps)</script>
     </dialog>
-    <aside class="guide-demo-hint" data-guide-demo-hint hidden><small data-guide-demo-count></small><strong data-guide-demo-title></strong><p data-guide-demo-copy></p><div><button type="button" data-guide-demo-stop>Stop</button><button type="button" data-guide-demo-next>Next →</button></div></aside>
+    <aside class="guide-demo-hint" data-guide-demo-hint hidden><small data-guide-demo-count></small><strong data-guide-demo-title></strong><p data-guide-demo-copy></p><div><button type="button" data-guide-demo-stop>Stop</button><button type="button" data-guide-demo-next>Next <x-fa-icon name="arrow-right" /></button></div></aside>
 </div>

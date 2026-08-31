@@ -17,7 +17,7 @@
             @endphp
             <span class="profile-verification-warning" tabindex="0" role="img" aria-label="{{ $verificationReminder }}" data-tooltip="{{ $verificationReminder }}">!</span>
         @endunless
-        <span class="profile-chevron" aria-hidden="true">⌄</span>
+        <x-fa-icon name="chevron-down" class="profile-chevron" />
     </summary>
 
     <div class="profile-popover">
@@ -26,7 +26,7 @@
             <strong>{{ auth()->user()->name }}</strong>
             <small>{{ auth()->user()->email }}</small>
             <small>{{ ucfirst(auth()->user()->role) }} account{{ auth()->user()->is_admin ? ' · Administrator' : '' }}</small>
-            <small>{{ auth()->user()->hasCompleteProfile() ? '✓ Identity profile complete' : '⚠ Identity profile required' }}</small>
+            <small><x-fa-icon :name="auth()->user()->hasCompleteProfile() ? 'circle-check' : 'triangle-exclamation'" class="fa-inline-label" />{{ auth()->user()->hasCompleteProfile() ? 'Identity profile complete' : 'Identity profile required' }}</small>
         </div>
 
         <a class="profile-settings-link" href="{{ route('profile.edit') }}">Edit verification profile →</a>
@@ -39,7 +39,7 @@
                     <span class="profile-label">Settings</span>
                     <h2 id="appearance-heading">Appearance</h2>
                 </div>
-                <span class="appearance-icon" aria-hidden="true">✦</span>
+                <span class="appearance-icon" aria-hidden="true"><x-fa-icon name="wand-magic-sparkles" /></span>
             </div>
 
             <label class="appearance-switch" for="dark-mode-toggle">
@@ -57,27 +57,27 @@
                     <button class="theme-option theme-option-system" type="button" data-theme-option="system" aria-pressed="true">
                         <span class="theme-swatch theme-swatch-system" aria-hidden="true"></span>
                         <span>System default</span>
-                        <span class="theme-check" aria-hidden="true">✓</span>
+                        <span class="theme-check" aria-hidden="true"><x-fa-icon name="check" /></span>
                     </button>
                     <button class="theme-option" type="button" data-theme-option="forest" aria-pressed="false">
                         <span class="theme-swatch theme-swatch-forest" aria-hidden="true"></span>
                         <span>Forest</span>
-                        <span class="theme-check" aria-hidden="true">✓</span>
+                        <span class="theme-check" aria-hidden="true"><x-fa-icon name="check" /></span>
                     </button>
                     <button class="theme-option" type="button" data-theme-option="ocean" aria-pressed="false">
                         <span class="theme-swatch theme-swatch-ocean" aria-hidden="true"></span>
                         <span>Ocean</span>
-                        <span class="theme-check" aria-hidden="true">✓</span>
+                        <span class="theme-check" aria-hidden="true"><x-fa-icon name="check" /></span>
                     </button>
                     <button class="theme-option" type="button" data-theme-option="violet" aria-pressed="false">
                         <span class="theme-swatch theme-swatch-violet" aria-hidden="true"></span>
                         <span>Violet</span>
-                        <span class="theme-check" aria-hidden="true">✓</span>
+                        <span class="theme-check" aria-hidden="true"><x-fa-icon name="check" /></span>
                     </button>
                     <button class="theme-option" type="button" data-theme-option="sunset" aria-pressed="false">
                         <span class="theme-swatch theme-swatch-sunset" aria-hidden="true"></span>
                         <span>Sunset</span>
-                        <span class="theme-check" aria-hidden="true">✓</span>
+                        <span class="theme-check" aria-hidden="true"><x-fa-icon name="check" /></span>
                     </button>
                 </div>
             </fieldset>

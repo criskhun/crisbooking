@@ -10,13 +10,13 @@
             <form class="listing-favorite-control {{ $favoriteClass ?? '' }}" method="POST" action="{{ route('listings.favorite', $favoriteUnit) }}" data-favorite-form>
                 @csrf
                 <button type="submit" @class(['is-favorited' => $isFavorited]) aria-label="{{ $favoriteLabel }}" aria-pressed="{{ $isFavorited ? 'true' : 'false' }}" title="{{ $favoriteLabel }}">
-                    <span aria-hidden="true" data-favorite-icon>{{ $isFavorited ? '♥' : '♡' }}</span>
+                    <x-fa-icon name="heart" data-favorite-icon @class(['is-favorited' => $isFavorited]) />
                 </button>
             </form>
         @else
-            <a class="listing-favorite-control {{ $favoriteClass ?? '' }}" href="{{ route('listings.favorite.after-login', $favoriteUnit) }}" aria-label="Verify your email to save this listing" title="Verify your email to save this listing"><span aria-hidden="true">♡</span></a>
+            <a class="listing-favorite-control {{ $favoriteClass ?? '' }}" href="{{ route('listings.favorite.after-login', $favoriteUnit) }}" aria-label="Verify your email to save this listing" title="Verify your email to save this listing"><x-fa-icon name="heart" /></a>
         @endif
     @else
-        <a class="listing-favorite-control {{ $favoriteClass ?? '' }}" href="{{ route('listings.favorite.after-login', $favoriteUnit) }}" aria-label="Log in to save this listing" title="Log in to save this listing"><span aria-hidden="true">♡</span></a>
+        <a class="listing-favorite-control {{ $favoriteClass ?? '' }}" href="{{ route('listings.favorite.after-login', $favoriteUnit) }}" aria-label="Log in to save this listing" title="Log in to save this listing"><x-fa-icon name="heart" /></a>
     @endauth
 @endif

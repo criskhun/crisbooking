@@ -29,17 +29,17 @@
                 @include('calendar.manual-booking')
                 @php
                     $calendarCategoryMeta = [
-                        'condo' => ['theme' => 'condo', 'icon' => '🏠', 'label' => 'Condo / residence'],
-                        'car' => ['theme' => 'car', 'icon' => '🚗', 'label' => 'Car rental'],
-                        'cleaning' => ['theme' => 'cleaning', 'icon' => '🧹', 'label' => 'Cleaning'],
-                        'laundry' => ['theme' => 'cleaning', 'icon' => '🧺', 'label' => 'Laundry'],
-                        'delivery' => ['theme' => 'driving', 'icon' => '🚚', 'label' => 'Vehicle delivery'],
-                        'car_wash' => ['theme' => 'cleaning', 'icon' => '🫧', 'label' => 'Carwash'],
-                        'vehicle_maintenance' => ['theme' => 'other', 'icon' => '🛠', 'label' => 'Vehicle maintenance'],
-                        'driving' => ['theme' => 'driving', 'icon' => '🛞', 'label' => 'Driving'],
-                        'massage' => ['theme' => 'massage', 'icon' => '💆', 'label' => 'Massage'],
-                        'consultancy' => ['theme' => 'consultancy', 'icon' => '💼', 'label' => 'Consultancy'],
-                        'pet_transport' => ['theme' => 'pet-transport', 'icon' => '🐾', 'label' => 'Pet transport'],
+                        'condo' => ['theme' => 'condo', 'icon' => 'building', 'label' => 'Condo / residence'],
+                        'car' => ['theme' => 'car', 'icon' => 'car-side', 'label' => 'Car rental'],
+                        'cleaning' => ['theme' => 'cleaning', 'icon' => 'broom', 'label' => 'Cleaning'],
+                        'laundry' => ['theme' => 'cleaning', 'icon' => 'shirt', 'label' => 'Laundry'],
+                        'delivery' => ['theme' => 'driving', 'icon' => 'truck-fast', 'label' => 'Vehicle delivery'],
+                        'car_wash' => ['theme' => 'cleaning', 'icon' => 'soap', 'label' => 'Carwash'],
+                        'vehicle_maintenance' => ['theme' => 'other', 'icon' => 'screwdriver-wrench', 'label' => 'Vehicle maintenance'],
+                        'driving' => ['theme' => 'driving', 'icon' => 'road', 'label' => 'Driving'],
+                        'massage' => ['theme' => 'massage', 'icon' => 'spa', 'label' => 'Massage'],
+                        'consultancy' => ['theme' => 'consultancy', 'icon' => 'briefcase', 'label' => 'Consultancy'],
+                        'pet_transport' => ['theme' => 'pet-transport', 'icon' => 'paw', 'label' => 'Pet transport'],
                     ];
                     $calendarFilterQuery = array_filter([
                         'mode' => 'manage',
@@ -55,13 +55,13 @@
                     </div>
                     <div class="calendar-toolbar-actions">
                         <nav class="calendar-view-switch" aria-label="Calendar view">
-                            <a @class(['active' => $calendarView === 'month']) href="{{ route('calendar.index', array_merge($calendarFilterQuery, ['calendar_view' => 'month', 'month' => $month->format('Y-m'), 'date' => $selectedDate->format('Y-m-d')])) }}"><span aria-hidden="true">▦</span> Month</a>
-                            <a @class(['active' => $calendarView === 'listings']) href="{{ route('calendar.index', array_merge($calendarFilterQuery, ['calendar_view' => 'listings', 'month' => $month->format('Y-m'), 'date' => $selectedDate->format('Y-m-d')])) }}"><span aria-hidden="true">☷</span> Listings</a>
+                            <a @class(['active' => $calendarView === 'month']) href="{{ route('calendar.index', array_merge($calendarFilterQuery, ['calendar_view' => 'month', 'month' => $month->format('Y-m'), 'date' => $selectedDate->format('Y-m-d')])) }}"><x-fa-icon name="calendar-days" /> Month</a>
+                            <a @class(['active' => $calendarView === 'listings']) href="{{ route('calendar.index', array_merge($calendarFilterQuery, ['calendar_view' => 'listings', 'month' => $month->format('Y-m'), 'date' => $selectedDate->format('Y-m-d')])) }}"><x-fa-icon name="bars" /> Listings</a>
                         </nav>
                         <div class="calendar-navigation">
-                            <a aria-label="Previous month" href="{{ route('calendar.index', array_merge($calendarFilterQuery, ['month' => $month->copy()->subMonth()->format('Y-m')])) }}">←</a>
+                            <a aria-label="Previous month" href="{{ route('calendar.index', array_merge($calendarFilterQuery, ['month' => $month->copy()->subMonth()->format('Y-m')])) }}"><x-fa-icon name="chevron-left" /></a>
                             <a class="calendar-today-link" href="{{ route('calendar.index', array_merge($calendarFilterQuery, ['month' => now()->format('Y-m'), 'date' => now()->format('Y-m-d')])) }}">Today</a>
-                            <a aria-label="Next month" href="{{ route('calendar.index', array_merge($calendarFilterQuery, ['month' => $month->copy()->addMonth()->format('Y-m')])) }}">→</a>
+                            <a aria-label="Next month" href="{{ route('calendar.index', array_merge($calendarFilterQuery, ['month' => $month->copy()->addMonth()->format('Y-m')])) }}"><x-fa-icon name="chevron-right" /></a>
                         </div>
                     </div>
                 </div>
@@ -74,8 +74,8 @@
                     <label><span>Category</span><select name="schedule_category">
                         <option value="">All categories</option>
                         @foreach ($scheduleCategories as $filterCategory)
-                            @php $filterMeta = $calendarCategoryMeta[$filterCategory] ?? ['icon' => '✦', 'label' => str($filterCategory)->replace('_', ' ')->title()]; @endphp
-                            <option value="{{ $filterCategory }}" @selected($scheduleCategory === $filterCategory)>{{ $filterMeta['icon'] }} {{ $filterMeta['label'] }}</option>
+                            @php $filterMeta = $calendarCategoryMeta[$filterCategory] ?? ['icon' => 'shapes', 'label' => str($filterCategory)->replace('_', ' ')->title()]; @endphp
+                            <option value="{{ $filterCategory }}" @selected($scheduleCategory === $filterCategory)>{{ $filterMeta['label'] }}</option>
                         @endforeach
                     </select></label>
                     <label><span>Listing / unit</span><select name="schedule_unit">
@@ -90,8 +90,8 @@
 
                 <div class="calendar-category-legend" aria-label="Calendar category colors">
                     @foreach ($scheduleCategories as $legendCategory)
-                        @php $legendMeta = $calendarCategoryMeta[$legendCategory] ?? ['theme' => 'other', 'icon' => '✦', 'label' => str($legendCategory)->replace('_', ' ')->title()]; @endphp
-                        <span class="category-{{ $legendMeta['theme'] }}"><b aria-hidden="true">{{ $legendMeta['icon'] }}</b>{{ $legendMeta['label'] }}</span>
+                        @php $legendMeta = $calendarCategoryMeta[$legendCategory] ?? ['theme' => 'other', 'icon' => 'shapes', 'label' => str($legendCategory)->replace('_', ' ')->title()]; @endphp
+                        <span class="category-{{ $legendMeta['theme'] }}"><b><x-fa-icon :name="$legendMeta['icon']" /></b>{{ $legendMeta['label'] }}</span>
                     @endforeach
                 </div>
                 <div class="calendar-unit-legend" aria-label="Individual listing colors">
@@ -100,7 +100,7 @@
                             $profileStyle = $calendarUnitStyles[$profileUnit->id] ?? null;
                         @endphp
                         <a class="category-{{ $calendarCategoryMeta[$profileUnit->category]['theme'] ?? 'other' }}" href="{{ route('calendar.index', array_merge($calendarFilterQuery, ['schedule_unit' => $profileUnit->id])) }}" style="--unit-accent: {{ $profileStyle['accent'] ?? '#64748b' }}; --unit-soft: {{ $profileStyle['soft'] ?? '#f1f5f9' }}; --unit-fill: {{ $profileStyle['fill'] ?? '#f1f5f9' }}; --unit-ink: {{ $profileStyle['ink'] ?? '#334155' }};">
-                            @if($profileUnit->primaryImagePath())<img src="{{ Storage::disk('public')->url($profileUnit->primaryImagePath()) }}" alt="">@else<span>{{ $calendarCategoryMeta[$profileUnit->category]['icon'] ?? '✦' }}</span>@endif
+                            @if($profileUnit->primaryImagePath())<img src="{{ Storage::disk('public')->url($profileUnit->primaryImagePath()) }}" alt="">@else<span><x-category-icon :category="$profileUnit->category" /></span>@endif
                             <span><strong>{{ $profileUnit->name }}</strong><small>{{ str($profileUnit->category)->replace('_', ' ')->title() }} · unique listing shade</small></span>
                         </a>
                     @endforeach
@@ -128,7 +128,7 @@
                             @foreach ($calendarSegments as $segment)
                                 @php
                                     $calendarBooking = $segment['booking'];
-                                    $eventMeta = $calendarCategoryMeta[$calendarBooking->unit->category] ?? ['theme' => 'other', 'icon' => '✦', 'label' => str($calendarBooking->unit->category)->replace('_', ' ')->title()];
+                                    $eventMeta = $calendarCategoryMeta[$calendarBooking->unit->category] ?? ['theme' => 'other', 'icon' => 'shapes', 'label' => str($calendarBooking->unit->category)->replace('_', ' ')->title()];
                                     $calendarCanOpenBooking = $viewerCanManageBookings || ($calendarBooking->isManualBooking() && $calendarBooking->affiliatePartnership?->marketer_id === auth()->id());
                                     $unitStyle = $calendarUnitStyles[$calendarBooking->unit_id] ?? null;
                                     $calendarProfileUnit = $units->firstWhere('id', $calendarBooking->unit_id);
@@ -151,12 +151,12 @@
                                        aria-label="Reserved: {{ $calendarBooking->unit->name }}, {{ $calendarBooking->start_at->format('M j, g:i A') }} to {{ $calendarBooking->end_at->format('M j, g:i A') }}"
                                    @endif
                                    title="{{ $calendarBooking->unit->name }}: {{ $calendarBooking->start_at->format('M j, g:i A') }} to {{ $calendarBooking->end_at->format('M j, g:i A') }}">
-                                    @if ($segment['continues_before'])<span class="calendar-span-continuation">‹</span>@endif
+                                    @if ($segment['continues_before'])<span class="calendar-span-continuation"><x-fa-icon name="chevron-left" /></span>@endif
                                     @if ($segment['starts_booking'])<time>{{ $calendarBooking->start_at->format('g:i A') }}</time>@endif
                                     @if($calendarProfileUnit?->primaryImagePath())<img class="calendar-listing-avatar" src="{{ Storage::disk('public')->url($calendarProfileUnit->primaryImagePath()) }}" alt="">@endif
-                                    <span class="calendar-event-icon" aria-hidden="true">{{ $eventMeta['icon'] }}</span>
+                                    <span class="calendar-event-icon"><x-fa-icon :name="$eventMeta['icon']" /></span>
                                     <strong>{{ $calendarBookingLabel }}</strong>
-                                    @if ($segment['ends_booking'])<time>→ {{ $calendarBooking->end_at->format('g:i A') }}</time>@elseif ($segment['continues_after'])<span class="calendar-span-continuation">›</span>@endif
+                                    @if ($segment['ends_booking'])<time><x-fa-icon name="arrow-right" /> {{ $calendarBooking->end_at->format('g:i A') }}</time>@elseif ($segment['continues_after'])<span class="calendar-span-continuation"><x-fa-icon name="chevron-right" /></span>@endif
                                 </a>
                             @endforeach
                         </div>
@@ -175,7 +175,7 @@
                                     $booked = $bookedUnitIds->contains($unit->id);
                                 @endphp
                                 <a class="availability-row" href="{{ route('calendar.index', array_merge($calendarFilterQuery, ['month' => $month->format('Y-m'), 'date' => $selectedDate->format('Y-m-d'), 'manual_unit' => $unit->id])).'#manual-booking' }}" data-manual-booking-prefill data-unit-id="{{ $unit->id }}" data-date="{{ $selectedDate->format('Y-m-d') }}" aria-label="Add an outside booking for {{ $unit->name }} on {{ $selectedDate->format('F j, Y') }}">
-                                    @if ($unit->primaryImagePath())<img class="availability-photo" src="{{ Storage::disk('public')->url($unit->primaryImagePath()) }}" alt="">@else<span class="availability-photo availability-photo-placeholder" aria-hidden="true">{{ ['car' => '🚗', 'condo' => '🏠', 'driving' => '🛞', 'pet_transport' => '🐾'][$unit->category] ?? '✦' }}</span>@endif
+                                    @if ($unit->primaryImagePath())<img class="availability-photo" src="{{ Storage::disk('public')->url($unit->primaryImagePath()) }}" alt="">@else<span class="availability-photo availability-photo-placeholder"><x-category-icon :category="$unit->category" /></span>@endif
                                     <div class="availability-copy"><strong>{{ $unit->name }}</strong><small>{{ ucfirst($unit->kind) }} · {{ $unit->isPackageRental() ? 'From ₱'.number_format($unit->rates->min('price'), 2) : '₱'.number_format($unit->price, 2).'/'.$unit->pricing_unit }}</small></div>
                                     @if (! $unit->is_active)<span class="availability-badge unavailable">Unavailable</span>
                                     @elseif ($booked)<span class="availability-badge booked" title="This date has booked times; other hours may still be available.">Check times</span>
@@ -219,7 +219,7 @@
                                                     @if ($booking->unit->wifi_qr_path)<img src="{{ route('units.wifi-qr', $booking->unit) }}" alt="Wi-Fi QR code for {{ $booking->unit->name }}">@endif
                                                 </div>
                                             @elseif (in_array($booking->status, ['pending', 'pre_approved', 'payment_submitted'], true))
-                                                <p class="locked-access-note">🔒 Wi-Fi access will appear here after the host confirms this booking.</p>
+                                                <p class="locked-access-note"><x-fa-icon name="lock" /> Wi-Fi access will appear here after the host confirms this booking.</p>
                                             @endif
                                         @endif
                                     </div>
@@ -236,7 +236,7 @@
                                     </div>
                                 </article>
                             @empty
-                                <div class="day-bookings-empty"><span>✓</span><p>No bookings on this date.</p></div>
+                                <div class="day-bookings-empty"><span><x-fa-icon name="calendar-check" /></span><p>No bookings on this date.</p></div>
                             @endforelse
                         </div>
                     </section>
@@ -245,9 +245,9 @@
                 <dialog class="calendar-booking-dialog" data-calendar-booking-dialog aria-labelledby="calendar-booking-dialog-title">
                     <div class="calendar-booking-dialog-panel">
                         <header>
-                            <span class="calendar-dialog-icon" data-calendar-dialog-icon aria-hidden="true">✦</span>
+                            <i class="fa-solid fa-shapes calendar-dialog-icon" data-calendar-dialog-icon aria-hidden="true"></i>
                             <div><span class="eyebrow" data-calendar-dialog-category>Booking</span><h2 id="calendar-booking-dialog-title" data-calendar-dialog-unit>Booking details</h2></div>
-                            <button type="button" data-calendar-dialog-close aria-label="Close booking details">×</button>
+                            <button class="icon-only-button" type="button" data-calendar-dialog-close aria-label="Close booking details"><x-fa-icon name="xmark" /></button>
                         </header>
                         <div class="calendar-dialog-status-row"><span class="booking-status" data-calendar-dialog-status>Pending</span></div>
                         <dl>

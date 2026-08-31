@@ -31,8 +31,8 @@ class CalendarPresentationTest extends TestCase
 
         $response->assertOk()
             ->assertSee('Calendar category colors')
-            ->assertSee('🏠')
-            ->assertSee('🚗')
+            ->assertSee('fa-building', false)
+            ->assertSee('fa-car-side', false)
             ->assertSee('category-condo', false)
             ->assertSee('category-car', false)
             ->assertSee('data-calendar-booking-open', false)

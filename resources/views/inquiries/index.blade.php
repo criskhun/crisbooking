@@ -20,7 +20,7 @@
                             <div class="inquiry-row-meta">@if ($inquiry->unread_messages_count)<span>{{ $inquiry->unread_messages_count }}</span>@endif<small>{{ $inquiry->updated_at->diffForHumans() }}</small><b>→</b></div>
                         </a>
                     @empty
-                        <div class="inquiry-empty"><span>✦</span><h2>No inquiries yet</h2><p>Choose another host’s available listing to start a conversation, or wait for inquiries about your own listings.</p><a class="button button-primary" href="{{ route('calendar.index', ['mode' => 'book']) }}">Find a listing</a></div>
+                        <div class="inquiry-empty"><span><x-fa-icon name="comments" /></span><h2>No inquiries yet</h2><p>Choose another host’s available listing to start a conversation, or wait for inquiries about your own listings.</p><a class="button button-primary" href="{{ route('calendar.index', ['mode' => 'book']) }}">Find a listing</a></div>
                     @endforelse
                 </div>
             </section>

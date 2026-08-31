@@ -1,19 +1,19 @@
 @php
     $categories = [
-        'car' => ['icon' => '🚗', 'label' => 'Car rental', 'copy' => 'Drive on your own schedule'],
-        'condo' => ['icon' => '🏢', 'label' => 'Stay', 'copy' => 'Condos, rooms, and properties'],
-        'cleaning' => ['icon' => '🧹', 'label' => 'Cleaning', 'copy' => 'Book help for your space'],
-        'laundry' => ['icon' => '🧺', 'label' => 'Laundry', 'copy' => 'Book linen and laundry service'],
-        'delivery' => ['icon' => '🚚', 'label' => 'Vehicle delivery', 'copy' => 'Arrange vehicle handover delivery'],
-        'car_wash' => ['icon' => '🫧', 'label' => 'Carwash', 'copy' => 'Book vehicle cleaning service'],
-        'vehicle_maintenance' => ['icon' => '🛠', 'label' => 'Vehicle maintenance', 'copy' => 'Book vehicle upkeep and maintenance'],
-        'driving' => ['icon' => '🛞', 'label' => 'Driving', 'copy' => 'Book a driver for your trip'],
-        'massage' => ['icon' => '💆', 'label' => 'Massage', 'copy' => 'Book a massage session'],
-        'consultancy' => ['icon' => '💬', 'label' => 'Consultancy', 'copy' => 'Book professional advice'],
+        'car' => ['icon' => 'car-side', 'label' => 'Car rental', 'copy' => 'Drive on your own schedule'],
+        'condo' => ['icon' => 'building', 'label' => 'Stay', 'copy' => 'Condos, rooms, and properties'],
+        'cleaning' => ['icon' => 'broom', 'label' => 'Cleaning', 'copy' => 'Book help for your space'],
+        'laundry' => ['icon' => 'shirt', 'label' => 'Laundry', 'copy' => 'Book linen and laundry service'],
+        'delivery' => ['icon' => 'truck-fast', 'label' => 'Vehicle delivery', 'copy' => 'Arrange vehicle handover delivery'],
+        'car_wash' => ['icon' => 'soap', 'label' => 'Carwash', 'copy' => 'Book vehicle cleaning service'],
+        'vehicle_maintenance' => ['icon' => 'screwdriver-wrench', 'label' => 'Vehicle maintenance', 'copy' => 'Book vehicle upkeep and maintenance'],
+        'driving' => ['icon' => 'road', 'label' => 'Driving', 'copy' => 'Book a driver for your trip'],
+        'massage' => ['icon' => 'spa', 'label' => 'Massage', 'copy' => 'Book a massage session'],
+        'consultancy' => ['icon' => 'briefcase', 'label' => 'Consultancy', 'copy' => 'Book professional advice'],
     ];
     foreach ($discoverableServiceCategories ?? [] as $serviceCategory) {
         $categories[$serviceCategory] ??= [
-            'icon' => '◇',
+            'icon' => 'shapes',
             'label' => str($serviceCategory)->replace('_', ' ')->title(),
             'copy' => 'Browse available '.str($serviceCategory)->replace('_', ' ')->lower().' services',
         ];
@@ -42,7 +42,7 @@
         <div class="booking-category-grid">
             @foreach ($categories as $key => $item)
                 <a @class(['booking-category-card', 'selected' => $category === $key]) href="{{ route('calendar.index', ['category' => $key, 'mode' => $canManageListings ? 'book' : null]) }}">
-                    <span>{{ $item['icon'] }}</span><strong>{{ $item['label'] }}</strong><small>{{ $item['copy'] }}</small>
+                    <span><x-fa-icon :name="$item['icon']" /></span><strong>{{ $item['label'] }}</strong><small>{{ $item['copy'] }}</small>
                 </a>
             @endforeach
         </div>
@@ -67,7 +67,7 @@
                     <div class="field-group"><label for="amenity">Must-have amenity</label><select id="amenity" name="amenity"><option value="">Any amenity</option>@foreach (['wifi' => 'Wi-Fi', 'air_conditioning' => 'Air conditioning', 'kitchen' => 'Kitchen', 'parking' => 'Parking', 'pool' => 'Swimming pool', 'balcony' => 'Balcony', 'pet_friendly' => 'Pet friendly', 'furnished' => 'Furnished'] as $value => $label)<option value="{{ $value }}" @selected(request('amenity') === $value)>{{ $label }}</option>@endforeach</select></div>
                 @endif
                 <div class="field-group"><label for="sort">Sort results</label><select id="sort" name="sort"><option value="recommended" @selected(request('sort', 'recommended') === 'recommended')>Recommended</option><option value="price_low" @selected(request('sort') === 'price_low')>Lowest price</option><option value="capacity_high" @selected(request('sort') === 'capacity_high')>Highest capacity</option></select></div>
-                <button class="button button-primary discovery-submit" type="submit">Show available options <span>→</span></button>
+                <button class="button button-primary discovery-submit" type="submit">Show available options <x-fa-icon name="arrow-right" /></button>
                 <div class="search-map-panel" data-search-location-map data-map-id="{{ config('services.google.maps_map_id') }}">
                     <div class="map-field-heading"><div><strong>Choose your search area</strong><small>Click the map or use your current location. The circle follows your selected radius.</small></div><span data-map-coordinate-label>{{ $searchLatitude !== null ? number_format($searchLatitude, 5).', '.number_format($searchLongitude, 5) : 'No center selected' }}</span></div>
                     <div class="map-toolbar"><button class="map-action-button" type="button" data-map-find-address>Find typed location</button><button class="map-action-button" type="button" data-map-use-location>Use my location</button><button class="map-clear-button" type="button" data-map-clear>Clear map radius</button></div>
@@ -84,7 +84,7 @@
         <section class="booking-step-card booking-results" id="booking-results" data-listing-view-switch data-default-view="grid" data-guide-feature="booking-map">
             <div class="results-heading">
                 <div><span class="eyebrow">Step 3 · Available options</span><h3>{{ $matchingUnits->count() }} {{ Str::plural('match', $matchingUnits->count()) }} for your trip</h3><p>{{ $searchStart->format('M j, g:i A') }} – {{ $searchEnd->format('M j, g:i A') }} · {{ $partySize }} {{ Str::plural('person', $partySize) }}{{ request('location') ? ' · '.request('location') : '' }}</p></div>
-                <div class="listing-view-toggle" role="group" aria-label="Choose search results view"><button type="button" data-listing-view-select="grid" aria-pressed="true"><span aria-hidden="true">▦</span> Grid</button><button type="button" data-listing-view-select="map" aria-pressed="false"><span aria-hidden="true">⌖</span> Map</button></div>
+                <div class="listing-view-toggle" role="group" aria-label="Choose search results view"><button type="button" data-listing-view-select="grid" aria-pressed="true"><x-fa-icon name="table-cells-large" /> Grid</button><button type="button" data-listing-view-select="map" aria-pressed="false"><x-fa-icon name="map-location-dot" /> Map</button></div>
             </div>
             <div class="client-result-grid" data-listing-grid-panel>
                 @forelse ($matchingUnits as $unit)
@@ -94,18 +94,18 @@
                         $startingPrice = $unit->startingPrice();
                     @endphp
                     <article @class(['client-result-card', 'selected' => $isSelected])>
-                        <div class="result-photo">@include('partials.listing-card-carousel', ['carouselUnit' => $unit, 'carouselLinkUrl' => $selectUrl, 'carouselPlaceholder' => $categories[$unit->category]['icon'] ?? '◇']) @if($unit->hasSale())<span class="listing-sale-badge">{{ number_format((float) $unit->sale_percentage, 0) }}% off</span>@endif @include('partials.listing-favorite', ['favoriteUnit' => $unit])</div>
+                        <div class="result-photo">@include('partials.listing-card-carousel', ['carouselUnit' => $unit, 'carouselLinkUrl' => $selectUrl]) @if($unit->hasSale())<span class="listing-sale-badge">{{ number_format((float) $unit->sale_percentage, 0) }}% off</span>@endif @include('partials.listing-favorite', ['favoriteUnit' => $unit])</div>
                         <div class="result-card-body">
-                            <div class="result-card-kicker"><span>{{ $categories[$unit->category]['label'] ?? ucfirst($unit->kind) }}</span>@if($unit->listing_reviews_count)<strong>★ {{ number_format((float) $unit->listing_reviews_avg_rating, 1) }} <small>({{ $unit->listing_reviews_count }})</small></strong>@else<small>New listing</small>@endif</div>
+                            <div class="result-card-kicker"><span>{{ $categories[$unit->category]['label'] ?? ucfirst($unit->kind) }}</span>@if($unit->listing_reviews_count)<strong><x-fa-icon name="star" class="fa-rating" /> {{ number_format((float) $unit->listing_reviews_avg_rating, 1) }} <small>({{ $unit->listing_reviews_count }})</small></strong>@else<small>New listing</small>@endif</div>
                             <h4>{{ $unit->name }}</h4>
-                            <p class="result-location">⌖ {{ $unit->location ?: 'Location arranged with host' }}</p>
+                            <p class="result-location"><x-fa-icon name="location-dot" /> {{ $unit->location ?: 'Location arranged with host' }}</p>
                             <p>{{ Str::limit($unit->description ?: 'Contact the host for more details about this listing.', 115) }}</p>
-                            <div class="result-facts"><span><small>Capacity</small><strong>{{ $unit->capacity ? 'Up to '.$unit->capacity : 'Ask host' }}</strong></span><span><small>{{ isset($unit->distance_km) ? 'Distance' : 'Verified host' }}</small><strong>{{ isset($unit->distance_km) ? number_format($unit->distance_km, 1).' km away' : '✓ '.$unit->host->name }}</strong></span></div>
-                            <div class="result-card-footer"><div><small>From</small>@if($unit->hasSale())<del>₱{{ number_format($startingPrice, 2) }}</del>@endif<strong>₱{{ number_format($unit->discountedPrice($startingPrice), 2) }}</strong>@if($unit->hasSale())<em>Save {{ number_format((float) $unit->sale_percentage, 0) }}%</em>@endif</div><a class="button {{ $isSelected ? 'button-selected' : 'button-primary' }}" href="{{ $selectUrl }}">{{ $isSelected ? 'Selected ✓' : 'View & select' }}</a></div>
+                            <div class="result-facts"><span><small>Capacity</small><strong>{{ $unit->capacity ? 'Up to '.$unit->capacity : 'Ask host' }}</strong></span><span><small>{{ isset($unit->distance_km) ? 'Distance' : 'Verified host' }}</small><strong>@if(isset($unit->distance_km)){{ number_format($unit->distance_km, 1) }} km away @else <x-fa-icon name="circle-check" /> {{ $unit->host->name }} @endif</strong></span></div>
+                            <div class="result-card-footer"><div><small>From</small>@if($unit->hasSale())<del>₱{{ number_format($startingPrice, 2) }}</del>@endif<strong>₱{{ number_format($unit->discountedPrice($startingPrice), 2) }}</strong>@if($unit->hasSale())<em>Save {{ number_format((float) $unit->sale_percentage, 0) }}%</em>@endif</div><a class="button {{ $isSelected ? 'button-selected' : 'button-primary' }}" href="{{ $selectUrl }}">{{ $isSelected ? 'Selected' : 'View & select' }} @if($isSelected)<x-fa-icon name="check" />@endif</a></div>
                         </div>
                     </article>
                 @empty
-                    <div class="no-results"><span>⌕</span><h4>No exact matches yet</h4><p>Try a nearby location, fewer people, or different dates.</p><a href="#booking-details">Change search details</a></div>
+                    <div class="no-results"><span><x-fa-icon name="magnifying-glass" /></span><h4>No exact matches yet</h4><p>Try a nearby location, fewer people, or different dates.</p><a href="#booking-details">Change search details</a></div>
                 @endforelse
             </div>
             @include('partials.listing-results-map', ['mapUnits' => $matchingMapUnits, 'mapTitle' => 'See your matches by lowest price', 'mapAriaLabel' => 'Map of matching listings and their lowest prices'])
@@ -130,7 +130,7 @@
         <section class="booking-selection-card" id="booking-selection">
             <div class="selection-summary">
                 <span class="eyebrow">Your selection</span><h3>{{ $selectedUnit->name }}</h3><p>{{ $selectedUnit->description ?: 'Review the booking details and send your request to the host.' }}</p>
-                <div class="selection-facts"><span>⌖ {{ $selectedUnit->location ?: 'Location arranged with host' }}</span><span>♙ {{ $partySize }} {{ Str::plural('person', $partySize) }}</span><span>◷ {{ $selectedBookingStart->format('M j, g:i A') }}</span></div>
+                <div class="selection-facts"><span><x-fa-icon name="location-dot" /> {{ $selectedUnit->location ?: 'Location arranged with host' }}</span><span><x-fa-icon name="user-group" /> {{ $partySize }} {{ Str::plural('person', $partySize) }}</span><span><x-fa-icon name="clock" /> {{ $selectedBookingStart->format('M j, g:i A') }}</span></div>
                 @if($selectedUnit->category === 'condo')<p class="fixed-property-schedule">Standard stay: check in {{ $selectedBookingStart->format('g:i A') }} · check out {{ $selectedBookingEnd->format('g:i A') }}. These host-set times apply automatically.</p>@endif
                 <details class="client-unit-rules"><summary>{{ $selectedUnit->category === 'car' ? 'Car rules' : ($selectedUnit->category === 'condo' ? 'House rules' : 'Service rules') }} <span>Expand</span></summary><p>{{ $selectedUnit->rules ?: 'No additional rules were provided for this listing.' }}</p><small>By submitting a request, you agree to follow the host’s rules.</small></details>
                 @if ($additionalFees)<details class="client-unit-rules"><summary>{{ $selectedUnit->category === 'car' ? 'Required car charges' : 'Amenity access & fees' }} <span>Expand</span></summary><p>{{ $additionalFees }}</p></details>@endif
@@ -158,7 +158,7 @@
                 <input id="start_at" name="start_at" type="hidden" value="{{ old('start_at', $selectedBookingStart->format('Y-m-d\TH:i')) }}">
                 <div data-booking-end-field hidden><input id="end_at" name="end_at" type="hidden" value="{{ old('end_at', $selectedBookingEnd->format('Y-m-d\TH:i')) }}"></div>
                 <input name="party_size" type="hidden" value="{{ $partySize }}">
-                @if ($selectedInquiry->agreed_price !== null)<div class="negotiated-booking-price"><span>✓</span><div><small>Accepted negotiated subtotal</small><strong>₱{{ number_format($selectedInquiry->agreed_price, 2) }}</strong><p>This replaces the standard rental or service subtotal. Required listing charges are added separately.</p></div></div>@endif
+                @if ($selectedInquiry->agreed_price !== null)<div class="negotiated-booking-price"><span><x-fa-icon name="check" /></span><div><small>Accepted negotiated subtotal</small><strong>₱{{ number_format($selectedInquiry->agreed_price, 2) }}</strong><p>This replaces the standard rental or service subtotal. Required listing charges are added separately.</p></div></div>@endif
                 @if ($selectedUnit->isPackageRental())
                     @if ($selectedUnit->category === 'car')
                         @php
@@ -210,13 +210,13 @@
                             <div class="package-calculation-summary"><span><small>Selected return</small><strong data-package-end-note></strong></span><span><small>Estimated package total</small><strong data-package-total></strong></span></div>
                         </div>
                     @endif
-                    @if($selectedUnit->hasSale())<p class="booking-sale-note">✓ {{ number_format((float) $selectedUnit->sale_percentage, 0) }}% host sale applied to the rental price. Required fees stay unchanged.</p>@endif
+                    @if($selectedUnit->hasSale())<p class="booking-sale-note"><x-fa-icon name="check" /> {{ number_format((float) $selectedUnit->sale_percentage, 0) }}% host sale applied to the rental price. Required fees stay unchanged.</p>@endif
                     @error('package_quantities')<p class="error-text">{{ $message }}</p>@enderror
                 @else
                     <input id="unit_rate_id" name="unit_rate_id" type="hidden" value="">
                 @endif
                 <div class="field-group"><label for="notes">Notes for the host <span class="optional-label">Optional</span></label><textarea id="notes" name="notes" rows="4" maxlength="1000" placeholder="Pickup details, arrival notes, or special requests…">{{ old('notes') }}</textarea></div>
-                <div class="inquiry-complete-note"><span>✓</span><div><strong>Inquiry completed</strong><small>You can continue chatting before the host confirms.</small></div><a href="{{ route('inquiries.show', $selectedInquiry) }}">Open chat</a></div>
+                <div class="inquiry-complete-note"><span><x-fa-icon name="check" /></span><div><strong>Inquiry completed</strong><small>You can continue chatting before the host confirms.</small></div><a href="{{ route('inquiries.show', $selectedInquiry) }}">Open chat</a></div>
                 <button class="button button-primary" type="submit">Request this booking</button>
                 <small class="request-note">The host will review your profile, conversation, and request.</small>
             </form>
@@ -226,7 +226,7 @@
 
     @unless ($searchSubmitted)
     <section class="client-catalog" data-listing-view-switch data-default-view="grid" data-guide-feature="booking-map">
-        <div class="catalog-heading"><div><span class="eyebrow">More options</span><h3>Browse all listings</h3><p>Compare photos and details, then view or inquire with the host.</p></div><div class="catalog-heading-actions"><span>{{ $units->count() }}</span><div class="listing-view-toggle" role="group" aria-label="Choose catalog view"><button type="button" data-listing-view-select="grid" aria-pressed="true"><span aria-hidden="true">▦</span> Grid</button><button type="button" data-listing-view-select="map" aria-pressed="false"><span aria-hidden="true">⌖</span> Map</button></div></div></div>
+        <div class="catalog-heading"><div><span class="eyebrow">More options</span><h3>Browse all listings</h3><p>Compare photos and details, then view or inquire with the host.</p></div><div class="catalog-heading-actions"><span>{{ $units->count() }}</span><div class="listing-view-toggle" role="group" aria-label="Choose catalog view"><button type="button" data-listing-view-select="grid" aria-pressed="true"><x-fa-icon name="table-cells-large" /> Grid</button><button type="button" data-listing-view-select="map" aria-pressed="false"><x-fa-icon name="map-location-dot" /> Map</button></div></div></div>
         <div class="catalog-list" data-listing-grid-panel>
             @foreach ($units as $unit)
                 @php
@@ -240,11 +240,11 @@
                         })->filter();
                 @endphp
                 <article class="catalog-card">
-                    <div class="catalog-media">@include('partials.listing-card-carousel', ['carouselUnit' => $unit, 'carouselLinkClass' => 'catalog-photo', 'carouselPlaceholder' => $categories[$unit->category]['icon'] ?? '◇'])@if($unit->hasSale())<span class="listing-sale-badge">{{ number_format((float) $unit->sale_percentage, 0) }}% off</span>@endif @include('partials.listing-favorite', ['favoriteUnit' => $unit])</div>
+                    <div class="catalog-media">@include('partials.listing-card-carousel', ['carouselUnit' => $unit, 'carouselLinkClass' => 'catalog-photo'])@if($unit->hasSale())<span class="listing-sale-badge">{{ number_format((float) $unit->sale_percentage, 0) }}% off</span>@endif @include('partials.listing-favorite', ['favoriteUnit' => $unit])</div>
                     <div class="catalog-card-body">
-                        <div class="catalog-card-category"><span>{{ $categories[$unit->category]['label'] ?? str($unit->category)->replace('_', ' ')->title() }}</span>@if($unit->listing_reviews_count)<strong>★ {{ number_format((float) $unit->listing_reviews_avg_rating, 1) }} <small>({{ $unit->listing_reviews_count }})</small></strong>@else<small>New listing</small>@endif</div>
+                        <div class="catalog-card-category"><span>{{ $categories[$unit->category]['label'] ?? str($unit->category)->replace('_', ' ')->title() }}</span>@if($unit->listing_reviews_count)<strong><x-fa-icon name="star" class="fa-rating" /> {{ number_format((float) $unit->listing_reviews_avg_rating, 1) }} <small>({{ $unit->listing_reviews_count }})</small></strong>@else<small>New listing</small>@endif</div>
                         <h4><a href="{{ route('listings.show', $unit) }}">{{ $unit->name }}</a></h4>
-                        <p class="catalog-location">⌖ {{ $unit->location ?: 'Location arranged with host' }}</p>
+                        <p class="catalog-location"><x-fa-icon name="location-dot" /> {{ $unit->location ?: 'Location arranged with host' }}</p>
                         <p class="catalog-host">Hosted by <a href="{{ route('hosts.show', $unit->host) }}">{{ $unit->host->publicHostName() }}</a></p>
                         @if ($fees->isNotEmpty())<small class="catalog-fees">{{ $fees->join(' · ') }}</small>@endif
                         @if ($unit->rules)
@@ -253,7 +253,7 @@
                                 <p>{{ $unit->rules }}</p>
                             </details>
                         @endif
-                        <div class="catalog-price"><span><small>From</small>@if($unit->hasSale())<del>₱{{ number_format($startingPrice, 2) }}</del>@endif<strong>₱{{ number_format($unit->discountedPrice($startingPrice), 2) }}</strong>@if($unit->hasSale())<em>✓ Save {{ number_format((float) $unit->sale_percentage, 0) }}% direct</em>@endif</span>@if($unit->capacity)<small>Up to {{ $unit->capacity }} {{ Str::plural('person', $unit->capacity) }}</small>@endif</div>
+                        <div class="catalog-price"><span><small>From</small>@if($unit->hasSale())<del>₱{{ number_format($startingPrice, 2) }}</del>@endif<strong>₱{{ number_format($unit->discountedPrice($startingPrice), 2) }}</strong>@if($unit->hasSale())<em><x-fa-icon name="check" /> Save {{ number_format((float) $unit->sale_percentage, 0) }}% direct</em>@endif</span>@if($unit->capacity)<small>Up to {{ $unit->capacity }} {{ Str::plural('person', $unit->capacity) }}</small>@endif</div>
                         <div class="catalog-actions">
                             <a class="button button-ghost" href="{{ route('listings.show', $unit) }}">View details</a>
                             <a class="button button-primary" href="{{ route('listings.inquire', $unit) }}">Inquire now</a>
@@ -288,11 +288,11 @@
                                     @if ($booking->unit->wifi_qr_path)<img src="{{ route('units.wifi-qr', $booking->unit) }}" alt="Wi-Fi QR code for {{ $booking->unit->name }}">@endif
                                 </div>
                             @elseif (in_array($booking->status, ['pending', 'pre_approved', 'payment_submitted'], true))
-                                <p class="locked-access-note">🔒 Wi-Fi access will appear here after the host confirms this booking.</p>
+                                <p class="locked-access-note"><x-fa-icon name="lock" /> Wi-Fi access will appear here after the host confirms this booking.</p>
                             @endif
                         @endif
                         </div>
-                        <span class="booking-card-open">View details →</span>
+                        <span class="booking-card-open">View details <x-fa-icon name="arrow-right" /></span>
                     </a>
                     <div class="booking-item-actions">
                         <span class="booking-status status-{{ $booking->status }}">{{ $booking->status === 'confirmed' ? 'Booked' : $booking->statusLabel() }}</span>
@@ -302,7 +302,7 @@
                     </div>
                 </article>
             @empty
-                <div class="day-bookings-empty"><span>◇</span><p>Your booking requests, payment steps, and confirmed trips will appear here.</p></div>
+                <div class="day-bookings-empty"><span><x-fa-icon name="calendar" /></span><p>Your booking requests, payment steps, and confirmed trips will appear here.</p></div>
             @endforelse
         </div>
     </section>

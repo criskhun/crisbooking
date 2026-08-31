@@ -3,7 +3,7 @@
     <article>
         <header>
             <div><span class="eyebrow">Chart drill-down</span><h2 id="sales-drilldown-title" data-sales-drilldown-title>Booking details</h2><p data-sales-drilldown-subtitle></p></div>
-            <button type="button" data-sales-drilldown-close aria-label="Close chart details">×</button>
+            <button class="icon-only-button" type="button" data-sales-drilldown-close aria-label="Close chart details"><x-fa-icon name="xmark" /></button>
         </header>
         <section class="sales-drilldown-summary" aria-label="Selected chart summary">
             <div><small>Bookings</small><strong data-sales-drilldown-count>0 bookings</strong></div>

@@ -1,6 +1,6 @@
 <details id="manual-booking" class="manual-booking-card" data-manual-booking-card @if($manualBookingUnitId || $errors->hasAny(['unit_id', 'start_date', 'start_time', 'duration_unit', 'duration_quantity', 'source_channel', 'source_details', 'external_customer_name', 'fulfillment_method', 'delivery_address', 'total_amount', 'payment_option', 'initial_payment_amount', 'security_deposit_amount', 'party_size', 'affiliate_partnership_id', 'notes'])) open @endif>
     <summary>
-        <span aria-hidden="true">＋</span>
+        <span><x-fa-icon name="plus" /></span>
         <div>
             <strong>Add an outside booking</strong>
             <small>Block an owned or assigned listing’s exact schedule and include the sale in your records.</small>

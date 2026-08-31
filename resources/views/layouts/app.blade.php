@@ -23,10 +23,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
-    @auth
-        <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/fontawesome.min.css') }}?v={{ filemtime(public_path('vendor/fontawesome/css/fontawesome.min.css')) }}">
-        <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/solid.min.css') }}?v={{ filemtime(public_path('vendor/fontawesome/css/solid.min.css')) }}">
-    @endauth
+    <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/fontawesome.min.css') }}?v={{ filemtime(public_path('vendor/fontawesome/css/fontawesome.min.css')) }}">
+    <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/solid.min.css') }}?v={{ filemtime(public_path('vendor/fontawesome/css/solid.min.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/mobile-shell-v5.css') }}">
     <link rel="stylesheet" href="{{ asset('css/mobile-menu-v6.css') }}?v={{ filemtime(public_path('css/mobile-menu-v6.css')) }}">
@@ -34,6 +32,7 @@
     <link rel="stylesheet" href="{{ asset('css/profile-controls-v8.css') }}">
     <link rel="stylesheet" href="{{ asset('css/address-combobox-v9.css') }}">
     <link rel="stylesheet" href="{{ asset('css/form-controls-v19.css') }}?v={{ filemtime(public_path('css/form-controls-v19.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/icon-system-v20.css') }}?v={{ filemtime(public_path('css/icon-system-v20.css')) }}">
     <script src="{{ asset('js/address-combobox-v9.js') }}" defer></script>
     <script src="{{ asset('js/app.js') }}?v={{ filemtime(public_path('js/app.js')) }}" defer></script>
     <script src="{{ asset('js/maps.js') }}?v={{ filemtime(public_path('js/maps.js')) }}" defer></script>
@@ -71,7 +70,7 @@
             <p data-pwa-install-message>Use it like an app from your home screen or desktop.</p>
         </div>
         <button class="button button-primary button-small" type="button" data-pwa-install-action>Install app</button>
-        <button class="pwa-install-dismiss" type="button" data-pwa-install-dismiss aria-label="Dismiss install suggestion">×</button>
+        <button class="pwa-install-dismiss icon-only-button" type="button" data-pwa-install-dismiss aria-label="Dismiss install suggestion"><x-fa-icon name="xmark" /></button>
     </aside>
 
     <div class="connectivity-status" data-connectivity-status hidden role="status" aria-live="polite"></div>

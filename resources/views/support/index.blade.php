@@ -30,7 +30,7 @@
                         @forelse($reports as $report)
                             <article><header><span class="support-status status-{{ $report->status }}">{{ $report->statusLabel() }}</span><time>{{ $report->created_at->format('M j, Y') }}</time></header><h3>{{ $report->subject }}</h3><p>{{ $report->message }}</p>@if($report->unit)<small>Related to {{ $report->unit->name }}@if($report->booking) · Booking #{{ $report->booking->id }}@endif</small>@endif @if($report->admin_response)<div class="support-admin-response"><strong>Administrator response</strong><p>{{ $report->admin_response }}</p><small>{{ $report->reviewer?->name }} · {{ $report->reviewed_at?->diffForHumans() }}</small></div>@endif</article>
                         @empty
-                            <div class="empty-panel"><span>✓</span><p>You have not sent an administrator report.</p></div>
+                            <div class="empty-panel"><span><x-fa-icon name="check" /></span><p>You have not sent an administrator report.</p></div>
                         @endforelse
                     </div>
                 </aside>

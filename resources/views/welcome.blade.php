@@ -11,7 +11,6 @@
             'driving' => 'Driving',
             'other' => 'Other services',
         ];
-        $categoryIcons = ['car' => '🚗', 'condo' => '🏢', 'driving' => '🛞', 'other' => '◇'];
         $baseFilters = [
             'start_date' => $startDate->toDateString(),
             'end_date' => $endDate->toDateString(),
@@ -88,8 +87,8 @@
                     <div class="calendar-card-head">
                         <div><small>Availability calendar</small><strong>{{ $month->format('F Y') }}</strong></div>
                         <nav class="calendar-arrows" aria-label="Calendar month navigation">
-                            <a href="{{ route('home', array_merge($baseFilters, ['month' => $month->subMonth()->format('Y-m')])) }}" aria-label="Previous month">‹</a>
-                            <a href="{{ route('home', array_merge($baseFilters, ['month' => $month->addMonth()->format('Y-m')])) }}" aria-label="Next month">›</a>
+                            <a href="{{ route('home', array_merge($baseFilters, ['month' => $month->subMonth()->format('Y-m')])) }}" aria-label="Previous month"><x-fa-icon name="chevron-left" /></a>
+                            <a href="{{ route('home', array_merge($baseFilters, ['month' => $month->addMonth()->format('Y-m')])) }}" aria-label="Next month"><x-fa-icon name="chevron-right" /></a>
                         </nav>
                     </div>
                     <div class="week-row"><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span><span>SUN</span></div>
@@ -126,9 +125,9 @@
                                 $latestReview = $listing->listingReviews->first();
                             @endphp
                             <a class="booking-chip availability-listing {{ $chipClass }}" href="{{ route('listings.show', $listing) }}">
-                                <span class="listing-icon" aria-hidden="true">{{ $categoryIcons[$group] }}</span>
+                                <span class="listing-icon"><x-category-icon :category="$listing->category" /></span>
                                 <div>
-                                    <small>{{ $categoryLabels[$group] }} · @if($listing->listing_reviews_count) <b>★ {{ number_format((float) $listing->listing_reviews_avg_rating, 1) }}</b> ({{ $listing->listing_reviews_count }}) @else New listing @endif</small>
+                                    <small>{{ $categoryLabels[$group] }} · @if($listing->listing_reviews_count) <b><x-fa-icon name="star" class="fa-rating" /> {{ number_format((float) $listing->listing_reviews_avg_rating, 1) }}</b> ({{ $listing->listing_reviews_count }}) @else New listing @endif</small>
                                     <strong>{{ $listing->name }}</strong>
                                     @if($latestReview)
                                         <span class="listing-review">“{{ Str::limit($latestReview->comment, 78) }}”</span>
@@ -149,7 +148,7 @@
                         @endif
                     </section>
                 </div>
-                <div class="floating-stat"><span>✓</span><div><small>{{ $availableListings->count() }} available for your dates</small><strong>{{ $categoryLabels[$selectedCategory] }}</strong></div></div>
+                <div class="floating-stat"><span><x-fa-icon name="check" /></span><div><small>{{ $availableListings->count() }} available for your dates</small><strong>{{ $categoryLabels[$selectedCategory] }}</strong></div></div>
             </div>
         </section>
     </main>

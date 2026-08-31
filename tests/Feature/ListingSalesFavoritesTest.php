@@ -146,7 +146,8 @@ class ListingSalesFavoritesTest extends TestCase
             'category' => 'other',
         ]))->assertOk()
             ->assertSee('20% off')
-            ->assertSee('★ 5.0')
+            ->assertSee('fa-star fa-rating', false)
+            ->assertSee('5.0')
             ->assertSee('₱1,000.00')
             ->assertSee('₱800.00')
             ->assertSee('data-listing-view-select="grid"', false)

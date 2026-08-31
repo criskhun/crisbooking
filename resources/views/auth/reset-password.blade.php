@@ -51,7 +51,7 @@
                         <input id="password_confirmation" name="password_confirmation" type="password" autocomplete="new-password" required placeholder="Repeat your new password">
                     </div>
 
-                    <button class="button button-primary button-full" type="submit">Reset password <span aria-hidden="true">→</span></button>
+                    <button class="button button-primary button-full" type="submit">Reset password <x-fa-icon name="arrow-right" /></button>
                 </form>
             </div>
         </section>

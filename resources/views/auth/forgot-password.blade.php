@@ -42,7 +42,7 @@
                         @error('email')<p class="error-text">{{ $message }}</p>@enderror
                     </div>
 
-                    <button class="button button-primary button-full" type="submit">Email reset link <span aria-hidden="true">→</span></button>
+                    <button class="button button-primary button-full" type="submit">Email reset link <x-fa-icon name="arrow-right" /></button>
                 </form>
 
                 <p class="form-footer">Remembered your details? <a href="{{ route('login') }}">Return to login</a></p>

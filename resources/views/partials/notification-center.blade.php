@@ -7,7 +7,7 @@
      data-unsubscribe-url="{{ route('push-subscriptions.destroy') }}"
      data-vapid-public-key="{{ config('services.webpush.public_key') }}">
     <button class="notification-bell" type="button" data-notification-toggle aria-expanded="false" aria-label="Open notifications">
-        <span aria-hidden="true">♢</span>
+        <span><x-fa-icon name="bell" /></span>
         <b data-notification-count hidden>0</b>
     </button>
     <section class="notification-panel" data-notification-panel hidden aria-label="Notifications">

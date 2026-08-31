@@ -70,7 +70,7 @@
                                         </div>
                                     </td>
                                     <td><span @class(['role-badge', 'role-host' => $account->role === 'host'])>{{ ucfirst($account->role) }}</span>@if($account->is_admin)<small class="admin-marker">Admin</small>@endif</td>
-                                    <td><span @class(['account-status', 'status-suspended' => ! $account->is_active])><i></i>{{ $account->is_active ? 'Active' : 'Suspended' }}</span></td>
+                                    <td><span @class(['account-status', 'status-suspended' => ! $account->is_active])><x-fa-icon name="circle" />{{ $account->is_active ? 'Active' : 'Suspended' }}</span></td>
                                     <td><span @class(['verification-badge', 'verification-pending' => ! $account->hasVerifiedEmail()])>{{ $account->hasVerifiedEmail() ? 'Verified' : 'Pending' }}</span></td>
                                     <td><span class="method-badge method-{{ strtolower($method) }}">{{ $method }}</span></td>
                                     <td>
@@ -79,12 +79,12 @@
                                     </td>
                                     <td>
                                         <div class="account-actions">
-                                            <a href="{{ route('accounts.edit', $account) }}">Edit</a>
+                                            <a href="{{ route('accounts.edit', $account) }}"><x-fa-icon name="pen" /> Edit</a>
                                             @unless (auth()->user()->is($account))
                                                 <form method="POST" action="{{ route('accounts.destroy', $account) }}" onsubmit="return confirm('Permanently delete {{ addslashes($account->name) }}? This cannot be undone.')">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit">Delete</button>
+                                                    <button type="submit"><x-fa-icon name="trash" /> Delete</button>
                                                 </form>
                                             @endunless
                                         </div>
