@@ -30,6 +30,7 @@ class Booking extends Model
         'unit_rate_id',
         'client_id',
         'booked_by_user_id',
+        'offline_sync_id',
         'booking_origin',
         'source_channel',
         'source_details',

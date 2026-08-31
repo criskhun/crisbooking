@@ -7,7 +7,15 @@
         </div>
         <b>Add booking</b>
     </summary>
-    <form method="POST" action="{{ route('calendar.manual-bookings.store') }}" class="manual-booking-form" data-manual-booking-form data-loading-label="Adding outside booking…">
+    <section class="offline-booking-queue" data-offline-booking-queue hidden aria-live="polite">
+        <div>
+            <span><strong>Saved on this device</strong><small data-offline-booking-status>Outside bookings added offline will sync automatically when this server is reachable.</small></span>
+            <button class="button button-ghost button-small" type="button" data-offline-sync-now>Sync now</button>
+        </div>
+        <div class="offline-booking-list" data-offline-booking-list></div>
+        <small>Pending entries contain private booking details on this device until they sync. Log out only after they have synced.</small>
+    </section>
+    <form method="POST" action="{{ route('calendar.manual-bookings.store') }}" class="manual-booking-form" data-manual-booking-form data-offline-queue="manual-booking" data-offline-user-id="{{ auth()->id() }}" data-loading-label="Adding outside booking…">
         @csrf
         <div class="manual-booking-intro">
             <span>{{ $isAffiliateCalendar ? 'Affiliate entry' : 'Host entry' }}</span>

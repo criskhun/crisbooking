@@ -1,4 +1,8 @@
-const CACHE_VERSION = 'davao-rent-zone-v19';
+const CACHE_VERSION = 'davao-rent-zone-static-v20';
+const PRIVATE_CACHE_PREFIX = 'davao-rent-zone-private-calendar-v1-user-';
+const CONTEXT_CACHE = 'davao-rent-zone-offline-context-v1';
+const CONTEXT_KEY = new URL('./__offline/current-user', self.registration.scope).href;
+const CALENDAR_FALLBACK_KEY = new URL('./__offline/saved-calendar', self.registration.scope).href;
 const OFFLINE_URL = new URL('./offline.html', self.registration.scope).href;
 const PRECACHE_URLS = [
     './offline.html',
@@ -18,6 +22,7 @@ const PRECACHE_URLS = [
     './js/maps.js',
     './js/mobile-shell-v5.js',
     './js/pwa.js',
+    './js/offline-workspace-v21.js',
     './images/davao-rent-zone-logo-mark-flat.png',
     './icons/icon-192.png',
     './icons/icon-512.png',
@@ -40,7 +45,10 @@ self.addEventListener('activate', (event) => {
     event.waitUntil((async () => {
         const cacheNames = await caches.keys();
         await Promise.all(cacheNames
-            .filter((cacheName) => cacheName.startsWith('davao-rent-zone-') && cacheName !== CACHE_VERSION)
+            .filter((cacheName) => (
+                cacheName.startsWith('davao-rent-zone-v')
+                || cacheName.startsWith('davao-rent-zone-static-')
+            ) && cacheName !== CACHE_VERSION)
             .map((cacheName) => caches.delete(cacheName)));
         await self.clients.claim();
     })());
@@ -51,7 +59,7 @@ const isSafeStaticAsset = (url) => {
     if (!url.pathname.startsWith(scopePath)) return false;
 
     const relativePath = url.pathname.slice(scopePath.length);
-    return ['css/', 'js/', 'images/', 'icons/', 'vendor/'].some((directory) => relativePath.startsWith(directory))
+    return ['css/', 'js/', 'images/', 'icons/', 'storage/', 'vendor/'].some((directory) => relativePath.startsWith(directory))
         || ['manifest.webmanifest', 'apple-touch-icon.png', 'favicon.ico', 'favicon.svg'].includes(relativePath);
 };
 
@@ -63,13 +71,89 @@ const updateStaticCache = async (request, response) => {
     return response;
 };
 
+const setOfflineUser = async (userId) => {
+    const cache = await caches.open(CONTEXT_CACHE);
+    await cache.put(CONTEXT_KEY, new Response(String(userId), {headers: {'Content-Type': 'text/plain'}}));
+};
+
+const offlineUser = async () => {
+    const response = await caches.match(CONTEXT_KEY);
+    return response ? (await response.text()).trim() : '';
+};
+
+const privateCalendarCache = async () => {
+    const userId = await offlineUser();
+    return userId ? caches.open(`${PRIVATE_CACHE_PREFIX}${userId}`) : null;
+};
+
+const isCalendarUrl = (url) => {
+    const scopePath = new URL(self.registration.scope).pathname;
+    return url.origin === self.location.origin
+        && url.pathname.replace(/\/+$/, '') === `${scopePath.replace(/\/+$/, '')}/calendar`;
+};
+
+const cacheCalendarResponse = async (request, response) => {
+    if (!response.ok || response.type !== 'basic' || !isCalendarUrl(new URL(response.url))) return response;
+    const cache = await privateCalendarCache();
+    if (!cache) return response;
+    await Promise.all([
+        cache.put(request, response.clone()),
+        cache.put(CALENDAR_FALLBACK_KEY, response.clone()),
+    ]);
+    return response;
+};
+
+const savedCalendarResponse = async (request) => {
+    const cache = await privateCalendarCache();
+    return cache ? (await cache.match(request) || await cache.match(CALENDAR_FALLBACK_KEY)) : null;
+};
+
+self.addEventListener('message', (event) => {
+    const message = event.data || {};
+    if (message.type === 'SET_OFFLINE_USER' && Number(message.userId) > 0) {
+        event.waitUntil(setOfflineUser(Number(message.userId)));
+        return;
+    }
+
+    if (message.type === 'CACHE_CURRENT_CALENDAR' && message.url) {
+        event.waitUntil((async () => {
+            const url = new URL(message.url, self.registration.scope);
+            if (!isCalendarUrl(url)) return;
+            if (Number(message.userId) > 0) await setOfflineUser(Number(message.userId));
+            const response = await fetch(url.href, {credentials: 'include', cache: 'no-store'});
+            await cacheCalendarResponse(new Request(url.href), response);
+        })());
+        return;
+    }
+
+    if (message.type === 'CLEAR_PRIVATE_OFFLINE_DATA') {
+        event.waitUntil((async () => {
+            const cacheNames = await caches.keys();
+            await Promise.all(cacheNames
+                .filter((cacheName) => cacheName.startsWith(PRIVATE_CACHE_PREFIX) || cacheName === CONTEXT_CACHE)
+                .map((cacheName) => caches.delete(cacheName)));
+        })());
+    }
+});
+
 self.addEventListener('fetch', (event) => {
     const request = event.request;
     if (request.method !== 'GET') return;
 
     const url = new URL(request.url);
     if (request.mode === 'navigate') {
-        event.respondWith(fetch(request).catch(async () => (await caches.match(OFFLINE_URL)) || Response.error()));
+        event.respondWith((async () => {
+            try {
+                const response = await fetch(request);
+                return isCalendarUrl(url) ? cacheCalendarResponse(request, response) : response;
+            } catch (error) {
+                if (isCalendarUrl(url)) {
+                    const savedCalendar = await savedCalendarResponse(request);
+                    if (savedCalendar) return savedCalendar;
+                }
+                return (await caches.match(OFFLINE_URL)) || Response.error();
+            }
+        })());
         return;
     }
 

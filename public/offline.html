@@ -13,7 +13,9 @@
         img { width: 5rem; height: 5rem; padding: .6rem; border-radius: 20px; background: #173c34; object-fit: contain; }
         h1 { margin: 1.25rem 0 .65rem; font-size: clamp(1.8rem, 7vw, 2.5rem); line-height: 1.05; letter-spacing: -.04em; }
         p { margin: 0; color: #66736e; line-height: 1.65; }
-        button { width: 100%; min-height: 3rem; margin-top: 1.5rem; border: 0; border-radius: 12px; color: white; background: #173c34; font: inherit; font-weight: 800; cursor: pointer; }
+        .actions { display: grid; gap: .65rem; margin-top: 1.5rem; }
+        button { width: 100%; min-height: 3rem; border: 0; border-radius: 12px; color: white; background: #173c34; font: inherit; font-weight: 800; cursor: pointer; }
+        button.secondary { color: #173c34; background: #e7eee9; }
         small { display: block; margin-top: 1rem; color: #78847f; }
         @media (prefers-color-scheme: dark) { body { color: #e8efec; background: #101512; } main { border-color: #2b3933; background: #19221e; box-shadow: none; } p, small { color: #a8b7b1; } }
     </style>
@@ -22,9 +24,12 @@
     <main>
         <img src="images/davao-rent-zone-logo-mark-flat.png" alt="Davao Rent Zone">
         <h1>You’re currently offline</h1>
-        <p>Reconnect to the internet to view live availability, bookings, inquiries, and account details.</p>
-        <button type="button" onclick="location.reload()">Try again</button>
-        <small>Your private booking information is never stored for offline viewing.</small>
+        <p>Live pages need a connection, but a previously opened host calendar can still add outside bookings and save them on this device for later syncing.</p>
+        <div class="actions">
+            <button type="button" onclick="navigator.serviceWorker.ready.then(registration => location.href = new URL('calendar?mode=manage', registration.scope).href)">Open saved calendar</button>
+            <button class="secondary" type="button" onclick="location.reload()">Try connection again</button>
+        </div>
+        <small>Only the saved calendar and pending outside bookings are available offline. Pending private details are removed from this device after they sync.</small>
     </main>
 </body>
 </html>

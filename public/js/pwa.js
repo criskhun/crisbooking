@@ -5,12 +5,14 @@
     const installAction = document.querySelector('[data-pwa-install-action]');
     const dismissAction = document.querySelector('[data-pwa-install-dismiss]');
     const connectivityStatus = document.querySelector('[data-connectivity-status]');
+    const connectivityMessage = connectivityStatus?.querySelector('[data-connectivity-message]') || connectivityStatus;
     const dismissedAtKey = 'davao-rent-zone-install-dismissed-at';
     const dismissalLifetime = 7 * 24 * 60 * 60 * 1000;
     let deferredInstallPrompt = null;
     let connectivityTimer = null;
     let connectivityRetryTimer = null;
     let connectivityCheckId = 0;
+    let connectivityOnline = null;
 
     const runsStandalone = window.matchMedia('(display-mode: standalone)').matches
         || window.matchMedia('(display-mode: window-controls-overlay)').matches
@@ -47,7 +49,7 @@
         if (!connectivityStatus) return;
         window.clearTimeout(connectivityTimer);
         window.clearTimeout(connectivityRetryTimer);
-        connectivityStatus.textContent = online ? 'You are back online.' : 'You are offline. Reconnect to use live booking features.';
+        connectivityMessage.textContent = online ? 'You are back online. Live features are available again.' : 'Offline mode — the saved calendar remains available and changes will sync after reconnecting.';
         connectivityStatus.classList.toggle('is-offline', !online);
         connectivityStatus.hidden = false;
 
@@ -64,7 +66,12 @@
         window.clearTimeout(connectivityRetryTimer);
         connectivityStatus.hidden = true;
         connectivityStatus.classList.remove('is-offline');
-        connectivityStatus.textContent = '';
+        connectivityMessage.textContent = '';
+    };
+
+    const publishConnectivity = (online) => {
+        connectivityOnline = online;
+        window.dispatchEvent(new CustomEvent('mybooking:connectivity', {detail: {online}}));
     };
 
     const syncConnectivity = async () => {
@@ -72,9 +79,11 @@
         const connectivityUrl = script?.dataset.connectivityUrl;
 
         if (!connectivityUrl) {
-            if (navigator.onLine) hideConnectivity();
+            const online = navigator.onLine;
+            if (online) hideConnectivity();
             else showConnectivity(false);
-            return;
+            publishConnectivity(online);
+            return online;
         }
 
         const checkId = ++connectivityCheckId;
@@ -89,18 +98,29 @@
                 signal: controller.signal,
             });
 
-            if (checkId !== connectivityCheckId) return;
+            if (checkId !== connectivityCheckId) return connectivityOnline;
             if (!response.ok) throw new Error(`Connectivity check failed with ${response.status}`);
 
             if (connectivityStatus.classList.contains('is-offline')) showConnectivity(true);
             else hideConnectivity();
+            publishConnectivity(true);
+            return true;
         } catch (error) {
-            if (checkId !== connectivityCheckId) return;
+            if (checkId !== connectivityCheckId) return connectivityOnline;
             showConnectivity(false);
+            publishConnectivity(false);
             connectivityRetryTimer = window.setTimeout(syncConnectivity, 10000);
+            return false;
         } finally {
             window.clearTimeout(timeout);
         }
+    };
+
+    window.DavaoRentZoneConnectivity = {
+        check: syncConnectivity,
+        get online() {
+            return connectivityOnline;
+        },
     };
 
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {

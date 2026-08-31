@@ -28,6 +28,8 @@ class ManualBookingTest extends TestCase
 
         $response->assertOk()
             ->assertSee('id="manual-booking" class="manual-booking-card"', false)
+            ->assertSee('data-offline-booking-queue', false)
+            ->assertSee('data-offline-queue="manual-booking"', false)
             ->assertSee('data-unit-id="'.$unit->id.'" data-date="'.$date->format('Y-m-d').'"', false)
             ->assertSee('value="'.$unit->id.'"', false)
             ->assertSee('selected', false)
@@ -212,6 +214,44 @@ class ManualBookingTest extends TestCase
             ->assertSee('Airbnb · AIR-48291')
             ->assertSee('Offline Affiliate')
             ->assertSee('Cancel outside booking & release dates', false);
+    }
+
+    public function test_offline_booking_sync_retries_are_idempotent(): void
+    {
+        $host = User::factory()->host()->create();
+        $unit = $this->unit($host, 'Offline Queue Condo', 'condo');
+        $syncId = '9d834c77-f60e-47cd-95f2-376c95fe8924';
+        $payload = [
+            'unit_id' => $unit->id,
+            'start_date' => today()->addDays(8)->toDateString(),
+            'start_time' => '14:00',
+            'duration_unit' => 'day',
+            'duration_quantity' => 2,
+            'source_channel' => 'direct',
+            'total_amount' => 5000,
+            'payment_option' => 'unpaid',
+            'party_size' => 2,
+            'offline_sync_id' => $syncId,
+        ];
+
+        $this->actingAs($host)->postJson(route('calendar.manual-bookings.store'), $payload)
+            ->assertOk()
+            ->assertJson(['replayed' => false]);
+
+        $this->postJson(route('calendar.manual-bookings.store'), $payload)
+            ->assertOk()
+            ->assertJson(['replayed' => true]);
+
+        $this->assertDatabaseCount('bookings', 1);
+        $this->assertDatabaseHas('bookings', [
+            'offline_sync_id' => $syncId,
+            'booked_by_user_id' => $host->id,
+        ]);
+
+        $this->getJson(route('offline-sync.session'))
+            ->assertOk()
+            ->assertJson(['user_id' => $host->id])
+            ->assertJsonStructure(['csrf_token']);
     }
 
     public function test_one_day_outside_condo_and_car_bookings_use_real_times_and_span_two_calendar_dates(): void

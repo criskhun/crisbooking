@@ -38,6 +38,7 @@
     <script src="{{ asset('js/maps.js') }}?v={{ filemtime(public_path('js/maps.js')) }}" defer></script>
     <script src="{{ asset('js/mobile-shell-v5.js') }}" defer></script>
     <script src="{{ asset('js/pwa.js') }}?v={{ filemtime(public_path('js/pwa.js')) }}" data-service-worker="{{ asset('sw.js') }}" data-connectivity-url="{{ url('/up') }}" defer></script>
+    <script src="{{ asset('js/offline-workspace-v21.js') }}?v={{ filemtime(public_path('js/offline-workspace-v21.js')) }}" data-offline-user-id="{{ auth()->id() }}" data-offline-session-url="{{ auth()->check() ? route('offline-sync.session') : '' }}" defer></script>
     @if (config('services.google.maps_api_key'))
         <script>
             window.initDavaoRentZoneGoogleMaps = () => window.dispatchEvent(new Event('mybooking:maps-ready'));
@@ -73,7 +74,7 @@
         <button class="pwa-install-dismiss icon-only-button" type="button" data-pwa-install-dismiss aria-label="Dismiss install suggestion"><x-fa-icon name="xmark" /></button>
     </aside>
 
-    <div class="connectivity-status" data-connectivity-status hidden role="status" aria-live="polite"></div>
+    <div class="connectivity-status" data-connectivity-status hidden role="status" aria-live="polite"><span data-connectivity-message></span></div>
     @auth<div class="notification-toast-stack" data-notification-toasts aria-live="polite" aria-atomic="false"></div>@endauth
 </body>
 </html>

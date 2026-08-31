@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\Unit;
 use App\Services\AppNotificationService;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +16,7 @@ use Illuminate\Validation\ValidationException;
 
 class ManualBookingController extends Controller
 {
-    public function store(Request $request, AppNotificationService $notifications): RedirectResponse
+    public function store(Request $request, AppNotificationService $notifications): RedirectResponse|JsonResponse
     {
         $request->merge([
             'duration_unit' => $request->input('duration_unit', 'day'),
@@ -49,10 +50,26 @@ class ManualBookingController extends Controller
             'party_size' => ['nullable', 'integer', 'min:1', 'max:10000'],
             'affiliate_partnership_id' => ['nullable', 'integer', 'exists:affiliate_partnerships,id'],
             'notes' => ['nullable', 'string', 'max:1000'],
+            'offline_sync_id' => ['nullable', 'uuid'],
         ]);
 
         $actor = $request->user();
-        $booking = DB::transaction(function () use ($validated, $actor) {
+        $wasReplayed = false;
+        $booking = DB::transaction(function () use ($validated, $actor, &$wasReplayed) {
+            if (! empty($validated['offline_sync_id'])) {
+                $existingBooking = Booking::query()
+                    ->where('offline_sync_id', $validated['offline_sync_id'])
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($existingBooking) {
+                    abort_unless($existingBooking->booked_by_user_id === $actor->id, 403);
+                    $wasReplayed = true;
+
+                    return $existingBooking;
+                }
+            }
+
             $unit = Unit::query()->lockForUpdate()->findOrFail($validated['unit_id']);
             $affiliatePartnership = $this->affiliatePartnershipFor($actor, $unit, $validated['affiliate_partnership_id'] ?? null);
             if (! empty($validated['affiliate_partnership_id']) && ! $affiliatePartnership) {
@@ -126,6 +143,7 @@ class ManualBookingController extends Controller
             $booking = $unit->bookings()->create([
                 'client_id' => $unit->host_id,
                 'booked_by_user_id' => $actor->id,
+                'offline_sync_id' => $validated['offline_sync_id'] ?? null,
                 'booking_origin' => 'manual',
                 'source_channel' => $validated['source_channel'],
                 'source_details' => $validated['source_details'] ?? null,
@@ -190,7 +208,7 @@ class ManualBookingController extends Controller
         });
 
         $booking->loadMissing('unit.host', 'affiliatePartnership.marketer');
-        if ($booking->booked_by_user_id !== $booking->unit->host_id) {
+        if (! $wasReplayed && $booking->booked_by_user_id !== $booking->unit->host_id) {
             $notifications->send(
                 $booking->unit->host,
                 'manual_booking_created',
@@ -201,11 +219,23 @@ class ManualBookingController extends Controller
             );
         }
 
-        return redirect()->route('calendar.index', [
+        $calendarUrl = route('calendar.index', [
             'mode' => 'manage',
             'month' => $booking->start_at->format('Y-m'),
             'date' => $booking->start_at->format('Y-m-d'),
-        ])->with('status', 'Outside booking added. The listing is now blocked for '.$booking->durationDisplayLabel().'.');
+        ]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'booking_id' => $booking->id,
+                'message' => $wasReplayed ? 'Outside booking was already synced.' : 'Outside booking synced.',
+                'redirect_url' => $calendarUrl,
+                'replayed' => $wasReplayed,
+            ]);
+        }
+
+        return redirect($calendarUrl)
+            ->with('status', 'Outside booking added. The listing is now blocked for '.$booking->durationDisplayLabel().'.');
     }
 
     private function affiliatePartnershipFor(mixed $actor, Unit $unit, ?int $requestedPartnershipId): ?AffiliatePartnership
