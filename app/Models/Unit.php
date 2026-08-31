@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Unit extends Model
 {
@@ -112,6 +113,21 @@ class Unit extends Model
     public function images(): HasMany
     {
         return $this->hasMany(UnitImage::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function financialProfile(): HasOne
+    {
+        return $this->hasOne(UnitFinancialProfile::class);
+    }
+
+    public function costs(): HasMany
+    {
+        return $this->hasMany(UnitCost::class)->latest('incurred_on');
+    }
+
+    public function obligations(): HasMany
+    {
+        return $this->hasMany(UnitObligation::class)->latest();
     }
 
     public function publicUrl(?string $referralCode = null): string
