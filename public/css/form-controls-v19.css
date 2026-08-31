@@ -1,0 +1,171 @@
+/*
+ * Master form-control design.
+ *
+ * This file intentionally loads after component styles so every native text
+ * field, select, date picker, and textarea shares the same visual language.
+ * Component wrappers such as .money-input and .finance-control keep their
+ * icon-led layout while inheriting the same surface, radius, and focus ring.
+ */
+:root {
+    --form-control-height: 3.35rem;
+    --form-control-radius: 12px;
+    --form-control-border: #d4ddd9;
+    --form-control-border-hover: color-mix(in srgb, var(--forest) 42%, #d4ddd9);
+    --form-control-background: var(--surface-soft);
+    --form-control-background-active: var(--surface);
+    --form-control-placeholder: #9da8a3;
+    --form-control-focus-ring: 0 0 0 4px color-mix(in srgb, var(--forest) 12%, transparent);
+}
+
+html[data-color-mode="dark"] {
+    --form-control-border: var(--card-line);
+    --form-control-border-hover: color-mix(in srgb, var(--lime) 54%, var(--card-line));
+    --form-control-background: var(--surface-soft);
+    --form-control-background-active: var(--surface);
+    --form-control-placeholder: #788a83;
+    --form-control-focus-ring: 0 0 0 4px color-mix(in srgb, var(--lime) 16%, transparent);
+}
+
+/* Exclude controls that have their own interaction model. */
+:root body input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="image"]),
+:root body select:not([data-master-control="off"]),
+:root body textarea:not([data-master-control="off"]) {
+    width: 100%;
+    min-width: 0;
+    min-height: var(--form-control-height);
+    padding: .8rem 1rem;
+    border: 1px solid var(--form-control-border);
+    border-radius: var(--form-control-radius);
+    outline: 0;
+    color: var(--ink);
+    background-color: var(--form-control-background);
+    box-shadow: none;
+    transition: border-color .18s ease, background-color .18s ease, box-shadow .18s ease, opacity .18s ease;
+}
+
+:root body select:not([data-master-control="off"]) {
+    padding-right: 2.25rem;
+}
+
+:root body textarea:not([data-master-control="off"]) {
+    min-height: 7rem;
+    line-height: 1.5;
+    resize: vertical;
+}
+
+:root body input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="image"])::placeholder,
+:root body textarea:not([data-master-control="off"])::placeholder {
+    color: var(--form-control-placeholder);
+    opacity: 1;
+}
+
+:root body input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="image"]):hover:not(:disabled):not(:focus),
+:root body select:not([data-master-control="off"]):hover:not(:disabled):not(:focus),
+:root body textarea:not([data-master-control="off"]):hover:not(:disabled):not(:focus) {
+    border-color: var(--form-control-border-hover);
+}
+
+:root body input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="image"]):focus,
+:root body select:not([data-master-control="off"]):focus,
+:root body textarea:not([data-master-control="off"]):focus {
+    border-color: var(--forest);
+    background-color: var(--form-control-background-active);
+    box-shadow: var(--form-control-focus-ring);
+}
+
+html[data-color-mode="dark"] body input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="image"]):focus,
+html[data-color-mode="dark"] body select:not([data-master-control="off"]):focus,
+html[data-color-mode="dark"] body textarea:not([data-master-control="off"]):focus {
+    border-color: var(--lime);
+}
+
+:root body input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="image"]):disabled,
+:root body select:not([data-master-control="off"]):disabled,
+:root body textarea:not([data-master-control="off"]):disabled {
+    cursor: not-allowed;
+    opacity: .62;
+}
+
+:root body input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="image"])[aria-invalid="true"],
+:root body select:not([data-master-control="off"])[aria-invalid="true"],
+:root body textarea:not([data-master-control="off"])[aria-invalid="true"],
+:root body .field-error {
+    border-color: var(--danger);
+}
+
+/* Upload controls belong to the same system without changing native behavior. */
+:root body input[type="file"] {
+    width: 100%;
+    min-width: 0;
+    padding: .38rem;
+    border: 1px solid var(--form-control-border);
+    border-radius: var(--form-control-radius);
+    color: var(--muted);
+    background: var(--form-control-background);
+}
+
+:root body input[type="file"]::file-selector-button {
+    min-height: 2.45rem;
+    padding: .55rem .8rem;
+    margin-right: .7rem;
+    border: 0;
+    border-radius: 9px;
+    color: var(--forest);
+    background: var(--mint);
+    font-weight: 800;
+    cursor: pointer;
+}
+
+/* Icon-led controls use the exact same master surface and focus treatment. */
+.money-input,
+.finance-control {
+    border-color: var(--form-control-border);
+    border-radius: var(--form-control-radius);
+    background: var(--form-control-background);
+}
+
+.money-input:hover,
+.finance-control:hover {
+    border-color: var(--form-control-border-hover);
+}
+
+.money-input:focus-within,
+.finance-control:focus-within {
+    border-color: var(--forest);
+    background: var(--form-control-background-active);
+    box-shadow: var(--form-control-focus-ring);
+}
+
+html[data-color-mode="dark"] .money-input:focus-within,
+html[data-color-mode="dark"] .finance-control:focus-within {
+    border-color: var(--lime);
+}
+
+/* The wrapper owns the border for these compound fields. */
+:root body .money-input > input,
+:root body .finance-control > input,
+:root body .finance-control > select {
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.profile-date-shell {
+    border-radius: var(--form-control-radius) !important;
+}
+
+/* Keep toolbar filters compact while retaining the shared shape and states. */
+.calendar-filter-bar,
+.availability-sticky-filter,
+.application-filter-bar,
+.admin-booking-filters,
+.service-status-filter {
+    --form-control-height: 2.65rem;
+}
+
+@media (max-width: 740px) {
+    :root {
+        --form-control-radius: 12px;
+    }
+}

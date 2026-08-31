@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'davao-rent-zone-v18';
+const CACHE_VERSION = 'davao-rent-zone-v19';
 const OFFLINE_URL = new URL('./offline.html', self.registration.scope).href;
 const PRECACHE_URLS = [
     './offline.html',
@@ -9,6 +9,7 @@ const PRECACHE_URLS = [
     './css/mobile-form-v7.css',
     './css/profile-controls-v8.css',
     './css/address-combobox-v9.css',
+    './css/form-controls-v19.css',
     './vendor/fontawesome/css/fontawesome.min.css',
     './vendor/fontawesome/css/solid.min.css',
     './vendor/fontawesome/webfonts/fa-solid-900.woff2',
