@@ -123,15 +123,25 @@
         transform: translateY(-50%) !important;
     }
 
-    .sidebar-toggle-arrow {
-        display: block !important;
-        font-size: 1.9rem !important;
-        line-height: 1 !important;
+    .sidebar-toggle-icon {
+        display: grid !important;
+        width: 1.25rem !important;
+        height: 1.25rem !important;
     }
 
-    .sidebar.is-open .sidebar-toggle-arrow {
-        transform: rotate(180deg) !important;
+    .sidebar-toggle-glyph {
+        grid-area: 1 / 1 !important;
+        display: block !important;
+        width: 100% !important;
+        height: 100% !important;
+        fill: currentColor !important;
+        transition: opacity .18s ease, transform .22s ease !important;
     }
+
+    .sidebar-toggle-glyph-menu { opacity: 1 !important; transform: scale(1) rotate(0) !important; }
+    .sidebar-toggle-glyph-close { opacity: 0 !important; transform: scale(.7) rotate(-45deg) !important; }
+    .sidebar.is-open .sidebar-toggle-glyph-menu { opacity: 0 !important; transform: scale(.7) rotate(45deg) !important; }
+    .sidebar.is-open .sidebar-toggle-glyph-close { opacity: 1 !important; transform: scale(1) rotate(0) !important; }
 
     .sidebar-scrim {
         position: fixed !important;

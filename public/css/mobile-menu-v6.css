@@ -44,14 +44,6 @@
         opacity: 1 !important;
     }
 
-    .sidebar-toggle-arrow {
-        font-size: 1.65rem !important;
-    }
-
-    .sidebar.is-open .sidebar-toggle-arrow {
-        transform: rotate(180deg) !important;
-    }
-
     .dashboard-main {
         width: 100% !important;
         min-width: 0 !important;
