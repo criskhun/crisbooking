@@ -130,6 +130,54 @@
                     </aside>
                 </div>
 
+                @if ($canCorrectManualBooking)
+                    @php
+                        $correctionFields = ['start_at', 'end_at', 'party_size', 'source_channel', 'source_details', 'external_customer_name', 'affiliate_partnership_id', 'package_period', 'package_quantity', 'correction_reason'];
+                        $correctionHasErrors = $errors->hasAny($correctionFields);
+                        $correctionPackagePeriod = old('package_period', $booking->rate_period && $booking->rate_period !== 'mixed' ? $booking->rate_period : 'day');
+                    @endphp
+                    <section class="booking-correction-card">
+                        <details class="booking-correction-editor" @if($correctionHasErrors) open @endif>
+                            <summary>
+                                <span><small>Host correction</small><strong>Edit reservation details</strong><em>Dates, pax, source, customer, affiliate, and package</em></span>
+                                <b>Open editor</b>
+                            </summary>
+                            <div class="booking-correction-body">
+                                <div class="booking-correction-notice"><span>!</span><p><strong>This changes the reservation record.</strong> Active dates are checked again for conflicts. The booking sale amount stays unchanged, and every edit requires a reason that remains in the audit trail.</p></div>
+                                <form method="POST" action="{{ route('bookings.manual-details.update', $booking) }}" class="booking-correction-form">
+                                    @csrf @method('PATCH')
+                                    <div class="field-group"><label for="manual_start_at">{{ $unit->category === 'condo' ? 'Check-in date and time' : 'Start date and time' }}</label><input id="manual_start_at" name="start_at" type="datetime-local" value="{{ old('start_at', $booking->start_at->format('Y-m-d\TH:i')) }}" @if($unit->category === 'condo') data-fixed-booking-time="{{ $unit->condoCheckInTime() }}" @endif required>@if($unit->category === 'condo')<small class="field-help">Saved using this listing’s check-in time: {{ \Carbon\Carbon::createFromFormat('H:i', $unit->condoCheckInTime())->format('g:i A') }}.</small>@endif @error('start_at')<p class="error-text">{{ $message }}</p>@enderror</div>
+                                    <div class="field-group"><label for="manual_end_at">{{ $unit->category === 'condo' ? 'Check-out date and time' : 'End date and time' }}</label><input id="manual_end_at" name="end_at" type="datetime-local" value="{{ old('end_at', $booking->end_at->format('Y-m-d\TH:i')) }}" @if($unit->category === 'condo') data-fixed-booking-time="{{ $unit->condoCheckOutTime() }}" @endif required>@if($unit->category === 'condo')<small class="field-help">Saved using this listing’s check-out time: {{ \Carbon\Carbon::createFromFormat('H:i', $unit->condoCheckOutTime())->format('g:i A') }}.</small>@endif @error('end_at')<p class="error-text">{{ $message }}</p>@enderror</div>
+                                    <div class="field-group"><label for="manual_party_size">Guests / pax</label><input id="manual_party_size" name="party_size" type="number" min="1" @if($unit->capacity) max="{{ $unit->capacity }}" @endif value="{{ old('party_size', $booking->party_size) }}" required>@error('party_size')<p class="error-text">{{ $message }}</p>@enderror</div>
+                                    <div class="field-group"><label for="manual_source_channel">Sales source</label><select id="manual_source_channel" name="source_channel" required>@foreach(\App\Models\Booking::MANUAL_SOURCE_OPTIONS as $value => $label)<option value="{{ $value }}" @selected(old('source_channel', $booking->source_channel) === $value)>{{ $label }}</option>@endforeach</select>@error('source_channel')<p class="error-text">{{ $message }}</p>@enderror</div>
+                                    <div class="field-group"><label for="manual_source_details">Source reference <span class="optional-label">Optional</span></label><input id="manual_source_details" name="source_details" maxlength="160" value="{{ old('source_details', $booking->source_details) }}" placeholder="Confirmation number or source note">@error('source_details')<p class="error-text">{{ $message }}</p>@enderror</div>
+                                    <div class="field-group"><label for="manual_external_customer">External customer or company <span class="optional-label">Optional</span></label><input id="manual_external_customer" name="external_customer_name" maxlength="120" list="booking_customer_suggestions" value="{{ old('external_customer_name', $booking->external_customer_name) }}" autocomplete="off" placeholder="Start typing a repeat customer"><datalist id="booking_customer_suggestions">@foreach($manualBookingCustomerSuggestions as $suggestion)<option value="{{ $suggestion->customer_name }}" label="{{ $suggestion->booking_count }} previous {{ Str::plural('booking', $suggestion->booking_count) }}"></option>@endforeach</datalist>@error('external_customer_name')<p class="error-text">{{ $message }}</p>@enderror</div>
+                                    <div class="field-group"><label for="manual_affiliate">Affiliate <span class="optional-label">Optional</span></label><select id="manual_affiliate" name="affiliate_partnership_id"><option value="">No affiliate</option>@foreach($manualBookingPartnerships as $partnership)<option value="{{ $partnership->id }}" @selected((string) old('affiliate_partnership_id', $booking->affiliate_partnership_id) === (string) $partnership->id)>{{ $partnership->marketer->name }} · {{ number_format((float) $partnership->commission_percentage, 2) }}%{{ $partnership->status !== 'accepted' ? ' · current assignment' : '' }}</option>@endforeach</select><small class="field-help">Only accepted affiliates assigned to this listing can be newly selected.</small>@error('affiliate_partnership_id')<p class="error-text">{{ $message }}</p>@enderror</div>
+                                    @if($unit->isPackageRental())
+                                        <div class="field-group"><label for="manual_package_period">Package</label><select id="manual_package_period" name="package_period" required>@foreach($rateLabels as $value => $label)<option value="{{ $value }}" @selected($correctionPackagePeriod === $value)>{{ $label }}</option>@endforeach</select>@error('package_period')<p class="error-text">{{ $message }}</p>@enderror</div>
+                                        <div class="field-group"><label for="manual_package_quantity">Package quantity</label><input id="manual_package_quantity" name="package_quantity" type="number" min="1" max="365" value="{{ old('package_quantity', max(1, $booking->rate_quantity)) }}" required><small class="field-help">This corrects the package description only; ₱{{ number_format($booking->total_amount, 2) }} remains the recorded sale.</small>@error('package_quantity')<p class="error-text">{{ $message }}</p>@enderror</div>
+                                    @endif
+                                    <div class="field-group booking-correction-reason"><label for="manual_correction_reason">Reason for correction</label><textarea id="manual_correction_reason" name="correction_reason" rows="3" minlength="5" maxlength="500" required placeholder="Example: Corrected a typing mistake from the original outside booking.">{{ old('correction_reason') }}</textarea><small class="field-help">Required. This reason cannot be removed from the audit trail.</small>@error('correction_reason')<p class="error-text">{{ $message }}</p>@enderror</div>
+                                    <button class="button button-primary" type="submit">Save correction & audit entry</button>
+                                </form>
+                            </div>
+                        </details>
+
+                        <div class="booking-correction-history">
+                            <div><span class="eyebrow">Immutable history</span><h2>Reservation audit trail</h2><p>Who changed the booking, when it changed, what changed, and why.</p></div>
+                            @forelse($booking->detailRevisions as $revision)
+                                <article class="booking-correction-revision">
+                                    <header><strong>{{ $revision->editedBy?->name ?? 'Deleted account' }}</strong><time datetime="{{ $revision->created_at->toIso8601String() }}">{{ $revision->created_at->format('M j, Y · g:i A') }}</time></header>
+                                    <p><b>Reason:</b> {{ $revision->reason }}</p>
+                                    <dl>@foreach($revision->changedDetails() as $change)<div><dt>{{ $change['label'] }}</dt><dd><span>{{ $change['before'] }}</span><b>→</b><strong>{{ $change['after'] }}</strong></dd></div>@endforeach</dl>
+                                </article>
+                            @empty
+                                <div class="booking-correction-empty"><span>✓</span><p><strong>No reservation corrections yet.</strong> The original outside-booking details are still in use.</p></div>
+                            @endforelse
+                        </div>
+                    </section>
+                @endif
+
                 @if ($booking->isManualBooking())
                     <section class="booking-finance-card">
                         <div class="booking-finance-heading"><div><span class="eyebrow">Payments & collections</span><h2>Booking financial ledger</h2><p>Track rental payments separately from refundable deposits, damage fees, and residence penalties.</p></div><span class="booking-status {{ $booking->outstandingBalance() > 0 ? 'status-payment_submitted' : 'status-confirmed' }}">{{ $booking->paymentStatusLabel() }}</span></div>

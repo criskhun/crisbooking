@@ -404,6 +404,203 @@ class ManualBookingTest extends TestCase
         $this->assertDatabaseCount('bookings', 2);
     }
 
+    public function test_host_can_correct_outside_booking_details_with_an_immutable_audit_trail(): void
+    {
+        $host = User::factory()->host()->create(['name' => 'Reservation Host']);
+        $affiliate = User::factory()->create(['name' => 'Correct Affiliate']);
+        $unit = $this->unit($host, 'Correction Condo', 'condo');
+        $unit->update(['property_details' => [
+            'check_in_time' => '14:00',
+            'check_out_time' => '12:00',
+        ]]);
+        $partnership = $this->partnership($host, $affiliate, $unit, 12.5);
+        $originalStart = today()->addDays(10);
+        $booking = Booking::create([
+            'unit_id' => $unit->id,
+            'client_id' => $host->id,
+            'booked_by_user_id' => $host->id,
+            'booking_origin' => 'manual',
+            'source_channel' => 'direct',
+            'external_customer_name' => 'Typo Customer',
+            'start_at' => $originalStart->copy()->setTime(14, 0),
+            'end_at' => $originalStart->copy()->addDay()->setTime(12, 0),
+            'status' => 'confirmed',
+            'rate_period' => 'day',
+            'rate_quantity' => 1,
+            'total_amount' => 8000,
+            'party_size' => 1,
+        ]);
+        $correctedStart = today()->addDays(20);
+
+        $response = $this->actingAs($host)->patch(route('bookings.manual-details.update', $booking), [
+            'start_at' => $correctedStart->copy()->setTime(8, 15)->format('Y-m-d\TH:i'),
+            'end_at' => $correctedStart->copy()->addDays(7)->setTime(23, 30)->format('Y-m-d\TH:i'),
+            'party_size' => 4,
+            'source_channel' => 'airbnb',
+            'source_details' => 'AIR-CORRECT-18',
+            'external_customer_name' => 'Correct Customer Company',
+            'affiliate_partnership_id' => $partnership->id,
+            'package_period' => 'week',
+            'package_quantity' => 1,
+            'correction_reason' => 'Corrected the dates and customer details from the handwritten reservation.',
+        ]);
+
+        $response->assertRedirect()->assertSessionHas('status');
+        $booking->refresh();
+        $this->assertSame($correctedStart->format('Y-m-d').' 14:00', $booking->start_at->format('Y-m-d H:i'));
+        $this->assertSame($correctedStart->copy()->addDays(7)->format('Y-m-d').' 12:00', $booking->end_at->format('Y-m-d H:i'));
+        $this->assertSame(4, $booking->party_size);
+        $this->assertSame('airbnb', $booking->source_channel);
+        $this->assertSame('AIR-CORRECT-18', $booking->source_details);
+        $this->assertSame('Correct Customer Company', $booking->external_customer_name);
+        $this->assertSame($partnership->id, $booking->affiliate_partnership_id);
+        $this->assertSame('1000.00', $booking->affiliate_commission_amount);
+        $this->assertSame('week', $booking->rate_period);
+        $this->assertSame(1, $booking->rate_quantity);
+        $this->assertSame(1, $booking->package_breakdown['week']['quantity']);
+        $this->assertSame('8000.00', $booking->total_amount);
+        $this->assertDatabaseHas('booking_detail_revisions', [
+            'booking_id' => $booking->id,
+            'edited_by_user_id' => $host->id,
+            'reason' => 'Corrected the dates and customer details from the handwritten reservation.',
+        ]);
+
+        $revision = $booking->detailRevisions()->sole();
+        $this->assertSame('1 person', $revision->before_values['guests_pax']);
+        $this->assertSame('4 people', $revision->after_values['guests_pax']);
+        $this->assertSame('1 × 1 week', $revision->after_values['package']);
+
+        $this->actingAs($host)->get(route('bookings.show', $booking))
+            ->assertOk()
+            ->assertSee('Edit reservation details')
+            ->assertSee('Reservation audit trail')
+            ->assertSee('Corrected the dates and customer details')
+            ->assertSee('Correct Customer Company')
+            ->assertSee('Correct Affiliate');
+    }
+
+    public function test_outside_booking_correction_rejects_a_conflicting_schedule_without_writing_history(): void
+    {
+        $host = User::factory()->host()->create();
+        $unit = $this->unit($host, 'Conflict Condo', 'condo');
+        $start = today()->addDays(10);
+        $booking = Booking::create([
+            'unit_id' => $unit->id,
+            'client_id' => $host->id,
+            'booking_origin' => 'manual',
+            'source_channel' => 'direct',
+            'start_at' => $start->copy()->setTime(14, 0),
+            'end_at' => $start->copy()->addDay()->setTime(12, 0),
+            'status' => 'confirmed',
+            'rate_period' => 'day',
+            'rate_quantity' => 1,
+            'total_amount' => 3000,
+            'party_size' => 1,
+        ]);
+        $blockedStart = today()->addDays(30);
+        Booking::create([
+            'unit_id' => $unit->id,
+            'client_id' => $host->id,
+            'booking_origin' => 'manual',
+            'source_channel' => 'direct',
+            'start_at' => $blockedStart->copy()->setTime(14, 0),
+            'end_at' => $blockedStart->copy()->addDays(2)->setTime(12, 0),
+            'status' => 'confirmed',
+            'total_amount' => 6000,
+            'party_size' => 2,
+        ]);
+
+        $this->actingAs($host)->from(route('bookings.show', $booking))
+            ->patch(route('bookings.manual-details.update', $booking), [
+                'start_at' => $blockedStart->copy()->addDay()->format('Y-m-d\TH:i'),
+                'end_at' => $blockedStart->copy()->addDays(3)->format('Y-m-d\TH:i'),
+                'party_size' => 2,
+                'source_channel' => 'direct',
+                'package_period' => 'day',
+                'package_quantity' => 2,
+                'correction_reason' => 'Trying to correct the reservation dates.',
+            ])->assertRedirect(route('bookings.show', $booking))
+            ->assertSessionHasErrors('start_at');
+
+        $this->assertTrue($booking->fresh()->start_at->equalTo($start->copy()->setTime(14, 0)));
+        $this->assertDatabaseCount('booking_detail_revisions', 0);
+    }
+
+    public function test_only_the_listing_host_or_admin_can_correct_an_outside_booking(): void
+    {
+        $host = User::factory()->host()->create();
+        $otherHost = User::factory()->host()->create();
+        $unit = $this->unit($host, 'Protected Outside Booking', 'car');
+        $start = today()->addDays(12)->setTime(9, 0);
+        $booking = Booking::create([
+            'unit_id' => $unit->id,
+            'client_id' => $host->id,
+            'booking_origin' => 'manual',
+            'source_channel' => 'direct',
+            'start_at' => $start,
+            'end_at' => $start->copy()->addDay(),
+            'status' => 'confirmed',
+            'rate_period' => 'day',
+            'rate_quantity' => 1,
+            'total_amount' => 3000,
+            'party_size' => 1,
+        ]);
+        $payload = [
+            'start_at' => $start->format('Y-m-d\TH:i'),
+            'end_at' => $start->copy()->addDays(2)->format('Y-m-d\TH:i'),
+            'party_size' => 1,
+            'source_channel' => 'direct',
+            'package_period' => 'day',
+            'package_quantity' => 2,
+            'correction_reason' => 'Correcting the rental duration.',
+        ];
+
+        $this->actingAs($otherHost)->patch(route('bookings.manual-details.update', $booking), $payload)->assertForbidden();
+
+        $platformBooking = $booking->replicate()->fill([
+            'booking_origin' => 'platform',
+            'start_at' => $start->copy()->addDays(5),
+            'end_at' => $start->copy()->addDays(6),
+        ]);
+        $platformBooking->save();
+        $this->actingAs($host)->patch(route('bookings.manual-details.update', $platformBooking), $payload)->assertStatus(422);
+        $this->assertDatabaseCount('booking_detail_revisions', 0);
+    }
+
+    public function test_identical_outside_booking_details_do_not_create_an_empty_audit_entry(): void
+    {
+        $host = User::factory()->host()->create();
+        $unit = $this->unit($host, 'Unchanged Condo Booking', 'condo');
+        $start = today()->addDays(15)->setTime(14, 0);
+        $booking = Booking::create([
+            'unit_id' => $unit->id,
+            'client_id' => $host->id,
+            'booking_origin' => 'manual',
+            'source_channel' => 'direct',
+            'start_at' => $start,
+            'end_at' => $start->copy()->addDay()->setTime(12, 0),
+            'status' => 'confirmed',
+            'rate_period' => 'day',
+            'rate_quantity' => 1,
+            'total_amount' => 3000,
+            'party_size' => 1,
+        ]);
+
+        $this->actingAs($host)->from(route('bookings.show', $booking))
+            ->patch(route('bookings.manual-details.update', $booking), [
+                'start_at' => $booking->start_at->format('Y-m-d\TH:i'),
+                'end_at' => $booking->end_at->format('Y-m-d\TH:i'),
+                'party_size' => 1,
+                'source_channel' => 'direct',
+                'package_period' => 'day',
+                'package_quantity' => 1,
+                'correction_reason' => 'No actual change was made.',
+            ])->assertRedirect(route('bookings.show', $booking))
+            ->assertSessionHasErrors('correction_reason');
+
+        $this->assertDatabaseCount('booking_detail_revisions', 0);
+    }
+
     private function unit(User $host, string $name, string $category): Unit
     {
         return Unit::create([

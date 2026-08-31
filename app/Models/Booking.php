@@ -134,6 +134,11 @@ class Booking extends Model
         return $this->hasMany(BookingExpense::class)->latest();
     }
 
+    public function detailRevisions(): HasMany
+    {
+        return $this->hasMany(BookingDetailRevision::class)->latest();
+    }
+
     public function expenseTotal(): float
     {
         return round((float) $this->expenses->where('status', '!=', 'cancelled')->sum('amount'), 2);

@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AffiliatePartnership;
 use App\Models\Booking;
 use App\Models\BookingExpense;
-use App\Models\ServiceProviderApplication;
 use App\Models\Inquiry;
+use App\Models\ServiceProviderApplication;
 use App\Models\Unit;
 use App\Services\AppNotificationService;
 use App\Services\SystemBranding;
@@ -29,8 +30,33 @@ class BookingController extends Controller
             || ($booking->isManualBooking() && $booking->affiliatePartnership()->where('marketer_id', $request->user()->id)->exists());
 
         abort_unless($canView, 403);
-        $booking->load(['unit.host', 'unit.images', 'unit.rates', 'client', 'bookedBy', 'inquiry', 'affiliatePartnership.marketer', 'reviews', 'financialEntries.recordedBy', 'financialEntries.revisions.editedBy', 'expenses.recordedBy', 'expenses.provider', 'expenses.serviceUnit', 'expenses.providerApplication']);
+        $booking->load(['unit.host', 'unit.images', 'unit.rates', 'client', 'bookedBy', 'inquiry', 'affiliatePartnership.marketer', 'detailRevisions.editedBy', 'reviews', 'financialEntries.recordedBy', 'financialEntries.revisions.editedBy', 'expenses.recordedBy', 'expenses.provider', 'expenses.serviceUnit', 'expenses.providerApplication']);
         $canManageExpenses = $request->user()->is_admin || $booking->unit->host_id === $request->user()->id;
+        $canCorrectManualBooking = $booking->isManualBooking() && $canManageExpenses;
+        $manualBookingPartnerships = $canCorrectManualBooking
+            ? AffiliatePartnership::query()
+                ->with('marketer:id,name')
+                ->where('host_id', $booking->unit->host_id)
+                ->where('status', 'accepted')
+                ->whereHas('units', fn ($units) => $units->whereKey($booking->unit_id))
+                ->orderBy('id')
+                ->get()
+            : collect();
+        if ($canCorrectManualBooking && $booking->affiliatePartnership && ! $manualBookingPartnerships->contains('id', $booking->affiliate_partnership_id)) {
+            $manualBookingPartnerships->push($booking->affiliatePartnership);
+        }
+        $manualBookingCustomerSuggestions = $canCorrectManualBooking
+            ? Booking::query()
+                ->where('booking_origin', 'manual')
+                ->whereHas('unit', fn ($units) => $units->where('host_id', $booking->unit->host_id))
+                ->whereNotNull('external_customer_name')
+                ->whereRaw("TRIM(external_customer_name) != ''")
+                ->selectRaw('TRIM(external_customer_name) AS customer_name, COUNT(*) AS booking_count')
+                ->groupByRaw('TRIM(external_customer_name)')
+                ->orderByDesc('booking_count')
+                ->limit(100)
+                ->get()
+            : collect();
         $providerApplications = $canManageExpenses
             ? ServiceProviderApplication::query()
                 ->with('applicant:id,name')
@@ -49,7 +75,16 @@ class BookingController extends Controller
             'location' => $booking->unit->location,
         ]);
 
-        return view('bookings.show', compact('booking', 'googleCalendarUrl', 'canManageExpenses', 'providerApplications', 'expenseCategories'));
+        return view('bookings.show', compact(
+            'booking',
+            'googleCalendarUrl',
+            'canManageExpenses',
+            'canCorrectManualBooking',
+            'manualBookingPartnerships',
+            'manualBookingCustomerSuggestions',
+            'providerApplications',
+            'expenseCategories',
+        ));
     }
 
     public function store(Request $request): RedirectResponse
