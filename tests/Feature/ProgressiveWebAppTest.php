@@ -22,6 +22,7 @@ class ProgressiveWebAppTest extends TestCase
             ->assertSee('form-controls-v19.css', false)
             ->assertSee('address-combobox-v9.js', false)
             ->assertSee('mobile-shell-v5.js', false)
+            ->assertSee('data-connectivity-url="http://localhost/up"', false)
             ->assertSee('data-pwa-install-banner', false);
     }
 
@@ -48,6 +49,9 @@ class ProgressiveWebAppTest extends TestCase
 
         $this->assertStringContainsString("window.addEventListener('pageshow', syncConnectivity)", $script);
         $this->assertStringContainsString("document.visibilityState === 'visible'", $script);
+        $this->assertStringContainsString('await fetch(connectivityUrl', $script);
+        $this->assertStringContainsString("cache: 'no-store'", $script);
+        $this->assertStringContainsString('window.setTimeout(syncConnectivity, 10000)', $script);
         $this->assertStringContainsString('connectivityStatus.classList.remove(\'is-offline\')', $script);
     }
 }

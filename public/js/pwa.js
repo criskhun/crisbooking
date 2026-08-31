@@ -9,6 +9,8 @@
     const dismissalLifetime = 7 * 24 * 60 * 60 * 1000;
     let deferredInstallPrompt = null;
     let connectivityTimer = null;
+    let connectivityRetryTimer = null;
+    let connectivityCheckId = 0;
 
     const runsStandalone = window.matchMedia('(display-mode: standalone)').matches
         || window.matchMedia('(display-mode: window-controls-overlay)').matches
@@ -44,6 +46,7 @@
     const showConnectivity = (online) => {
         if (!connectivityStatus) return;
         window.clearTimeout(connectivityTimer);
+        window.clearTimeout(connectivityRetryTimer);
         connectivityStatus.textContent = online ? 'You are back online.' : 'You are offline. Reconnect to use live booking features.';
         connectivityStatus.classList.toggle('is-offline', !online);
         connectivityStatus.hidden = false;
@@ -58,25 +61,46 @@
     const hideConnectivity = () => {
         if (!connectivityStatus) return;
         window.clearTimeout(connectivityTimer);
+        window.clearTimeout(connectivityRetryTimer);
         connectivityStatus.hidden = true;
         connectivityStatus.classList.remove('is-offline');
         connectivityStatus.textContent = '';
     };
 
-    const syncConnectivity = () => {
+    const syncConnectivity = async () => {
         if (!connectivityStatus) return;
+        const connectivityUrl = script?.dataset.connectivityUrl;
 
-        if (!navigator.onLine) {
+        if (!connectivityUrl) {
+            if (navigator.onLine) hideConnectivity();
+            else showConnectivity(false);
+            return;
+        }
+
+        const checkId = ++connectivityCheckId;
+        const controller = new AbortController();
+        const timeout = window.setTimeout(() => controller.abort(), 5000);
+
+        try {
+            const response = await fetch(connectivityUrl, {
+                cache: 'no-store',
+                credentials: 'same-origin',
+                headers: {'X-Requested-With': 'XMLHttpRequest'},
+                signal: controller.signal,
+            });
+
+            if (checkId !== connectivityCheckId) return;
+            if (!response.ok) throw new Error(`Connectivity check failed with ${response.status}`);
+
+            if (connectivityStatus.classList.contains('is-offline')) showConnectivity(true);
+            else hideConnectivity();
+        } catch (error) {
+            if (checkId !== connectivityCheckId) return;
             showConnectivity(false);
-            return;
+            connectivityRetryTimer = window.setTimeout(syncConnectivity, 10000);
+        } finally {
+            window.clearTimeout(timeout);
         }
-
-        if (connectivityStatus.classList.contains('is-offline')) {
-            showConnectivity(true);
-            return;
-        }
-
-        hideConnectivity();
     };
 
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
@@ -115,8 +139,8 @@
         deferredInstallPrompt = null;
         hideInstallBanner();
     });
-    window.addEventListener('offline', () => showConnectivity(false));
-    window.addEventListener('online', () => showConnectivity(true));
+    window.addEventListener('offline', syncConnectivity);
+    window.addEventListener('online', syncConnectivity);
     window.addEventListener('pageshow', syncConnectivity);
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') syncConnectivity();
