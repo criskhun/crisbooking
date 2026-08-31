@@ -54,6 +54,11 @@ class AuthenticationTest extends TestCase
         $this->get('/login')
             ->assertOk()
             ->assertSee('Log in to your account')
+            ->assertSee('fill="#4285F4"', false)
+            ->assertSee('fill="#34A853"', false)
+            ->assertSee('facebook-button', false)
+            ->assertDontSee('fa-solid fa-g"', false)
+            ->assertDontSee('fa-solid fa-f"', false)
             ->assertSee(route('password.request'));
     }
 

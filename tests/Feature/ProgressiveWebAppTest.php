@@ -41,4 +41,13 @@ class ProgressiveWebAppTest extends TestCase
         $this->assertSame([192, 192], array_slice(getimagesize(public_path('icons/icon-192.png')), 0, 2));
         $this->assertSame([512, 512], array_slice(getimagesize(public_path('icons/icon-512.png')), 0, 2));
     }
+
+    public function test_connectivity_banner_rechecks_restored_pages_and_visible_tabs(): void
+    {
+        $script = file_get_contents(public_path('js/pwa.js'));
+
+        $this->assertStringContainsString("window.addEventListener('pageshow', syncConnectivity)", $script);
+        $this->assertStringContainsString("document.visibilityState === 'visible'", $script);
+        $this->assertStringContainsString('connectivityStatus.classList.remove(\'is-offline\')', $script);
+    }
 }

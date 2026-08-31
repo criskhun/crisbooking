@@ -55,6 +55,30 @@
         }
     };
 
+    const hideConnectivity = () => {
+        if (!connectivityStatus) return;
+        window.clearTimeout(connectivityTimer);
+        connectivityStatus.hidden = true;
+        connectivityStatus.classList.remove('is-offline');
+        connectivityStatus.textContent = '';
+    };
+
+    const syncConnectivity = () => {
+        if (!connectivityStatus) return;
+
+        if (!navigator.onLine) {
+            showConnectivity(false);
+            return;
+        }
+
+        if (connectivityStatus.classList.contains('is-offline')) {
+            showConnectivity(true);
+            return;
+        }
+
+        hideConnectivity();
+    };
+
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
         window.addEventListener('load', () => {
             const serviceWorkerUrl = script?.dataset.serviceWorker;
@@ -93,11 +117,15 @@
     });
     window.addEventListener('offline', () => showConnectivity(false));
     window.addEventListener('online', () => showConnectivity(true));
+    window.addEventListener('pageshow', syncConnectivity);
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') syncConnectivity();
+    });
 
     if (!runsStandalone && /iphone|ipad|ipod/i.test(navigator.userAgent)) {
         showInstallBanner('In Safari, tap Share, then choose “Add to Home Screen”.', 'Got it');
         if (installAction) installAction.dataset.instructionsShown = 'true';
     }
 
-    if (!navigator.onLine) showConnectivity(false);
+    syncConnectivity();
 })();
