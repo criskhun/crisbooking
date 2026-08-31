@@ -1,3 +1,8 @@
+@php
+    $isExtensionEntry = $booking->extensions->contains(
+        fn ($extension) => in_array($entry->id, [$extension->charge_entry_id, $extension->payment_entry_id], true)
+    );
+@endphp
 <article class="booking-finance-entry kind-{{ $entry->kind }}">
     <div class="booking-finance-entry-summary">
         <span>
@@ -44,7 +49,7 @@
         </details>
     @endif
 
-    @if($canManageFinances)
+    @if($canManageFinances && ! $isExtensionEntry)
         <details class="booking-finance-edit" @if((int) old('financial_entry_id') === $entry->id && $errors->hasAny(['category', 'amount', 'notes', 'occurred_at', 'correction_reason'])) open @endif>
             <summary>Edit this entry</summary>
             <form method="POST" action="{{ route('bookings.financial-entries.update', [$booking, $entry]) }}">

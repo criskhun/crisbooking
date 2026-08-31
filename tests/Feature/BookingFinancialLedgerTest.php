@@ -109,6 +109,87 @@ class BookingFinancialLedgerTest extends TestCase
             ->assertSee('Garbage / excessive cleaning');
     }
 
+    public function test_host_can_extend_an_outside_booking_and_choose_paid_or_collectible_earnings(): void
+    {
+        $host = User::factory()->host()->create(['name' => 'Extension Host']);
+        $condo = $this->unit($host, 'Extension Residence', 'condo');
+        $start = today()->addDays(5)->setTime(14, 0);
+        $booking = Booking::create([
+            'unit_id' => $condo->id, 'client_id' => $host->id, 'booked_by_user_id' => $host->id,
+            'booking_origin' => 'manual', 'source_channel' => 'direct', 'start_at' => $start,
+            'end_at' => $start->copy()->addDay()->setTime(12, 0), 'status' => 'confirmed',
+            'rate_period' => 'day', 'rate_quantity' => 1, 'total_amount' => 5000, 'party_size' => 1,
+        ]);
+        $booking->financialEntries()->create([
+            'recorded_by_user_id' => $host->id, 'kind' => 'payment', 'category' => 'full_payment',
+            'amount' => 5000, 'notes' => 'Original booking paid.', 'occurred_at' => now(),
+        ]);
+        $originalEnd = $booking->end_at->copy();
+
+        $this->actingAs($host)->post(route('bookings.extensions.store', $booking), [
+            'duration_unit' => 'day', 'duration_quantity' => 2, 'additional_amount' => '1,500.00',
+            'payment_status' => 'collectible', 'notes' => 'Guest requested two more nights.',
+        ])->assertRedirect()->assertSessionHas('status');
+
+        $booking->refresh()->load(['extensions', 'financialEntries']);
+        $this->assertSame($originalEnd->copy()->addDays(2)->format('Y-m-d H:i'), $booking->end_at->format('Y-m-d H:i'));
+        $this->assertSame(3, $booking->rate_quantity);
+        $this->assertSame(6500.0, $booking->revenueAmount());
+        $this->assertSame(1500.0, $booking->outstandingBalance());
+        $this->assertDatabaseHas('booking_extensions', [
+            'booking_id' => $booking->id, 'duration_unit' => 'day', 'duration_quantity' => 2,
+            'additional_amount' => 1500, 'payment_status' => 'collectible',
+        ]);
+        $this->assertDatabaseHas('booking_financial_entries', [
+            'booking_id' => $booking->id, 'kind' => 'charge', 'category' => 'extension', 'amount' => 1500,
+        ]);
+
+        $this->actingAs($host)->post(route('bookings.extensions.store', $booking), [
+            'duration_unit' => 'hour', 'duration_quantity' => 3, 'additional_amount' => 300,
+            'payment_status' => 'paid',
+        ])->assertRedirect()->assertSessionHas('status');
+
+        $booking->refresh()->load(['extensions.createdBy', 'extensions.chargeEntry', 'extensions.paymentEntry', 'financialEntries']);
+        $this->assertSame($originalEnd->copy()->addDays(2)->addHours(3)->format('Y-m-d H:i'), $booking->end_at->format('Y-m-d H:i'));
+        $this->assertSame(6800.0, $booking->revenueAmount());
+        $this->assertSame(1500.0, $booking->outstandingBalance());
+        $this->assertNotNull($booking->extensions->firstWhere('payment_status', 'paid')->payment_entry_id);
+
+        $this->actingAs($host)->get(route('bookings.show', $booking))->assertOk()
+            ->assertSee('Booking extensions')
+            ->assertSee('2 days extension')
+            ->assertSee('3 hours extension')
+            ->assertSee('Added to collectibles')
+            ->assertSee('Booking extension')
+            ->assertSee('₱1,500.00');
+    }
+
+    public function test_extension_rejects_a_schedule_that_overlaps_another_booking(): void
+    {
+        $host = User::factory()->host()->create();
+        $condo = $this->unit($host, 'Conflict Residence', 'condo');
+        $start = today()->addDays(10)->setTime(14, 0);
+        $booking = Booking::create([
+            'unit_id' => $condo->id, 'client_id' => $host->id, 'booked_by_user_id' => $host->id,
+            'booking_origin' => 'manual', 'start_at' => $start, 'end_at' => $start->copy()->addDay()->setTime(12, 0),
+            'status' => 'confirmed', 'total_amount' => 2500, 'party_size' => 1,
+        ]);
+        Booking::create([
+            'unit_id' => $condo->id, 'client_id' => $host->id, 'booked_by_user_id' => $host->id,
+            'booking_origin' => 'manual', 'start_at' => $booking->end_at->copy()->addHours(6),
+            'end_at' => $booking->end_at->copy()->addDay(), 'status' => 'confirmed', 'total_amount' => 2500, 'party_size' => 1,
+        ]);
+
+        $this->actingAs($host)->from(route('bookings.show', $booking))->post(route('bookings.extensions.store', $booking), [
+            'duration_unit' => 'day', 'duration_quantity' => 1, 'additional_amount' => 1000,
+            'payment_status' => 'collectible',
+        ])->assertRedirect(route('bookings.show', $booking))->assertSessionHasErrors('duration_quantity');
+
+        $this->assertSame($start->copy()->addDay()->setTime(12, 0)->format('Y-m-d H:i'), $booking->fresh()->end_at->format('Y-m-d H:i'));
+        $this->assertDatabaseCount('booking_extensions', 0);
+        $this->assertDatabaseCount('booking_financial_entries', 0);
+    }
+
     private function unit(User $host, string $name, string $category): Unit
     {
         return Unit::create([

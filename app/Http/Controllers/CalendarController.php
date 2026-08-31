@@ -34,6 +34,7 @@ class CalendarController extends Controller
             'calendar_view' => ['nullable', Rule::in(['month', 'listings'])],
             'schedule_category' => ['nullable', 'string', 'max:30', 'regex:/^[a-z0-9]+(?:_[a-z0-9]+)*$/'],
             'schedule_unit' => ['nullable', 'integer'],
+            'manual_unit' => ['nullable', 'integer'],
         ]);
 
         $month = $request->filled('month')
@@ -73,6 +74,9 @@ class CalendarController extends Controller
                 ->orderBy('name')
                 ->get();
         $scheduleCategories = $scheduleUnits->pluck('category')->filter()->unique()->sort()->values();
+        $manualBookingUnitId = $bookingMode
+            ? null
+            : $scheduleUnits->firstWhere('id', (int) ($validated['manual_unit'] ?? 0))?->id;
         $manualBookingPartnerships = $bookingMode
             ? collect()
             : AffiliatePartnership::query()
@@ -316,6 +320,7 @@ class CalendarController extends Controller
             'manualBookingPartnerships' => $manualBookingPartnerships,
             'manualBookingCustomerSuggestions' => $manualBookingCustomerSuggestions,
             'manualBookingSourceOptions' => Booking::MANUAL_SOURCE_OPTIONS,
+            'manualBookingUnitId' => $manualBookingUnitId,
             'calendarUnitStyles' => $calendarUnitStyles,
         ]);
     }

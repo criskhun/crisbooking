@@ -1256,6 +1256,50 @@
             syncPayment();
         });
 
+        document.querySelectorAll('[data-manual-booking-prefill]').forEach((trigger) => {
+            trigger.addEventListener('click', (event) => {
+                const card = document.querySelector('[data-manual-booking-card]');
+                const form = card?.querySelector('[data-manual-booking-form]');
+                const unit = form?.querySelector('[data-manual-booking-unit]');
+                const start = form?.querySelector('[data-manual-booking-start]');
+                if (!card || !form || !unit || !start) return;
+
+                event.preventDefault();
+                unit.value = trigger.dataset.unitId || '';
+                start.value = trigger.dataset.date || start.value;
+                card.open = true;
+                unit.dispatchEvent(new Event('change', { bubbles: true }));
+                start.dispatchEvent(new Event('change', { bubbles: true }));
+                card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                window.setTimeout(() => unit.focus({ preventScroll: true }), 350);
+            });
+        });
+
+        document.querySelectorAll('[data-booking-extension-form]').forEach((form) => {
+            const durationUnit = form.querySelector('[data-extension-unit]');
+            const durationQuantity = form.querySelector('[data-extension-quantity]');
+            const quantityLabel = form.querySelector('[data-extension-quantity-label]');
+            const preview = form.querySelector('[data-extension-preview]');
+
+            const syncExtension = () => {
+                const isHourly = durationUnit?.value === 'hour';
+                const quantity = Math.max(1, Number(durationQuantity?.value) || 1);
+                if (durationQuantity) durationQuantity.max = isHourly ? '8760' : '365';
+                if (quantityLabel) quantityLabel.textContent = isHourly ? 'Number of hours' : 'Number of days';
+                if (!preview) return;
+
+                const newEnd = new Date(form.dataset.currentEnd);
+                if (isHourly) newEnd.setHours(newEnd.getHours() + quantity);
+                else newEnd.setDate(newEnd.getDate() + quantity);
+                const unitLabel = isHourly ? (quantity === 1 ? 'hour' : 'hours') : (quantity === 1 ? 'day' : 'days');
+                preview.textContent = `${quantity} ${unitLabel} added · New end: ${newEnd.toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}`;
+            };
+
+            durationUnit?.addEventListener('change', syncExtension);
+            durationQuantity?.addEventListener('input', syncExtension);
+            syncExtension();
+        });
+
         const calendarBookingDialog = document.querySelector('[data-calendar-booking-dialog]');
 
         if (calendarBookingDialog) {

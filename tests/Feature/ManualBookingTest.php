@@ -13,6 +13,27 @@ class ManualBookingTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_availability_row_opens_outside_booking_with_clicked_unit_and_selected_date(): void
+    {
+        $host = User::factory()->host()->create();
+        $unit = $this->unit($host, 'Direct Click Condo', 'condo');
+        $date = today()->addDays(12);
+
+        $response = $this->actingAs($host)->get(route('calendar.index', [
+            'mode' => 'manage',
+            'month' => $date->format('Y-m'),
+            'date' => $date->format('Y-m-d'),
+            'manual_unit' => $unit->id,
+        ]));
+
+        $response->assertOk()
+            ->assertSee('id="manual-booking" class="manual-booking-card"', false)
+            ->assertSee('data-unit-id="'.$unit->id.'" data-date="'.$date->format('Y-m-d').'"', false)
+            ->assertSee('value="'.$unit->id.'"', false)
+            ->assertSee('selected', false)
+            ->assertSee('value="'.$date->format('Y-m-d').'"', false);
+    }
+
     public function test_outside_booking_customer_field_suggests_repeat_customers_from_accessible_listings(): void
     {
         $host = User::factory()->host()->create();

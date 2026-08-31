@@ -16,6 +16,7 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\AvailabilityController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\BookingExpenseController;
+use App\Http\Controllers\BookingExtensionController;
 use App\Http\Controllers\BookingFinancialEntryController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\CalendarIntegrationController;
@@ -113,6 +114,7 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     Route::get('/units/{unit}/wifi-qr', [UnitController::class, 'wifiQr'])->name('units.wifi-qr');
     Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('bookings.show');
     Route::patch('/bookings/{booking}/manual-details', [ManualBookingDetailController::class, 'update'])->name('bookings.manual-details.update');
+    Route::post('/bookings/{booking}/extensions', [BookingExtensionController::class, 'store'])->name('bookings.extensions.store');
     Route::post('/bookings/{booking}/financial-entries', [BookingFinancialEntryController::class, 'store'])->name('bookings.financial-entries.store');
     Route::patch('/bookings/{booking}/financial-entries/{financialEntry}', [BookingFinancialEntryController::class, 'update'])->name('bookings.financial-entries.update');
     Route::post('/bookings/{booking}/expenses', [BookingExpenseController::class, 'store'])->name('bookings.expenses.store');

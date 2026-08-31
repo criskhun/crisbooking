@@ -174,13 +174,13 @@
                                 @php
                                     $booked = $bookedUnitIds->contains($unit->id);
                                 @endphp
-                                <div class="availability-row">
-                                    @if ($unit->primaryImagePath())<img class="availability-photo" src="{{ Storage::disk('public')->url($unit->primaryImagePath()) }}" alt="">@endif
-                                    <div><strong>{{ $unit->name }}</strong><small>{{ ucfirst($unit->kind) }} · {{ $unit->isPackageRental() ? 'From ₱'.number_format($unit->rates->min('price'), 2) : '₱'.number_format($unit->price, 2).'/'.$unit->pricing_unit }}</small></div>
+                                <a class="availability-row" href="{{ route('calendar.index', array_merge($calendarFilterQuery, ['month' => $month->format('Y-m'), 'date' => $selectedDate->format('Y-m-d'), 'manual_unit' => $unit->id])).'#manual-booking' }}" data-manual-booking-prefill data-unit-id="{{ $unit->id }}" data-date="{{ $selectedDate->format('Y-m-d') }}" aria-label="Add an outside booking for {{ $unit->name }} on {{ $selectedDate->format('F j, Y') }}">
+                                    @if ($unit->primaryImagePath())<img class="availability-photo" src="{{ Storage::disk('public')->url($unit->primaryImagePath()) }}" alt="">@else<span class="availability-photo availability-photo-placeholder" aria-hidden="true">{{ ['car' => '🚗', 'condo' => '🏠', 'driving' => '🛞', 'pet_transport' => '🐾'][$unit->category] ?? '✦' }}</span>@endif
+                                    <div class="availability-copy"><strong>{{ $unit->name }}</strong><small>{{ ucfirst($unit->kind) }} · {{ $unit->isPackageRental() ? 'From ₱'.number_format($unit->rates->min('price'), 2) : '₱'.number_format($unit->price, 2).'/'.$unit->pricing_unit }}</small></div>
                                     @if (! $unit->is_active)<span class="availability-badge unavailable">Unavailable</span>
                                     @elseif ($booked)<span class="availability-badge booked" title="This date has booked times; other hours may still be available.">Check times</span>
                                     @else<span class="availability-badge available">Available</span>@endif
-                                </div>
+                                </a>
                             @empty
                                 <p class="side-empty">No listings are available yet.</p>
                             @endforelse

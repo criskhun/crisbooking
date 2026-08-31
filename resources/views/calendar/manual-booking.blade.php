@@ -1,4 +1,4 @@
-<details class="manual-booking-card" data-manual-booking-card @if($errors->hasAny(['unit_id', 'start_date', 'start_time', 'duration_unit', 'duration_quantity', 'source_channel', 'source_details', 'external_customer_name', 'fulfillment_method', 'delivery_address', 'total_amount', 'payment_option', 'initial_payment_amount', 'security_deposit_amount', 'party_size', 'affiliate_partnership_id', 'notes'])) open @endif>
+<details id="manual-booking" class="manual-booking-card" data-manual-booking-card @if($manualBookingUnitId || $errors->hasAny(['unit_id', 'start_date', 'start_time', 'duration_unit', 'duration_quantity', 'source_channel', 'source_details', 'external_customer_name', 'fulfillment_method', 'delivery_address', 'total_amount', 'payment_option', 'initial_payment_amount', 'security_deposit_amount', 'party_size', 'affiliate_partnership_id', 'notes'])) open @endif>
     <summary>
         <span aria-hidden="true">＋</span>
         <div>
@@ -18,7 +18,7 @@
             <select id="manual_unit_id" name="unit_id" required data-manual-booking-unit>
                 <option value="">Choose a listing</option>
                 @foreach($scheduleUnits as $manualUnit)
-                    <option value="{{ $manualUnit->id }}" data-category="{{ str($manualUnit->category)->replace('_', ' ')->title() }}" data-unit-category="{{ $manualUnit->category }}" data-fulfillment-options="{{ collect($manualUnit->car_details['fulfillment_options'] ?? ['pickup'])->join(',') }}" data-start-time="{{ $manualUnit->category === 'condo' ? $manualUnit->condoCheckInTime() : '' }}" data-end-time="{{ $manualUnit->category === 'condo' ? $manualUnit->condoCheckOutTime() : '' }}" @selected((int) old('unit_id') === $manualUnit->id)>{{ $manualUnit->name }} · {{ str($manualUnit->category)->replace('_', ' ')->title() }}</option>
+                    <option value="{{ $manualUnit->id }}" data-category="{{ str($manualUnit->category)->replace('_', ' ')->title() }}" data-unit-category="{{ $manualUnit->category }}" data-fulfillment-options="{{ collect($manualUnit->car_details['fulfillment_options'] ?? ['pickup'])->join(',') }}" data-start-time="{{ $manualUnit->category === 'condo' ? $manualUnit->condoCheckInTime() : '' }}" data-end-time="{{ $manualUnit->category === 'condo' ? $manualUnit->condoCheckOutTime() : '' }}" @selected((int) old('unit_id', $manualBookingUnitId) === $manualUnit->id)>{{ $manualUnit->name }} · {{ str($manualUnit->category)->replace('_', ' ')->title() }}</option>
                 @endforeach
             </select>
             @error('unit_id')<p class="error-text">{{ $message }}</p>@enderror

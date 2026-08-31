@@ -179,6 +179,37 @@
                 @endif
 
                 @if ($booking->isManualBooking())
+                    @php
+                        $extensionHasErrors = $errors->hasAny(['duration_unit', 'duration_quantity', 'additional_amount', 'payment_status']);
+                    @endphp
+                    <section class="booking-extension-card">
+                        <div class="booking-finance-heading"><div><span class="eyebrow">Stay or service continuation</span><h2>Booking extensions</h2><p>Extend the occupied time and record the extra earning as paid now or still collectible.</p></div>@if($booking->extensions->isNotEmpty())<span class="booking-status status-confirmed">{{ $booking->extensions->count() }} {{ Str::plural('extension', $booking->extensions->count()) }}</span>@endif</div>
+
+                        @if($canManageFinances && $booking->status === 'confirmed')
+                            <details class="booking-extension-editor" @if($extensionHasErrors) open @endif>
+                                <summary><span><strong>Add an extension</strong><small>Current end: {{ $booking->end_at->format('M j, Y · g:i A') }}</small></span><b>Extend booking</b></summary>
+                                <form method="POST" action="{{ route('bookings.extensions.store', $booking) }}" class="booking-extension-form" data-booking-extension-form data-current-end="{{ $booking->end_at->format('Y-m-d\TH:i:s') }}">
+                                    @csrf
+                                    <div class="field-group"><label for="extension_duration_unit">Extend by</label><select id="extension_duration_unit" name="duration_unit" required data-extension-unit><option value="day" @selected(old('duration_unit', 'day') === 'day')>Day</option><option value="hour" @selected(old('duration_unit') === 'hour')>Hour</option></select>@error('duration_unit')<p class="error-text">{{ $message }}</p>@enderror</div>
+                                    <div class="field-group"><label for="extension_duration_quantity" data-extension-quantity-label>Number of days</label><input id="extension_duration_quantity" name="duration_quantity" type="number" min="1" max="365" value="{{ old('duration_quantity', 1) }}" required data-extension-quantity>@error('duration_quantity')<p class="error-text">{{ $message }}</p>@enderror</div>
+                                    <div class="field-group"><label for="extension_additional_amount">Additional earning</label><div class="money-input"><span>₱</span><input id="extension_additional_amount" name="additional_amount" type="text" inputmode="decimal" value="{{ filled(old('additional_amount')) ? number_format((float) old('additional_amount'), 2, '.', ',') : '' }}" required data-accounting-input></div>@error('additional_amount')<p class="error-text">{{ $message }}</p>@enderror</div>
+                                    <div class="field-group"><label for="extension_payment_status">Payment status</label><select id="extension_payment_status" name="payment_status" required><option value="paid" @selected(old('payment_status') === 'paid')>Paid now</option><option value="collectible" @selected(old('payment_status', 'collectible') === 'collectible')>Add to collectibles</option></select>@error('payment_status')<p class="error-text">{{ $message }}</p>@enderror</div>
+                                    <div class="booking-extension-preview" data-extension-preview aria-live="polite"></div>
+                                    <div class="field-group booking-extension-notes"><label for="extension_notes">Reference or note <span class="optional-label">Optional</span></label><input id="extension_notes" name="notes" maxlength="500" value="{{ old('notes') }}" placeholder="Customer request, payment reference, or agreement">@error('notes')<p class="error-text">{{ $message }}</p>@enderror</div>
+                                    <button class="button button-primary" type="submit">Save extension</button>
+                                </form>
+                            </details>
+                        @endif
+
+                        <div class="booking-extension-history">
+                            @forelse($booking->extensions as $extension)
+                                <article><span class="booking-extension-icon" aria-hidden="true">→</span><div><strong>{{ $extension->durationLabel() }} extension</strong><small>{{ $extension->previous_end_at->format('M j, g:i A') }} → {{ $extension->new_end_at->format('M j, Y · g:i A') }}</small>@if($extension->notes)<p>{{ $extension->notes }}</p>@endif<span>Added {{ $extension->created_at->format('M j, Y · g:i A') }}{{ $extension->createdBy ? ' by '.$extension->createdBy->name : '' }}</span></div><div class="booking-extension-value"><strong>₱{{ number_format((float) $extension->additional_amount, 2) }}</strong><span class="booking-status {{ $extension->payment_status === 'paid' ? 'status-confirmed' : 'status-payment_submitted' }}">{{ $extension->paymentStatusLabel() }}</span></div></article>
+                            @empty
+                                <p>No extensions have been added to this booking.</p>
+                            @endforelse
+                        </div>
+                    </section>
+
                     <section class="booking-finance-card">
                         <div class="booking-finance-heading"><div><span class="eyebrow">Payments & collections</span><h2>Booking financial ledger</h2><p>Track rental payments separately from refundable deposits, damage fees, and residence penalties.</p></div><span class="booking-status {{ $booking->outstandingBalance() > 0 ? 'status-payment_submitted' : 'status-confirmed' }}">{{ $booking->paymentStatusLabel() }}</span></div>
                         <div class="booking-finance-metrics">

@@ -15,6 +15,7 @@ class BookingFinancialEntry extends Model
         'security_deposit' => 'Security deposit collected',
         'security_deposit_refund' => 'Security deposit returned',
         'security_deposit_application' => 'Security deposit applied to charges',
+        'extension' => 'Booking extension',
         'damage' => 'Damage fee',
         'late_checkout' => 'Late check-out penalty',
         'smoking' => 'Smoking penalty',
