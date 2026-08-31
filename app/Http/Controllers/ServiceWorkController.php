@@ -17,6 +17,70 @@ class ServiceWorkController extends Controller
 {
     public function index(Request $request): View
     {
+        $hostStatusOptions = [
+            'assigned' => 'Assigned / provider working',
+            'completed' => 'Completed / payment needed',
+            'paid' => 'Paid / awaiting confirmation',
+            'payment_received' => 'Closed',
+            'cancelled' => 'Cancelled',
+        ];
+        $selectedHostStatuses = $request->boolean('host_filter_submitted')
+            ? collect((array) $request->input('host_statuses', []))->intersect(array_keys($hostStatusOptions))->values()->all()
+            : ['completed'];
+        if ($selectedHostStatuses === []) {
+            $selectedHostStatuses = ['completed'];
+        }
+
+        $hostRequestsBase = BookingExpense::query()
+            ->whereNotNull('provider_user_id')
+            ->when(! $request->user()->is_admin, fn ($query) => $query->whereHas(
+                'booking.unit',
+                fn ($units) => $units->where('host_id', $request->user()->id),
+            ));
+        $canManageHostRequests = $request->user()->is_admin || $request->user()->isHost();
+        $hostRequests = collect();
+        $hostDashboard = null;
+        if ($canManageHostRequests) {
+            $statusCounts = (clone $hostRequestsBase)
+                ->selectRaw('status, COUNT(*) as aggregate')
+                ->groupBy('status')
+                ->pluck('aggregate', 'status')
+                ->map(fn ($count) => (int) $count);
+            $monthStarts = collect(range(5, 0))->map(fn ($offset) => now()->startOfMonth()->subMonths($offset));
+            $monthlyRows = (clone $hostRequestsBase)
+                ->where('status', '!=', 'cancelled')
+                ->where('created_at', '>=', $monthStarts->first())
+                ->get(['amount', 'created_at']);
+            $monthlyCosts = $monthStarts->map(function ($month) use ($monthlyRows) {
+                return [
+                    'label' => $month->format('M'),
+                    'amount' => (float) $monthlyRows->filter(fn ($expense) => $expense->created_at->isSameMonth($month))->sum('amount'),
+                ];
+            });
+            $hostRequests = (clone $hostRequestsBase)
+                ->with(['provider:id,name,email', 'booking.unit:id,host_id,name,category,location'])
+                ->whereIn('status', $selectedHostStatuses)
+                ->latest('scheduled_at')
+                ->latest()
+                ->get();
+            $pendingApplicationCount = ServiceProviderApplication::query()
+                ->where('status', 'pending')
+                ->when(! $request->user()->is_admin, fn ($query) => $query->where('host_id', $request->user()->id))
+                ->count();
+            $hostDashboard = [
+                'status_counts' => collect($hostStatusOptions)->mapWithKeys(fn ($label, $status) => [$status => $statusCounts->get($status, 0)]),
+                'total_count' => $statusCounts->sum(),
+                'action_count' => $statusCounts->get('completed', 0) + $pendingApplicationCount,
+                'pending_application_count' => $pendingApplicationCount,
+                'active_count' => $statusCounts->get('assigned', 0),
+                'awaiting_confirmation_count' => $statusCounts->get('paid', 0),
+                'closed_count' => $statusCounts->get('payment_received', 0),
+                'total_cost' => (float) (clone $hostRequestsBase)->where('status', '!=', 'cancelled')->sum('amount'),
+                'monthly_costs' => $monthlyCosts,
+                'monthly_max' => max(1, (float) $monthlyCosts->max('amount')),
+            ];
+        }
+
         $assignments = BookingExpense::query()
             ->with(['booking.unit:id,host_id,name,category,location', 'serviceUnit:id,name,category'])
             ->where('provider_user_id', $request->user()->id)
@@ -52,7 +116,10 @@ class ServiceWorkController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('service-work.index', compact('assignments', 'metrics', 'myApplications', 'receivedApplications', 'availableHosts'));
+        return view('service-work.index', compact(
+            'assignments', 'metrics', 'myApplications', 'receivedApplications', 'availableHosts',
+            'hostRequests', 'hostDashboard', 'hostStatusOptions', 'selectedHostStatuses',
+        ));
     }
 
     public function complete(Request $request, BookingExpense $expense, AppNotificationService $notifications): RedirectResponse

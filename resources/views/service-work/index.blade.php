@@ -11,6 +11,89 @@
             @if(session('status'))<div class="flash-message account-alert">{{ session('status') }}</div>@endif
             @if($errors->any())<div class="flash-message error-alert" role="alert">{{ $errors->first() }}</div>@endif
 
+            @if($hostDashboard)
+                <section class="host-service-overview">
+                    <div class="overview-section-heading"><div><span class="eyebrow">Host operations report</span><h2>Requested service overview</h2><p>See what needs your attention, what providers are working on, and what has already been paid and closed.</p></div><a class="button button-ghost button-small" href="{{ route('service-work.index', ['host_filter_submitted' => 1, 'host_statuses' => array_keys($hostStatusOptions)]) }}">View complete history</a></div>
+                    <div class="host-service-summary-grid">
+                        <article class="attention"><small>Needs your action</small><strong>{{ number_format($hostDashboard['action_count']) }}</strong><span>{{ $hostDashboard['pending_application_count'] }} applications · {{ $hostDashboard['status_counts']['completed'] }} payments</span></article>
+                        <article><small>Provider working</small><strong>{{ number_format($hostDashboard['active_count']) }}</strong><span>Assigned requests</span></article>
+                        <article><small>Awaiting receipt confirmation</small><strong>{{ number_format($hostDashboard['awaiting_confirmation_count']) }}</strong><span>Payments sent</span></article>
+                        <article><small>Closed requests</small><strong>{{ number_format($hostDashboard['closed_count']) }}</strong><span>Provider confirmed payment</span></article>
+                        <article><small>Total requested-service cost</small><strong>₱{{ number_format($hostDashboard['total_cost'], 2) }}</strong><span>Excludes cancelled requests</span></article>
+                    </div>
+                    <div class="host-service-chart-grid">
+                        <article class="host-service-chart-card">
+                            <div><span class="eyebrow">Status graph</span><h3>Request distribution</h3></div>
+                            <div class="service-status-chart">
+                                @foreach($hostStatusOptions as $status => $label)
+                                    @php
+                                        $statusCount = $hostDashboard['status_counts'][$status];
+                                        $statusPercent = $hostDashboard['total_count'] ? round(($statusCount / $hostDashboard['total_count']) * 100, 1) : 0;
+                                    @endphp
+                                    <div class="status-{{ $status }}"><span>{{ $label }}</span><div><i style="--status-width: {{ $statusPercent }}%"></i></div><b>{{ $statusCount }}</b></div>
+                                @endforeach
+                            </div>
+                        </article>
+                        <article class="host-service-chart-card">
+                            <div><span class="eyebrow">Six-month graph</span><h3>Requested-service costs</h3></div>
+                            <div class="service-month-chart" aria-label="Service costs for the last six months">
+                                @foreach($hostDashboard['monthly_costs'] as $month)
+                                    <div><b>₱{{ number_format($month['amount'], 0) }}</b><i style="--month-height: {{ round(($month['amount'] / $hostDashboard['monthly_max']) * 100, 1) }}%"></i><span>{{ $month['label'] }}</span></div>
+                                @endforeach
+                            </div>
+                        </article>
+                    </div>
+                </section>
+
+                <section class="service-work-panel host-service-requests-panel">
+                    <div class="overview-section-heading"><div><span class="eyebrow">Host request tracker</span><h2>Services you requested</h2><p>The default view shows completed work that needs payment. Select other statuses to review every request until it closes.</p></div></div>
+                    <form method="GET" action="{{ route('service-work.index') }}" class="service-status-filter">
+                        <input type="hidden" name="host_filter_submitted" value="1">
+                        <fieldset><legend>Show request statuses</legend><div>
+                            @foreach($hostStatusOptions as $status => $label)
+                                <label class="status-{{ $status }}"><input type="checkbox" name="host_statuses[]" value="{{ $status }}" @checked(in_array($status, $selectedHostStatuses, true))><span>{{ $label }}</span><b>{{ $hostDashboard['status_counts'][$status] }}</b></label>
+                            @endforeach
+                        </div></fieldset>
+                        <button class="button button-primary button-small" type="submit">Apply status filter</button>
+                        <a href="{{ route('service-work.index') }}">Reset to action needed</a>
+                    </form>
+                    <div class="host-service-request-list">
+                        @forelse($hostRequests as $requestExpense)
+                            @php
+                                $requestSteps = ['assigned' => 'Assigned', 'completed' => 'Work completed', 'paid' => 'Payment sent', 'payment_received' => 'Closed'];
+                                $requestStepIndex = array_search($requestExpense->status, array_keys($requestSteps), true);
+                            @endphp
+                            <article class="host-service-request status-{{ $requestExpense->status }}">
+                                <div class="host-service-request-heading"><div><small>Booking #{{ $requestExpense->booking_id }} · {{ $requestExpense->categoryLabel() }}</small><h3>{{ $requestExpense->booking->unit->name }}</h3><p>{{ $requestExpense->provider?->name ?: 'Provider account unavailable' }}@if($requestExpense->scheduled_at) · Scheduled {{ $requestExpense->scheduled_at->format('M j, Y · g:i A') }}@endif</p></div><div><span class="booking-status status-{{ $requestExpense->status }}">{{ $requestExpense->statusLabel() }}</span><strong>₱{{ number_format($requestExpense->amount, 2) }}</strong></div></div>
+                                @if($requestExpense->status === 'cancelled')
+                                    <div class="service-request-cancelled">This request was cancelled.</div>
+                                @else
+                                    <ol class="service-request-timeline">
+                                        @foreach($requestSteps as $stepStatus => $stepLabel)
+                                            @php $stepIndex = array_search($stepStatus, array_keys($requestSteps), true); @endphp
+                                            <li @class(['complete' => $requestStepIndex !== false && $stepIndex < $requestStepIndex, 'current' => $stepStatus === $requestExpense->status])><i></i><span>{{ $stepLabel }}</span></li>
+                                        @endforeach
+                                    </ol>
+                                @endif
+                                @if($requestExpense->notes)<p class="service-request-notes">{{ $requestExpense->notes }}</p>@endif
+                                <div class="host-service-request-footer">
+                                    <div class="private-file-links">
+                                        @foreach($requestExpense->completion_images ?? [] as $imageIndex => $image)<a href="{{ route('service-work.completion-images.show', [$requestExpense, $imageIndex]) }}" target="_blank">Completion image {{ $imageIndex + 1 }}</a>@endforeach
+                                        @if($requestExpense->payment_proof_path)<a href="{{ route('bookings.expenses.payment-proof', [$requestExpense->booking, $requestExpense]) }}" target="_blank">Payment proof</a>@endif
+                                        <a href="{{ route('bookings.show', $requestExpense->booking) }}">Open booking</a>
+                                    </div>
+                                    @if($requestExpense->status === 'completed')
+                                        <form method="POST" action="{{ route('bookings.expenses.status', [$requestExpense->booking, $requestExpense]) }}" enctype="multipart/form-data" class="host-service-pay-form">@csrf @method('PATCH')<input type="hidden" name="status" value="paid"><label><span>Proof of payment</span><input type="file" name="payment_proof" accept="image/jpeg,image/png,image/webp,application/pdf" required></label><button class="button button-primary button-small" type="submit">Attach proof & mark paid</button></form>
+                                    @endif
+                                </div>
+                            </article>
+                        @empty
+                            <div class="accounts-empty"><strong>No requests match this status filter.</strong><p>Choose additional statuses above to see assigned, paid, closed, or cancelled requests.</p></div>
+                        @endforelse
+                    </div>
+                </section>
+            @endif
+
             @if($receivedApplications->isNotEmpty())
                 <section class="service-work-panel service-application-panel">
                     <div class="overview-section-heading"><div><span class="eyebrow">Host review</span><h2>Service-provider applications</h2><p>Approve workers you want to assign to cleaning, laundry, delivery, carwash, or maintenance expenses.</p></div></div>

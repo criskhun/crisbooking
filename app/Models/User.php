@@ -8,9 +8,9 @@ use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
@@ -182,5 +182,30 @@ class User extends Authenticatable implements MustVerifyEmailContract
                 ->where('sender_id', '!=', $this->id)
                 ->whereNull('read_at'))
             ->count();
+    }
+
+    public function serviceWorkActionCount(): int
+    {
+        $providerActions = $this->serviceAssignments()
+            ->whereIn('status', ['assigned', 'paid'])
+            ->count();
+
+        if ($this->is_admin) {
+            return $providerActions
+                + ServiceProviderApplication::query()->where('status', 'pending')->count()
+                + BookingExpense::query()->whereNotNull('provider_user_id')->where('status', 'completed')->count();
+        }
+
+        if (! $this->isHost()) {
+            return $providerActions;
+        }
+
+        return $providerActions
+            + $this->receivedServiceProviderApplications()->where('status', 'pending')->count()
+            + BookingExpense::query()
+                ->whereNotNull('provider_user_id')
+                ->where('status', 'completed')
+                ->whereHas('booking.unit', fn ($units) => $units->where('host_id', $this->id))
+                ->count();
     }
 }

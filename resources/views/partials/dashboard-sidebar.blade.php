@@ -9,6 +9,7 @@
         ? auth()->user()->hostApplication()->whereIn('status', ['needs_changes', 'rejected'])->exists()
         : false;
     $inquiryAttentionCount = auth()->user()->inquiryAttentionCount();
+    $serviceWorkActionCount = auth()->user()->serviceWorkActionCount();
     $favoriteCount = auth()->user()->favoriteUnits()
         ->where('units.is_active', true)
         ->whereHas('host', fn ($host) => $host->whereNotNull('profile_completed_at'))
@@ -46,7 +47,7 @@
         @if (auth()->user()->isHost() || auth()->user()->is_admin)
             <a @class(['active' => request()->routeIs('units.*')]) href="{{ route('units.index') }}"><span>＋</span> Units & services</a>
         @endif
-        <a @class(['active' => request()->routeIs('service-work.*') || request()->routeIs('service-provider-applications.*')]) href="{{ route('service-work.index') }}"><span>🛠</span> Service providers</a>
+        <a @class(['active' => request()->routeIs('service-work.*') || request()->routeIs('service-provider-applications.*')]) href="{{ route('service-work.index') }}"><span>🛠</span> Service providers @if($serviceWorkActionCount)<b class="sidebar-notification-badge attention" data-service-work-action-count="{{ $serviceWorkActionCount }}" title="{{ $serviceWorkActionCount }} service {{ Str::plural('item', $serviceWorkActionCount) }} need your action">{{ $serviceWorkActionCount > 99 ? '99+' : $serviceWorkActionCount }}</b>@endif</a>
         @if (auth()->user()->is_admin)
             <a @class(['active' => request()->routeIs('admin.host-applications.*')]) href="{{ route('admin.host-applications.index') }}"><span>✓</span> Host applications @if($pendingHostReviewCount)<b class="sidebar-notification-badge" title="{{ $pendingHostReviewCount }} applications need review">{{ $pendingHostReviewCount > 99 ? '99+' : $pendingHostReviewCount }}</b>@endif</a>
             <a @class(['active' => request()->routeIs('admin.bookings.*')]) href="{{ route('admin.bookings.index') }}"><span>▦</span> Booking records</a>

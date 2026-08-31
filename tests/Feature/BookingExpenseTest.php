@@ -220,6 +220,73 @@ class BookingExpenseTest extends TestCase
         $this->assertDatabaseCount('booking_expenses', 0);
     }
 
+    public function test_host_service_dashboard_defaults_to_action_needed_and_filters_the_full_request_history(): void
+    {
+        $host = User::factory()->host()->create(['name' => 'Service Dashboard Host']);
+        $provider = User::factory()->create(['name' => 'Dashboard Service Provider']);
+        $pendingApplicant = User::factory()->create(['name' => 'Pending Dashboard Applicant']);
+        $condo = $this->unit($host, 'Dashboard Request Condo', 'condo');
+        $booking = Booking::create([
+            'unit_id' => $condo->id,
+            'client_id' => User::factory()->create()->id,
+            'start_at' => now()->addDays(2),
+            'end_at' => now()->addDays(3),
+            'status' => 'confirmed',
+            'total_amount' => 6000,
+            'party_size' => 2,
+        ]);
+        ServiceProviderApplication::create([
+            'applicant_user_id' => $pendingApplicant->id,
+            'host_id' => $host->id,
+            'services' => ['cleaning'],
+            'status' => 'pending',
+            'application_message' => 'I am applying for dashboard cleaning work.',
+        ]);
+        $requestRows = [
+            ['status' => 'assigned', 'category' => 'cleaning', 'notes' => 'Assigned request marker', 'amount' => 500],
+            ['status' => 'completed', 'category' => 'laundry', 'notes' => 'Completed request marker', 'amount' => 600],
+            ['status' => 'paid', 'category' => 'drinking_water', 'notes' => 'Paid request marker', 'amount' => 200],
+            ['status' => 'payment_received', 'category' => 'guest_supplies', 'notes' => 'Closed request marker', 'amount' => 300],
+            ['status' => 'cancelled', 'category' => 'other', 'notes' => 'Cancelled request marker', 'amount' => 100],
+        ];
+        foreach ($requestRows as $row) {
+            BookingExpense::create([
+                'booking_id' => $booking->id,
+                'recorded_by_user_id' => $host->id,
+                'provider_user_id' => $provider->id,
+                ...$row,
+            ]);
+        }
+
+        $this->actingAs($host)->get(route('service-work.index'))
+            ->assertOk()
+            ->assertSee('Host operations report')
+            ->assertSee('Requested service overview')
+            ->assertSee('Request distribution')
+            ->assertSee('Requested-service costs')
+            ->assertSee('Needs your action')
+            ->assertSee('1 applications · 1 payments')
+            ->assertSee('data-service-work-action-count="2"', false)
+            ->assertSee('Completed request marker')
+            ->assertDontSee('Assigned request marker')
+            ->assertDontSee('Paid request marker')
+            ->assertDontSee('Closed request marker')
+            ->assertDontSee('Cancelled request marker')
+            ->assertSee('Attach proof & mark paid', false);
+
+        $this->actingAs($host)->get(route('service-work.index', [
+            'host_filter_submitted' => 1,
+            'host_statuses' => ['assigned', 'payment_received'],
+        ]))
+            ->assertOk()
+            ->assertSee('Assigned request marker')
+            ->assertSee('Closed request marker')
+            ->assertDontSee('Completed request marker')
+            ->assertDontSee('Paid request marker')
+            ->assertDontSee('Cancelled request marker')
+            ->assertSee('Provider confirmed payment');
+    }
+
     public function test_provider_can_confirm_a_legacy_paid_job_without_a_payment_proof(): void
     {
         $host = User::factory()->host()->create();
