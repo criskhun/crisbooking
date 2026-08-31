@@ -52,10 +52,10 @@
 
                 <div class="sales-chart-grid sales-profit-chart-grid">
                     <section class="sales-chart-card monthly-sales-chart">
-                        <div class="sales-chart-heading"><div><span class="eyebrow">12-month trend</span><h2>Sales by month: gross versus operating profit</h2></div><small>Hover for details</small></div>
+                        <div class="sales-chart-heading"><div><span class="eyebrow">12-month trend</span><h2>Sales by month: gross versus operating profit</h2></div><small>Select a month to drill down</small></div>
                         <div class="sales-bars profit-bars" role="img" aria-label="Monthly gross sales and operating profit chart">
                             @foreach ($monthlySales as $monthSale)
-                                <a href="{{ route('sales.index', array_filter(['unit' => $selectedUnitId ?: null, 'category' => $selectedCategory ?: null, 'month' => $monthSale['month']])) }}">
+                                <a href="{{ route('sales.index', array_filter(['unit' => $selectedUnitId ?: null, 'category' => $selectedCategory ?: null, 'month' => $monthSale['month']])) }}" data-sales-drilldown-key="month:{{ $monthSale['month'] }}">
                                     <span class="sales-bar-value">Sales ₱{{ number_format($monthSale['value'], 2) }} · Expenses ₱{{ number_format($monthSale['expenses'], 2) }} · Profit ₱{{ number_format($monthSale['profit'], 2) }}</span>
                                     <span class="profit-bar-pair"><i style="height: {{ max(3, round($monthSale['value'] / $maxMonthlySale * 100)) }}%"></i><b class="{{ $monthSale['profit'] < 0 ? 'negative' : '' }}" style="height: {{ max(3, round(abs($monthSale['profit']) / $maxMonthlySale * 100)) }}%"></b></span>
                                     <small>{{ $monthSale['label'] }}</small>
@@ -76,22 +76,39 @@
                     </section>
 
                     <section class="sales-chart-card">
-                        <div class="sales-chart-heading"><div><span class="eyebrow">Revenue mix</span><h2>Sales by category</h2></div><small>Confirmed</small></div>
+                        <div class="sales-chart-heading"><div><span class="eyebrow">Revenue mix</span><h2>Sales by category</h2></div><small>Select a bar</small></div>
                         <div class="category-sales-bars">
                             @forelse ($categorySales as $categorySale)
-                                <div><span><strong>{{ str($categorySale['category'])->replace('_', ' ')->title() }}</strong><small>{{ $categorySale['count'] }} bookings</small></span><i><b style="width: {{ max(3, round($categorySale['value'] / $maxCategorySale * 100)) }}%"></b></i><em>₱{{ number_format($categorySale['value'], 2) }}</em></div>
+                                <button type="button" data-sales-drilldown-key="category:{{ $categorySale['category'] }}"><span><strong>{{ str($categorySale['category'])->replace('_', ' ')->title() }}</strong><small>{{ $categorySale['count'] }} bookings</small></span><i><b style="width: {{ max(3, round($categorySale['value'] / $maxCategorySale * 100)) }}%"></b></i><em>₱{{ number_format($categorySale['value'], 2) }}</em></button>
                             @empty<div class="overview-empty compact"><strong>No confirmed sales yet.</strong></div>@endforelse
                         </div>
                     </section>
 
+                    <section class="sales-chart-card sales-source-card" data-sales-source-chart>
+                        <div class="sales-chart-heading"><div><span class="eyebrow">Marketing attribution</span><h2>Where sales came from</h2></div><small>Select a source</small></div>
+                        <div class="sales-source-bars">
+                            @forelse($sourceSales as $sourceSale)
+                                <button type="button" data-sales-drilldown-key="source:{{ $sourceSale['source'] }}">
+                                    <span class="sales-source-rank">{{ str_pad((string) $loop->iteration, 2, '0', STR_PAD_LEFT) }}</span>
+                                    <span><strong>{{ $sourceSale['label'] }}</strong><small>{{ $sourceSale['count'] }} confirmed {{ Str::plural('booking', $sourceSale['count']) }}</small></span>
+                                    <i><b style="width:{{ max(3, round($sourceSale['value'] / $maxSourceSale * 100)) }}%"></b></i>
+                                    <em>₱{{ number_format($sourceSale['value'], 2) }}</em>
+                                </button>
+                            @empty
+                                <div class="overview-empty compact"><strong>No attributed sales yet.</strong><p>Confirmed bookings from Airbnb, Agoda, Facebook, direct sales, and other sources will appear here.</p></div>
+                            @endforelse
+                        </div>
+                    </section>
+
                     @php
-                        $statusTotal = max(1, $metrics['confirmed_count'] + $metrics['pending_count'] + $metrics['cancelled_count']);
+                        $statusBookingCount = $metrics['confirmed_count'] + $metrics['pending_count'] + $metrics['cancelled_count'];
+                        $statusTotal = max(1, $statusBookingCount);
                         $confirmedDegrees = round($metrics['confirmed_count'] / $statusTotal * 360);
                         $pendingDegrees = round($metrics['pending_count'] / $statusTotal * 360);
                     @endphp
                     <section class="sales-chart-card sales-status-card">
-                        <div class="sales-chart-heading"><div><span class="eyebrow">Pipeline health</span><h2>Booking status mix</h2></div></div>
-                        <div class="sales-status-visual"><div class="sales-donut" style="--confirmed-angle: {{ $confirmedDegrees }}deg; --pending-angle: {{ $confirmedDegrees + $pendingDegrees }}deg"><strong>{{ $statusTotal }}</strong><small>Total</small></div><ul><li><i class="confirmed"></i><span>Confirmed</span><strong>{{ $metrics['confirmed_count'] }}</strong></li><li><i class="pending"></i><span>Pending</span><strong>{{ $metrics['pending_count'] }}</strong></li><li><i class="cancelled"></i><span>Cancelled</span><strong>{{ $metrics['cancelled_count'] }}</strong></li></ul></div>
+                        <div class="sales-chart-heading"><div><span class="eyebrow">Pipeline health</span><h2>Booking status mix</h2></div><small>Select a segment</small></div>
+                        <div class="sales-status-visual"><button class="sales-donut" type="button" data-sales-drilldown-key="status:all" style="--confirmed-angle: {{ $confirmedDegrees }}deg; --pending-angle: {{ $confirmedDegrees + $pendingDegrees }}deg"><strong>{{ $statusBookingCount }}</strong><small>Total</small></button><ul><li><button type="button" data-sales-drilldown-key="status:confirmed"><i class="confirmed"></i><span>Confirmed</span><strong>{{ $metrics['confirmed_count'] }}</strong></button></li><li><button type="button" data-sales-drilldown-key="status:pending"><i class="pending"></i><span>Pending</span><strong>{{ $metrics['pending_count'] }}</strong></button></li><li><button type="button" data-sales-drilldown-key="status:cancelled"><i class="cancelled"></i><span>Cancelled</span><strong>{{ $metrics['cancelled_count'] }}</strong></button></li></ul></div>
                     </section>
                 </div>
 
@@ -115,12 +132,12 @@
                             <details class="unit-finance-panel" open>
                                 <summary><span><strong>Ownership & sharing</strong><small>Who owns and who manages this unit</small></span><b>Edit</b></summary>
                                 <form method="POST" action="{{ route('sales.units.financial-profile.update', $selectedUnit) }}" class="unit-finance-form">@csrf @method('PATCH')
-                                    <label><span>Management</span><select name="management_type" required><option value="owner_managed" @selected(old('management_type', $profile->management_type) === 'owner_managed')>I / host own and manage it</option><option value="managed_for_owner" @selected(old('management_type', $profile->management_type) === 'managed_for_owner')>Managed for another owner</option></select></label>
-                                    <label><span>Owner name</span><input name="owner_name" maxlength="120" value="{{ old('owner_name', $profile->owner_name) }}" placeholder="Person or company"></label>
-                                    <label><span>Owner share %</span><input name="owner_share_percentage" type="number" min="0" max="100" step="0.01" value="{{ old('owner_share_percentage', $profile->owner_share_percentage) }}" required></label>
-                                    <label><span>Managing host share %</span><input name="manager_share_percentage" type="number" min="0" max="100" step="0.01" value="{{ old('manager_share_percentage', $profile->manager_share_percentage) }}" required></label>
-                                    <label><span>Calculate shares from</span><select name="share_basis" required><option value="operating_profit" @selected(old('share_basis', $profile->share_basis) === 'operating_profit')>Operating profit after expenses</option><option value="gross_sales" @selected(old('share_basis', $profile->share_basis) === 'gross_sales')>Gross booking sales</option></select></label>
-                                    <label><span>Initial unit / asset value</span><div class="money-input"><span>₱</span><input name="initial_asset_value" inputmode="decimal" value="{{ number_format((float) old('initial_asset_value', $profile->initial_asset_value), 2, '.', ',') }}" required data-accounting-input></div></label>
+                                    <label><span>Management</span><div class="finance-control"><span aria-hidden="true"><i class="fa-solid fa-house"></i></span><select name="management_type" required><option value="owner_managed" @selected(old('management_type', $profile->management_type) === 'owner_managed')>I / host own and manage it</option><option value="managed_for_owner" @selected(old('management_type', $profile->management_type) === 'managed_for_owner')>Managed for another owner</option></select></div></label>
+                                    <label><span>Owner name</span><div class="finance-control"><span aria-hidden="true"><i class="fa-solid fa-user"></i></span><input name="owner_name" maxlength="120" value="{{ old('owner_name', $profile->owner_name) }}" placeholder="Person or company"></div></label>
+                                    <label><span>Owner share %</span><div class="finance-control"><span aria-hidden="true"><i class="fa-solid fa-percent"></i></span><input name="owner_share_percentage" type="number" min="0" max="100" step="0.01" value="{{ old('owner_share_percentage', $profile->owner_share_percentage) }}" required></div></label>
+                                    <label><span>Managing host share %</span><div class="finance-control"><span aria-hidden="true"><i class="fa-solid fa-percent"></i></span><input name="manager_share_percentage" type="number" min="0" max="100" step="0.01" value="{{ old('manager_share_percentage', $profile->manager_share_percentage) }}" required></div></label>
+                                    <label><span>Calculate shares from</span><div class="finance-control"><span aria-hidden="true"><i class="fa-solid fa-scale-balanced"></i></span><select name="share_basis" required><option value="operating_profit" @selected(old('share_basis', $profile->share_basis) === 'operating_profit')>Operating profit after expenses</option><option value="gross_sales" @selected(old('share_basis', $profile->share_basis) === 'gross_sales')>Gross booking sales</option></select></div></label>
+                                    <label><span>Initial unit / asset value</span><div class="money-input finance-control-money"><span>₱</span><input name="initial_asset_value" inputmode="decimal" value="{{ number_format((float) old('initial_asset_value', $profile->initial_asset_value), 2, '.', ',') }}" required data-accounting-input></div></label>
                                     <p>Owner and manager percentages must total 100%. Capital improvements automatically increase the tracked unit value.</p>
                                     <button class="button button-primary button-small" type="submit">Save ownership setup</button>
                                 </form>
@@ -129,13 +146,13 @@
                             <details class="unit-finance-panel">
                                 <summary><span><strong>Add bill, maintenance, or improvement</strong><small>Operating cost, payable, repair, or added value</small></span><b>Add</b></summary>
                                 <form method="POST" action="{{ route('sales.units.costs.store', $selectedUnit) }}" class="unit-finance-form">@csrf
-                                    <label><span>Cost type</span><select name="category" required>@foreach($costCategoryOptions as $value => $label)<option value="{{ $value }}" @selected(old('category') === $value)>{{ $label }}</option>@endforeach</select></label>
-                                    <label><span>Amount</span><div class="money-input"><span>₱</span><input name="amount" inputmode="decimal" value="{{ old('amount') }}" required data-accounting-input></div></label>
-                                    <label><span>Payment status</span><select name="status" required><option value="payable" @selected(old('status', 'payable') === 'payable')>Still payable</option><option value="paid" @selected(old('status') === 'paid')>Already paid</option></select></label>
-                                    <label><span>Cost month / date</span><input name="incurred_on" type="date" value="{{ old('incurred_on', ($reportMonth ?: now())->toDateString()) }}" required></label>
-                                    <label><span>Due date <small>Optional</small></span><input name="due_on" type="date" value="{{ old('due_on') }}"></label>
-                                    <label><span>Vendor <small>Optional</small></span><input name="vendor_name" maxlength="120" value="{{ old('vendor_name') }}"></label>
-                                    <label class="wide"><span>Notes <small>Optional</small></span><input name="notes" maxlength="500" value="{{ old('notes') }}" placeholder="Receipt, repair details, or improvement description"></label>
+                                    <label><span>Cost type</span><div class="finance-control"><span aria-hidden="true"><i class="fa-solid fa-tag"></i></span><select name="category" required>@foreach($costCategoryOptions as $value => $label)<option value="{{ $value }}" @selected(old('category') === $value)>{{ $label }}</option>@endforeach</select></div></label>
+                                    <label><span>Amount</span><div class="money-input finance-control-money"><span>₱</span><input name="amount" inputmode="decimal" value="{{ old('amount') }}" required data-accounting-input></div></label>
+                                    <label><span>Payment status</span><div class="finance-control"><span aria-hidden="true"><i class="fa-solid fa-circle-check"></i></span><select name="status" required><option value="payable" @selected(old('status', 'payable') === 'payable')>Still payable</option><option value="paid" @selected(old('status') === 'paid')>Already paid</option></select></div></label>
+                                    <label><span>Cost month / date</span><div class="finance-control"><span aria-hidden="true"><i class="fa-solid fa-calendar-day"></i></span><input name="incurred_on" type="date" value="{{ old('incurred_on', ($reportMonth ?: now())->toDateString()) }}" required></div></label>
+                                    <label><span>Due date <small>Optional</small></span><div class="finance-control"><span aria-hidden="true"><i class="fa-solid fa-calendar-check"></i></span><input name="due_on" type="date" value="{{ old('due_on') }}"></div></label>
+                                    <label><span>Vendor <small>Optional</small></span><div class="finance-control"><span aria-hidden="true"><i class="fa-solid fa-store"></i></span><input name="vendor_name" maxlength="120" value="{{ old('vendor_name') }}"></div></label>
+                                    <label class="wide"><span>Notes <small>Optional</small></span><div class="finance-control"><span aria-hidden="true"><i class="fa-solid fa-note-sticky"></i></span><input name="notes" maxlength="500" value="{{ old('notes') }}" placeholder="Receipt, repair details, or improvement description"></div></label>
                                     <p class="wide">Routine maintenance and repairs reduce profit. A capital improvement is tracked separately and increases the unit’s value.</p>
                                     <button class="button button-primary button-small" type="submit">Record unit cost</button>
                                 </form>
@@ -144,13 +161,13 @@
                             <details class="unit-finance-panel">
                                 <summary><span><strong>Add monthly payable</strong><small>Amortization, lease, insurance, or recurring dues</small></span><b>Add</b></summary>
                                 <form method="POST" action="{{ route('sales.units.obligations.store', $selectedUnit) }}" class="unit-finance-form">@csrf
-                                    <label><span>Payable name</span><input name="name" maxlength="120" value="{{ old('name') }}" placeholder="Example: Vehicle loan" required></label>
-                                    <label><span>Type</span><select name="category" required>@foreach($obligationCategoryOptions as $value => $label)<option value="{{ $value }}" @selected(old('category', 'amortization') === $value)>{{ $label }}</option>@endforeach</select></label>
-                                    <label><span>Monthly amount</span><div class="money-input"><span>₱</span><input name="monthly_amount" inputmode="decimal" value="{{ old('monthly_amount') }}" required data-accounting-input></div></label>
-                                    <label><span>Start month</span><input name="start_month" type="month" value="{{ old('start_month', now()->format('Y-m')) }}" required></label>
-                                    <label><span>Term in months</span><input name="term_months" type="number" min="1" max="600" list="obligation_term_options" value="{{ old('term_months', 24) }}" required><datalist id="obligation_term_options">@foreach([6,12,24,36,48,60,72] as $term)<option value="{{ $term }}">{{ $term }} months</option>@endforeach</datalist></label>
-                                    <label><span>Due every month on</span><input name="due_day" type="number" min="1" max="28" value="{{ old('due_day', 1) }}" required></label>
-                                    <label class="wide"><span>Notes <small>Optional</small></span><input name="notes" maxlength="500" value="{{ old('notes') }}" placeholder="Lender, account reference, or terms"></label>
+                                    <label><span>Payable name</span><div class="finance-control"><span aria-hidden="true"><i class="fa-solid fa-file-invoice-dollar"></i></span><input name="name" maxlength="120" value="{{ old('name') }}" placeholder="Example: Vehicle loan" required></div></label>
+                                    <label><span>Type</span><div class="finance-control"><span aria-hidden="true"><i class="fa-solid fa-list"></i></span><select name="category" required>@foreach($obligationCategoryOptions as $value => $label)<option value="{{ $value }}" @selected(old('category', 'amortization') === $value)>{{ $label }}</option>@endforeach</select></div></label>
+                                    <label><span>Monthly amount</span><div class="money-input finance-control-money"><span>₱</span><input name="monthly_amount" inputmode="decimal" value="{{ old('monthly_amount') }}" required data-accounting-input></div></label>
+                                    <label><span>Start month</span><div class="finance-control"><span aria-hidden="true"><i class="fa-solid fa-calendar"></i></span><input name="start_month" type="month" value="{{ old('start_month', now()->format('Y-m')) }}" required></div></label>
+                                    <label><span>Term in months</span><div class="finance-control"><span aria-hidden="true"><i class="fa-solid fa-hourglass-half"></i></span><input name="term_months" type="number" min="1" max="600" list="obligation_term_options" value="{{ old('term_months', 24) }}" required><datalist id="obligation_term_options">@foreach([6,12,24,36,48,60,72] as $term)<option value="{{ $term }}">{{ $term }} months</option>@endforeach</datalist></div></label>
+                                    <label><span>Due every month on</span><div class="finance-control"><span aria-hidden="true"><i class="fa-solid fa-calendar-check"></i></span><input name="due_day" type="number" min="1" max="28" value="{{ old('due_day', 1) }}" required></div></label>
+                                    <label class="wide"><span>Notes <small>Optional</small></span><div class="finance-control"><span aria-hidden="true"><i class="fa-solid fa-note-sticky"></i></span><input name="notes" maxlength="500" value="{{ old('notes') }}" placeholder="Lender, account reference, or terms"></div></label>
                                     <p class="wide">Amortization affects cash available to pay bills but is shown separately from operating profit.</p>
                                     <button class="button button-primary button-small" type="submit">Create payment schedule</button>
                                 </form>
@@ -207,4 +224,5 @@
     @if($selectedUnit && $selectedUnitReport)
         @include('sales._unit-profit-report')
     @endif
+    @include('sales._chart-drilldown')
 @endsection

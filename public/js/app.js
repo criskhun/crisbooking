@@ -1370,6 +1370,90 @@
             });
         }
 
+        const salesDrilldownDialog = document.querySelector('[data-sales-drilldown-dialog]');
+        const salesDrilldownDataElement = document.querySelector('[data-sales-drilldown-data]');
+
+        if (salesDrilldownDialog && salesDrilldownDataElement) {
+            let salesDrilldowns = {};
+            try {
+                salesDrilldowns = JSON.parse(salesDrilldownDataElement.textContent || '{}');
+            } catch (error) {
+                salesDrilldowns = {};
+            }
+
+            const setDrilldownText = (selector, value) => {
+                const element = salesDrilldownDialog.querySelector(selector);
+                if (element) element.textContent = value || '—';
+            };
+            const drilldownRows = salesDrilldownDialog.querySelector('[data-sales-drilldown-rows]');
+            const drilldownEmpty = salesDrilldownDialog.querySelector('[data-sales-drilldown-empty]');
+            const openSalesDrilldown = (key) => {
+                const detail = salesDrilldowns[key];
+                if (!detail || !drilldownRows) return false;
+
+                setDrilldownText('[data-sales-drilldown-title]', detail.title);
+                setDrilldownText('[data-sales-drilldown-subtitle]', detail.subtitle);
+                setDrilldownText('[data-sales-drilldown-count]', detail.count_label);
+                setDrilldownText('[data-sales-drilldown-value-label]', detail.value_label);
+                setDrilldownText('[data-sales-drilldown-value]', detail.value);
+                drilldownRows.replaceChildren();
+
+                (detail.rows || []).forEach((booking) => {
+                    const row = document.createElement('tr');
+                    const bookingCell = document.createElement('td');
+                    bookingCell.dataset.label = 'Booking / unit';
+                    const bookingLink = document.createElement('a');
+                    const unit = document.createElement('small');
+                    bookingLink.href = booking.url;
+                    bookingLink.textContent = `#${booking.id}`;
+                    unit.textContent = booking.unit;
+                    bookingCell.append(bookingLink, unit);
+
+                    const customerCell = document.createElement('td');
+                    customerCell.dataset.label = 'Customer / source';
+                    const customer = document.createElement('strong');
+                    const source = document.createElement('small');
+                    customer.textContent = booking.customer;
+                    source.textContent = booking.source;
+                    customerCell.append(customer, source);
+
+                    const scheduleCell = document.createElement('td');
+                    scheduleCell.dataset.label = 'Schedule';
+                    scheduleCell.textContent = booking.schedule;
+                    const statusCell = document.createElement('td');
+                    statusCell.dataset.label = 'Status';
+                    const status = document.createElement('span');
+                    status.className = `booking-status status-${booking.status_key}`;
+                    status.textContent = booking.status;
+                    statusCell.append(status);
+                    const valueCell = document.createElement('td');
+                    valueCell.dataset.label = 'Value';
+                    valueCell.textContent = booking.value;
+                    if (!booking.recognized) valueCell.classList.add('pipeline-value');
+
+                    row.append(bookingCell, customerCell, scheduleCell, statusCell, valueCell);
+                    drilldownRows.append(row);
+                });
+                if (drilldownEmpty) drilldownEmpty.hidden = (detail.rows || []).length > 0;
+
+                if (typeof salesDrilldownDialog.showModal === 'function') salesDrilldownDialog.showModal();
+                else salesDrilldownDialog.setAttribute('open', '');
+                return true;
+            };
+
+            document.querySelectorAll('[data-sales-drilldown-key]').forEach((trigger) => {
+                trigger.addEventListener('click', (event) => {
+                    if (openSalesDrilldown(trigger.dataset.salesDrilldownKey)) event.preventDefault();
+                });
+            });
+            salesDrilldownDialog.querySelectorAll('[data-sales-drilldown-close]').forEach((button) => {
+                button.addEventListener('click', () => salesDrilldownDialog.close());
+            });
+            salesDrilldownDialog.addEventListener('click', (event) => {
+                if (event.target === salesDrilldownDialog) salesDrilldownDialog.close();
+            });
+        }
+
         document.querySelector('[data-copy-calendar-feed]')?.addEventListener('click', async (event) => {
             const input = document.querySelector('[data-calendar-feed-url]');
             if (!input) return;

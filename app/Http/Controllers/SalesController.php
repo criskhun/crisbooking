@@ -9,6 +9,7 @@ use App\Models\UnitObligation;
 use App\Services\UnitFinanceReportService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class SalesController extends Controller
@@ -101,8 +102,19 @@ class SalesController extends Controller
             'value' => $items->sum(fn ($booking) => $booking->revenueAmount()),
             'count' => $items->count(),
         ])->sortByDesc('value')->values();
+        $sourceSales = $confirmed
+            ->groupBy(fn (Booking $booking) => $booking->acquisitionSourceKey())
+            ->map(fn ($items, $source) => [
+                'source' => $source,
+                'label' => $items->first()->acquisitionSourceLabel(),
+                'value' => round((float) $items->sum(fn (Booking $booking) => $booking->revenueAmount()), 2),
+                'count' => $items->count(),
+            ])
+            ->sortByDesc('value')
+            ->values();
         $maxMonthlySale = max(1, (float) $monthlySales->max('value'));
         $maxCategorySale = max(1, (float) $categorySales->max('value'));
+        $maxSourceSale = max(1, (float) $sourceSales->max('value'));
         $recentBookings = $bookings->take(20);
         $selectedUnitReport = $selectedUnit
             ? $financeReports->report($selectedUnit, $reportMonth, $asOfMonth)
@@ -110,14 +122,98 @@ class SalesController extends Controller
         $selectedUnitBookings = $selectedUnit
             ? $bookings->where('unit_id', $selectedUnit->id)->values()
             : collect();
+        $trendStart = now()->startOfMonth()->subMonthsNoOverflow(11);
+        $trendBookings = Booking::query()
+            ->with(['unit:id,host_id,name,category', 'client:id,name', 'financialEntries', 'expenses'])
+            ->whereIn('unit_id', $reportingUnits->pluck('id'))
+            ->where('start_at', '>=', $trendStart)
+            ->where('start_at', '<', now()->startOfMonth()->addMonth())
+            ->latest('start_at')
+            ->get();
+        $chartDrilldowns = collect();
+        foreach ($monthlySales as $monthSale) {
+            $monthBookings = $trendBookings->filter(fn (Booking $booking) => $booking->status === 'confirmed' && $booking->start_at->format('Y-m') === $monthSale['month']
+            );
+            $chartDrilldowns->put('month:'.$monthSale['month'], $this->chartDetail(
+                Carbon::createFromFormat('!Y-m', $monthSale['month'])->format('F Y').' sales',
+                'Confirmed bookings behind this month’s gross-sales bar.',
+                $monthBookings,
+                'Gross sales'
+            ));
+        }
+        foreach ($categorySales as $categorySale) {
+            $chartDrilldowns->put('category:'.$categorySale['category'], $this->chartDetail(
+                str($categorySale['category'])->replace('_', ' ')->title().' sales',
+                'Confirmed bookings in this category for the active report filters.',
+                $confirmed->where('unit.category', $categorySale['category']),
+                'Gross sales'
+            ));
+        }
+        foreach ($sourceSales as $sourceSale) {
+            $chartDrilldowns->put('source:'.$sourceSale['source'], $this->chartDetail(
+                $sourceSale['label'].' sales',
+                'Confirmed bookings acquired from this marketing source.',
+                $confirmed->filter(fn (Booking $booking) => $booking->acquisitionSourceKey() === $sourceSale['source']),
+                'Gross sales'
+            ));
+        }
+        $statusGroups = [
+            'all' => ['All booking statuses', $bookings],
+            'confirmed' => ['Confirmed bookings', $confirmed],
+            'pending' => ['Pending pipeline', $pending],
+            'cancelled' => ['Cancelled and declined bookings', $cancelled],
+        ];
+        foreach ($statusGroups as $statusKey => [$title, $statusBookings]) {
+            $chartDrilldowns->put('status:'.$statusKey, $this->chartDetail(
+                $title,
+                'Booking records behind this status segment for the active report filters.',
+                $statusBookings,
+                $statusKey === 'confirmed' ? 'Gross sales' : 'Recorded value'
+            ));
+        }
 
         return view('sales.index', compact(
             'categories', 'accessibleUnits', 'selectedCategory', 'selectedUnit', 'selectedUnitId',
-            'reportMonth', 'asOfMonth', 'metrics', 'monthlySales', 'categorySales', 'unitReports',
-            'selectedUnitReport', 'selectedUnitBookings', 'maxMonthlySale', 'maxCategorySale', 'recentBookings'
+            'reportMonth', 'asOfMonth', 'metrics', 'monthlySales', 'categorySales', 'sourceSales', 'unitReports',
+            'selectedUnitReport', 'selectedUnitBookings', 'maxMonthlySale', 'maxCategorySale', 'maxSourceSale',
+            'recentBookings', 'chartDrilldowns'
         ) + [
             'costCategoryOptions' => UnitCost::CATEGORY_LABELS,
             'obligationCategoryOptions' => UnitObligation::CATEGORY_LABELS,
         ]);
+    }
+
+    /** @return array<string, mixed> */
+    private function chartDetail(string $title, string $subtitle, Collection $bookings, string $valueLabel): array
+    {
+        $rows = $bookings->sortByDesc('start_at')->values()->map(function (Booking $booking) {
+            $isConfirmed = $booking->status === 'confirmed';
+            $value = $isConfirmed ? $booking->revenueAmount() : (float) $booking->total_amount;
+
+            return [
+                'id' => $booking->id,
+                'url' => route('bookings.show', $booking),
+                'unit' => $booking->unit->name,
+                'customer' => $booking->customerDisplayName(),
+                'source' => $booking->isManualBooking() ? $booking->sourceDisplayLabel() : $booking->acquisitionSourceLabel(),
+                'schedule' => $booking->start_at->format('M j, Y · g:i A').' → '.$booking->end_at->format('M j, Y · g:i A'),
+                'status' => $booking->statusLabel(),
+                'status_key' => $booking->status,
+                'value' => '₱'.number_format($value, 2),
+                'recognized' => $isConfirmed,
+            ];
+        });
+        $totalValue = $bookings->sum(fn (Booking $booking) => $booking->status === 'confirmed' ? $booking->revenueAmount() : (float) $booking->total_amount
+        );
+
+        return [
+            'title' => $title,
+            'subtitle' => $subtitle,
+            'count' => $rows->count(),
+            'count_label' => $rows->count().' '.str('booking')->plural($rows->count()),
+            'value_label' => $valueLabel,
+            'value' => '₱'.number_format($totalValue, 2),
+            'rows' => $rows,
+        ];
     }
 }

@@ -189,6 +189,16 @@ class Booking extends Model
         return $this->sourceLabel().($this->source_details ? ' · '.$this->source_details : '');
     }
 
+    public function acquisitionSourceKey(): string
+    {
+        return $this->isManualBooking() ? ($this->source_channel ?: 'direct') : 'platform';
+    }
+
+    public function acquisitionSourceLabel(): string
+    {
+        return $this->isManualBooking() ? $this->sourceLabel() : 'Davao Rent Zone platform';
+    }
+
     public function customerDisplayName(): string
     {
         if ($this->isManualBooking()) {

@@ -149,6 +149,55 @@ class UnitFinanceReportTest extends TestCase
             ->assertSessionHasErrors('owner_share_percentage');
     }
 
+    public function test_sales_sources_and_every_chart_expose_booking_drill_down_details(): void
+    {
+        $host = User::factory()->host()->create();
+        $unit = $this->unit($host, 'Attribution Test Condo', 'condo');
+        $client = User::factory()->create(['name' => 'Source Test Customer']);
+        foreach ([
+            ['source' => null, 'amount' => 4000, 'name' => null],
+            ['source' => 'airbnb', 'amount' => 3000, 'name' => 'Airbnb Guest'],
+            ['source' => 'agoda', 'amount' => 2000, 'name' => 'Agoda Guest'],
+            ['source' => 'facebook', 'amount' => 1000, 'name' => 'Facebook Guest'],
+        ] as $index => $sale) {
+            Booking::create([
+                'unit_id' => $unit->id,
+                'client_id' => $client->id,
+                'booking_origin' => $sale['source'] ? 'manual' : 'platform',
+                'source_channel' => $sale['source'],
+                'external_customer_name' => $sale['name'],
+                'start_at' => now()->startOfMonth()->addDays($index + 2),
+                'end_at' => now()->startOfMonth()->addDays($index + 3),
+                'status' => 'confirmed',
+                'total_amount' => $sale['amount'],
+                'party_size' => 2,
+            ]);
+        }
+
+        $this->actingAs($host)->get(route('sales.index', [
+            'unit' => $unit->id,
+            'month' => now()->format('Y-m'),
+        ]))->assertOk()
+            ->assertSee('Where sales came from')
+            ->assertSee('Davao Rent Zone platform')
+            ->assertSee('Airbnb')
+            ->assertSee('Agoda')
+            ->assertSee('Facebook / social media')
+            ->assertSee('data-sales-source-chart', false)
+            ->assertSee('data-sales-drilldown-dialog', false)
+            ->assertSee('data-sales-drilldown-key="source:airbnb"', false)
+            ->assertSee('data-sales-drilldown-key="source:agoda"', false)
+            ->assertSee('data-sales-drilldown-key="source:facebook"', false)
+            ->assertSee('data-sales-drilldown-key="category:condo"', false)
+            ->assertSee('data-sales-drilldown-key="status:confirmed"', false)
+            ->assertSee('data-sales-drilldown-key="month:'.now()->format('Y-m').'"', false)
+            ->assertSee('Airbnb sales')
+            ->assertSee('Agoda sales')
+            ->assertSee('Source Test Customer')
+            ->assertSee('finance-control', false)
+            ->assertSee('fa-scale-balanced', false);
+    }
+
     public function test_unit_payable_month_can_only_be_recorded_once(): void
     {
         $host = User::factory()->host()->create();
