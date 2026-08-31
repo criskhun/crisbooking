@@ -107,11 +107,14 @@ class SalesController extends Controller
         $selectedUnitReport = $selectedUnit
             ? $financeReports->report($selectedUnit, $reportMonth, $asOfMonth)
             : null;
+        $selectedUnitBookings = $selectedUnit
+            ? $bookings->where('unit_id', $selectedUnit->id)->values()
+            : collect();
 
         return view('sales.index', compact(
             'categories', 'accessibleUnits', 'selectedCategory', 'selectedUnit', 'selectedUnitId',
             'reportMonth', 'asOfMonth', 'metrics', 'monthlySales', 'categorySales', 'unitReports',
-            'selectedUnitReport', 'maxMonthlySale', 'maxCategorySale', 'recentBookings'
+            'selectedUnitReport', 'selectedUnitBookings', 'maxMonthlySale', 'maxCategorySale', 'recentBookings'
         ) + [
             'costCategoryOptions' => UnitCost::CATEGORY_LABELS,
             'obligationCategoryOptions' => UnitObligation::CATEGORY_LABELS,

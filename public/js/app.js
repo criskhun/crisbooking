@@ -1351,6 +1351,25 @@
             });
         }
 
+        const unitProfitReportDialog = document.querySelector('[data-unit-profit-report-dialog]');
+
+        if (unitProfitReportDialog) {
+            document.querySelector('[data-unit-profit-report-open]')?.addEventListener('click', () => {
+                if (typeof unitProfitReportDialog.showModal === 'function') {
+                    unitProfitReportDialog.showModal();
+                } else {
+                    unitProfitReportDialog.setAttribute('open', '');
+                }
+            });
+            unitProfitReportDialog.querySelectorAll('[data-unit-profit-report-close]').forEach((button) => {
+                button.addEventListener('click', () => unitProfitReportDialog.close());
+            });
+            unitProfitReportDialog.querySelector('[data-unit-profit-report-print]')?.addEventListener('click', () => window.print());
+            unitProfitReportDialog.addEventListener('click', (event) => {
+                if (event.target === unitProfitReportDialog) unitProfitReportDialog.close();
+            });
+        }
+
         document.querySelector('[data-copy-calendar-feed]')?.addEventListener('click', async (event) => {
             const input = document.querySelector('[data-calendar-feed-url]');
             if (!input) return;

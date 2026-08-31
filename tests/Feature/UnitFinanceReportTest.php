@@ -34,6 +34,18 @@ class UnitFinanceReportTest extends TestCase
             'amount' => 1000,
             'status' => 'recorded',
         ]);
+        $pendingBooking = Booking::create([
+            'unit_id' => $unit->id,
+            'client_id' => User::factory()->create()->id,
+            'booking_origin' => 'manual',
+            'source_channel' => 'facebook',
+            'external_customer_name' => 'Pending Facebook Customer',
+            'start_at' => now()->startOfMonth()->addDays(8),
+            'end_at' => now()->startOfMonth()->addDays(9),
+            'status' => 'pending',
+            'total_amount' => 4000,
+            'party_size' => 2,
+        ]);
 
         $this->actingAs($host)->patch(route('sales.units.financial-profile.update', $unit), [
             'management_type' => 'managed_for_owner',
@@ -82,7 +94,16 @@ class UnitFinanceReportTest extends TestCase
             ->assertSee('₱502,000.00')
             ->assertSee('24-month condo amortization')
             ->assertSee('0/24 paid')
-            ->assertSee('₱1,300.00');
+            ->assertSee('₱1,300.00')
+            ->assertSeeText('View & print report')
+            ->assertSee('data-unit-profit-report-dialog', false)
+            ->assertSee('data-unit-profit-report-print', false)
+            ->assertSee('Booking acquisition ledger')
+            ->assertSee('#'.$booking->id)
+            ->assertSee('#'.$pendingBooking->id)
+            ->assertSee('Pending Facebook Customer')
+            ->assertSee('Facebook / social media')
+            ->assertSee('Confirmed booking totals');
 
         $this->actingAs($host)->post(route('sales.units.obligations.payments.store', [$unit, $obligation]), [
             'installment_month' => now()->format('Y-m'),

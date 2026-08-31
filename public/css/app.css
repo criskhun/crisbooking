@@ -1676,6 +1676,153 @@ html[data-color-mode="dark"] .global-loading-overlay { background: rgba(12,18,15
 @media (prefers-reduced-motion: reduce) { .global-loading-spinner, .submit-loading-spinner, .favorite-icon-loading { animation-duration: 1.5s; }.global-loading-overlay { transition: none; } }
 @media (max-width: 520px) { .global-loading-card { padding: 1.25rem; border-radius: 18px; }.global-loading-brand { width: 3rem; height: 3rem; } }
 
+/* Shared form rhythm: labels, controls, helper text, and actions keep the same baseline. */
+.aligned-filter-form {
+    --aligned-filter-label-height: .9rem;
+    --aligned-filter-control-height: 2.65rem;
+    --aligned-filter-helper-height: 1rem;
+    --aligned-filter-gap: .3rem;
+    align-items: start !important;
+}
+.aligned-filter-form > label {
+    display: grid;
+    grid-template-rows: var(--aligned-filter-label-height) var(--aligned-filter-control-height) minmax(var(--aligned-filter-helper-height), auto);
+    align-content: start;
+    min-width: 0;
+    gap: var(--aligned-filter-gap);
+}
+.aligned-filter-form > label > span { align-self: end; }
+.aligned-filter-form > label > input,
+.aligned-filter-form > label > select { width: 100%; min-width: 0; height: var(--aligned-filter-control-height); min-height: var(--aligned-filter-control-height); }
+.aligned-filter-form > label > small { align-self: start; min-height: var(--aligned-filter-helper-height); line-height: var(--aligned-filter-helper-height); }
+.aligned-filter-actions {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+    min-width: max-content;
+    margin-top: calc(var(--aligned-filter-label-height) + var(--aligned-filter-gap));
+}
+.aligned-filter-actions .button { min-height: var(--aligned-filter-control-height); }
+
+:where(.field-row, .verification-grid, .manual-booking-form, .booking-correction-form, .booking-form, .discovery-form, .support-report-form) > .field-group {
+    grid-template-rows: auto auto minmax(1rem, auto);
+    align-content: start;
+}
+
+.calendar-filter-bar { align-items: start; }
+.calendar-filter-bar > label {
+    grid-template-rows: .85rem 2.4rem minmax(.85rem, auto);
+    align-content: start;
+}
+.calendar-filter-bar > label > span { align-self: end; }
+.calendar-filter-bar > .button,
+.calendar-filter-bar > .calendar-filter-reset { margin-top: 1.15rem; }
+.calendar-filter-reset { align-self: center; }
+
+.availability-sticky-filter { align-items: start; }
+.availability-sticky-filter > .availability-field {
+    grid-template-rows: .8rem 2.55rem minmax(.8rem, auto);
+    align-content: start;
+}
+.availability-sticky-filter > .availability-field label { align-self: end; }
+.availability-sticky-filter > .button { margin-top: 1.08rem; }
+.availability-sticky-filter > .availability-filter-title { align-self: start; min-height: 2.55rem; margin-top: 1.08rem; }
+
+.admin-booking-filters { align-items: start; }
+.admin-booking-filters > label {
+    grid-template-rows: 1rem 44px minmax(1rem, auto);
+    align-content: start;
+}
+.admin-booking-filters > label > span { align-self: end; }
+
+.sales-report-filter > div:first-child { align-self: start; padding-top: .15rem; }
+.sales-report-filter { grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(145px, .55fr)) auto; }
+.sales-report-filter .aligned-filter-actions { flex-wrap: wrap; }
+
+.unit-profit-heading-actions { display: flex; align-items: center; gap: .65rem; }
+.unit-profit-heading-actions > small { white-space: nowrap; }
+.unit-profit-heading-actions .button { min-height: 2.25rem; padding: .5rem .75rem; font-size: .56rem; }
+.unit-profit-report-dialog { width: min(1180px, calc(100% - 2rem)); max-width: none; max-height: calc(100vh - 2rem); padding: 0; overflow: auto; border: 0; border-radius: 20px; color: var(--ink); background: var(--surface); box-shadow: 0 30px 90px rgba(10, 34, 27, .3); }
+.unit-profit-report-dialog::backdrop { background: rgba(10, 28, 23, .62); backdrop-filter: blur(8px); }
+.unit-profit-print-sheet { display: grid; gap: 1rem; padding: clamp(1rem, 3vw, 2rem); }
+.unit-profit-print-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--row-line); }
+.unit-profit-print-header h2 { margin: .25rem 0 .15rem; font: 800 clamp(1.35rem, 3vw, 2.15rem) Manrope; letter-spacing: -.04em; }
+.unit-profit-print-header p { margin: 0; color: var(--muted); font-size: .68rem; }
+.unit-profit-report-actions { display: flex; gap: .55rem; }
+.unit-profit-report-meta { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow: hidden; border: 1px solid var(--row-line); border-radius: 12px; background: var(--row-line); gap: 1px; }
+.unit-profit-report-meta > div { display: grid; gap: .18rem; padding: .75rem; background: var(--surface-soft); }
+.unit-profit-report-meta small,
+.unit-profit-report-summary small { color: var(--muted); font-size: .5rem; text-transform: uppercase; letter-spacing: .06em; }
+.unit-profit-report-meta strong { font-size: .63rem; }
+.unit-profit-report-summary { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .65rem; }
+.unit-profit-report-summary article { display: grid; align-content: start; gap: .2rem; min-height: 88px; padding: .75rem; border: 1px solid var(--row-line); border-radius: 11px; background: var(--surface-soft); }
+.unit-profit-report-summary strong { margin-top: auto; font: 800 .78rem Manrope; }
+.unit-profit-report-summary span { color: var(--muted); font-size: .48rem; }
+.unit-profit-booking-section { display: grid; gap: .8rem; padding-top: .35rem; }
+.unit-profit-report-section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; }
+.unit-profit-report-section-heading h3 { margin: .2rem 0 0; font: 800 1rem Manrope; }
+.unit-profit-report-section-heading > strong { color: var(--forest); font-size: .62rem; }
+.unit-profit-report-table-wrap { overflow-x: auto; border: 1px solid var(--row-line); border-radius: 12px; }
+.unit-profit-report-table { width: 100%; min-width: 940px; border-collapse: collapse; }
+.unit-profit-report-table th,
+.unit-profit-report-table td { padding: .72rem .68rem; border-bottom: 1px solid var(--row-line); font-size: .56rem; text-align: left; vertical-align: middle; }
+.unit-profit-report-table thead th { color: var(--muted); background: var(--surface-soft); font-size: .47rem; text-transform: uppercase; letter-spacing: .05em; }
+.unit-profit-report-table tbody td:nth-last-child(-n+3),
+.unit-profit-report-table thead th:nth-last-child(-n+3),
+.unit-profit-report-table tfoot th:nth-last-child(-n+3) { text-align: right; }
+.unit-profit-report-table td:first-child,
+.unit-profit-report-table td:nth-child(2),
+.unit-profit-report-table td:nth-child(3) { display: table-cell; }
+.unit-profit-report-table td > strong,
+.unit-profit-report-table td > small,
+.unit-profit-report-table td > a { display: block; }
+.unit-profit-report-table td > a { color: var(--forest); font-weight: 900; }
+.unit-profit-report-table td > small { margin-top: .12rem; color: var(--muted); font-size: .47rem; }
+.unit-profit-report-table .booking-status { width: max-content; }
+.unit-profit-report-table tfoot th { border-bottom: 0; color: var(--ink); background: var(--surface-tint); font-size: .56rem; }
+.unit-profit-report-empty { padding: 2rem !important; color: var(--muted); text-align: center !important; }
+.unit-profit-report-note { margin: 0; color: var(--muted); font-size: .55rem; line-height: 1.5; }
+
+@media (max-width: 900px) {
+    .unit-profit-report-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .unit-profit-report-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 741px) and (max-width: 1100px) {
+    .sales-report-filter { grid-template-columns: 1fr 1fr 1fr; }
+    .sales-report-filter > div:first-child { grid-column: 1 / -1; }
+    .sales-report-filter > .aligned-filter-actions { grid-column: auto; }
+}
+@media (max-width: 740px) {
+    .sales-report-filter { grid-template-columns: minmax(0, 1fr); }
+    .sales-report-filter > div:first-child { grid-column: auto; }
+    .sales-report-filter .aligned-filter-actions { width: 100%; margin-top: 0; }
+    .sales-report-filter .aligned-filter-actions .button { flex: 1; }
+    .unit-profit-heading-actions { align-items: flex-end; flex-direction: column; }
+    .unit-profit-print-header { flex-direction: column; }
+    .unit-profit-report-actions { width: 100%; }
+    .unit-profit-report-actions .button { flex: 1; }
+    .unit-profit-report-dialog { width: calc(100% - 1rem); max-height: calc(100vh - 1rem); border-radius: 14px; }
+}
+
+@media print {
+    @page { size: A4 landscape; margin: 10mm; }
+    body * { visibility: hidden !important; }
+    .unit-profit-report-dialog[open],
+    .unit-profit-report-dialog[open] * { visibility: visible !important; }
+    .unit-profit-report-dialog[open] { position: absolute; inset: 0; width: 100%; max-height: none; margin: 0; overflow: visible; border-radius: 0; color: #17231f; background: white; box-shadow: none; }
+    .unit-profit-print-sheet { gap: 8px; padding: 0; }
+    .report-print-hidden { display: none !important; }
+    .unit-profit-report-summary { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; }
+    .unit-profit-report-summary article { min-height: 58px; padding: 7px; break-inside: avoid; }
+    .unit-profit-report-meta > div { padding: 7px; }
+    .unit-profit-report-table-wrap { overflow: visible; }
+    .unit-profit-report-table { min-width: 0; }
+    .unit-profit-report-table th,
+    .unit-profit-report-table td { padding: 5px; font-size: 8px; }
+    .unit-profit-report-table a { color: #17231f; text-decoration: none; }
+    .unit-profit-report-table tr { break-inside: avoid; }
+}
+
 @media (max-width: 960px) {
     .admin-application-layout { grid-template-columns: 1fr; }.application-review-panel { position: static; }.application-admin-summary { grid-template-columns: repeat(2, 1fr); }
 }

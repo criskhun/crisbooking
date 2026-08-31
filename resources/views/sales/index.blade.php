@@ -12,13 +12,13 @@
                 @if (session('status'))<div class="flash-message account-alert" role="status">{{ session('status') }}</div>@endif
                 @if ($errors->any())<div class="oauth-error account-alert" role="alert"><strong>The financial record could not be saved.</strong><br>{{ $errors->first() }}</div>@endif
 
-                <form class="sales-report-filter" method="GET" action="{{ route('sales.index') }}">
+                <form class="sales-report-filter aligned-filter-form" method="GET" action="{{ route('sales.index') }}">
                     <div><span class="eyebrow">Reporting scope</span><h2>{{ $reportMonth ? $reportMonth->format('F Y') : 'All-time business report' }}</h2></div>
                     <label><span>Unit</span><select name="unit"><option value="">All units</option>@foreach($accessibleUnits->when($selectedCategory, fn ($units) => $units->where('category', $selectedCategory)) as $filterUnit)<option value="{{ $filterUnit->id }}" @selected($selectedUnitId === $filterUnit->id)>{{ $filterUnit->name }}</option>@endforeach</select></label>
                     <label><span>Category</span><select name="category"><option value="">All categories</option>@foreach($categories as $tabCategory)<option value="{{ $tabCategory }}" @selected($selectedCategory === $tabCategory)>{{ str($tabCategory)->replace('_', ' ')->title() }}</option>@endforeach</select></label>
                     <label><span>Month</span><input name="month" type="month" value="{{ $reportMonth?->format('Y-m') }}"><small>Leave empty for all time.</small></label>
-                    <button class="button button-primary button-small" type="submit">Apply report</button>
-                    @if($selectedUnit || $selectedCategory || $reportMonth)<a class="button button-ghost button-small" href="{{ route('sales.index') }}">Clear</a>@endif
+                    <div class="aligned-filter-actions"><button class="button button-primary button-small" type="submit">Apply report</button>
+                    @if($selectedUnit || $selectedCategory || $reportMonth)<a class="button button-ghost button-small" href="{{ route('sales.index') }}">Clear</a>@endif</div>
                 </form>
 
                 <div class="sales-metric-grid sales-profit-metrics">
@@ -31,7 +31,7 @@
                 </div>
 
                 <section class="sales-unit-report-card">
-                    <div class="sales-chart-heading"><div><span class="eyebrow">Unit performance</span><h2>Profitability by unit</h2></div><small>{{ $reportMonth ? $reportMonth->format('M Y') : 'All recorded activity' }}</small></div>
+                    <div class="sales-chart-heading"><div><span class="eyebrow">Unit performance</span><h2>Profitability by unit</h2></div><div class="unit-profit-heading-actions"><small>{{ $reportMonth ? $reportMonth->format('M Y') : 'All recorded activity' }}</small>@if($selectedUnitReport)<button class="button button-ghost button-small" type="button" data-unit-profit-report-open>View & print report</button>@endif</div></div>
                     <div class="unit-profit-table">
                         <div class="unit-profit-head"><span>Unit</span><span>Gross sales</span><span>Operating costs</span><span>Profit</span><span>Owner share</span><span>Manager share</span><span>Due</span></div>
                         @forelse($unitReports as $report)
@@ -204,4 +204,7 @@
             </section>
         </main>
     </div>
+    @if($selectedUnit && $selectedUnitReport)
+        @include('sales._unit-profit-report')
+    @endif
 @endsection
