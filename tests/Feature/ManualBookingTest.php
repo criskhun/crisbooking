@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class ManualBookingTest extends TestCase
@@ -252,6 +253,41 @@ class ManualBookingTest extends TestCase
             ->assertOk()
             ->assertJson(['user_id' => $host->id])
             ->assertJsonStructure(['csrf_token']);
+    }
+
+    public function test_outside_booking_does_not_fail_during_an_offline_sync_schema_rollout(): void
+    {
+        $host = User::factory()->host()->create();
+        $unit = $this->unit($host, 'Rolling Deployment Condo', 'condo');
+        $migration = require database_path('migrations/2026_08_31_040000_add_offline_sync_id_to_bookings_table.php');
+        $migration->down();
+
+        try {
+            $this->assertFalse(Schema::hasColumn('bookings', 'offline_sync_id'));
+
+            $response = $this->actingAs($host)->postJson(route('calendar.manual-bookings.store'), [
+                'unit_id' => $unit->id,
+                'start_date' => today()->addDays(18)->toDateString(),
+                'start_time' => '14:00',
+                'duration_unit' => 'day',
+                'duration_quantity' => 1,
+                'source_channel' => 'direct',
+                'external_customer_name' => 'Deployment Window Customer',
+                'total_amount' => 2800,
+                'payment_option' => 'unpaid',
+                'party_size' => 1,
+                'offline_sync_id' => 'aef707d7-64c2-4fb5-8b2e-e5680da184f8',
+            ]);
+
+            $response->assertOk()->assertJson(['replayed' => false]);
+            $this->assertDatabaseHas('bookings', [
+                'unit_id' => $unit->id,
+                'booking_origin' => 'manual',
+                'external_customer_name' => 'Deployment Window Customer',
+            ]);
+        } finally {
+            $migration->up();
+        }
     }
 
     public function test_one_day_outside_condo_and_car_bookings_use_real_times_and_span_two_calendar_dates(): void

@@ -67,6 +67,9 @@ class ProgressiveWebAppTest extends TestCase
         $this->assertStringContainsString('savedCalendarResponse(request)', $serviceWorker);
         $this->assertStringContainsString('indexedDB.open(databaseName, 1)', $offlineWorkspace);
         $this->assertStringContainsString("formData.set('offline_sync_id', syncId)", $offlineWorkspace);
+        $this->assertStringContainsString('submitManualBookingOnline(manualForm)', $offlineWorkspace);
+        $this->assertStringContainsString('if (response.status >= 500)', $offlineWorkspace);
+        $this->assertStringContainsString('saved safely and will retry automatically', $offlineWorkspace);
         $this->assertStringContainsString('syncOperations({retryErrors: true})', $offlineWorkspace);
         $this->assertStringContainsString('Open saved calendar', $offlinePage);
         $this->assertStringNotContainsString('never stored for offline viewing', $offlinePage);

@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -54,9 +55,12 @@ class ManualBookingController extends Controller
         ]);
 
         $actor = $request->user();
+        // Keep ordinary online entries working during a rolling deployment where
+        // application code may reach a server just before its newest migration.
+        $supportsOfflineSync = Schema::hasColumn('bookings', 'offline_sync_id');
         $wasReplayed = false;
-        $booking = DB::transaction(function () use ($validated, $actor, &$wasReplayed) {
-            if (! empty($validated['offline_sync_id'])) {
+        $booking = DB::transaction(function () use ($validated, $actor, $supportsOfflineSync, &$wasReplayed) {
+            if ($supportsOfflineSync && ! empty($validated['offline_sync_id'])) {
                 $existingBooking = Booking::query()
                     ->where('offline_sync_id', $validated['offline_sync_id'])
                     ->lockForUpdate()
@@ -140,10 +144,9 @@ class ManualBookingController extends Controller
             $totalAmount = round((float) $validated['total_amount'], 2);
             $externalCustomerName = trim((string) ($validated['external_customer_name'] ?? ''));
 
-            $booking = $unit->bookings()->create([
+            $bookingAttributes = [
                 'client_id' => $unit->host_id,
                 'booked_by_user_id' => $actor->id,
-                'offline_sync_id' => $validated['offline_sync_id'] ?? null,
                 'booking_origin' => 'manual',
                 'source_channel' => $validated['source_channel'],
                 'source_details' => $validated['source_details'] ?? null,
@@ -164,7 +167,11 @@ class ManualBookingController extends Controller
                 'affiliate_commission_amount' => $commissionPercentage !== null
                     ? round($totalAmount * (float) $commissionPercentage / 100, 2)
                     : null,
-            ]);
+            ];
+            if ($supportsOfflineSync) {
+                $bookingAttributes['offline_sync_id'] = $validated['offline_sync_id'] ?? null;
+            }
+            $booking = $unit->bookings()->create($bookingAttributes);
 
             $paymentOption = $validated['payment_option'] ?? 'unpaid';
             $initialPayment = match ($paymentOption) {

@@ -214,6 +214,11 @@
                     throw new Error('Your session expired. Sign in again to sync saved bookings.');
                 }
 
+                if (response.status >= 500) {
+                    if (queueStatus) queueStatus.textContent = 'The server is temporarily unavailable. Your saved bookings are still waiting safely on this device.';
+                    break;
+                }
+
                 const result = await response.json().catch(() => ({}));
                 const validationMessage = Object.values(result.errors || {}).flat()[0];
                 operation.status = 'error';
@@ -240,8 +245,7 @@
         }
     };
 
-    const queueManualBooking = async (form) => {
-        const syncId = generateSyncId();
+    const manualBookingOperation = (form, syncId = generateSyncId()) => {
         const formData = new FormData(form);
         formData.set('offline_sync_id', syncId);
         const selectedUnit = form.querySelector('[name="unit_id"]')?.selectedOptions?.[0];
@@ -262,33 +266,81 @@
                 customer: String(formData.get('external_customer_name') || '').trim(),
             },
         };
-        await saveOperation(operation);
+
+        return {formData, operation};
+    };
+
+    const resetManualBookingForm = async (form) => {
         form.reset();
         form.querySelector('[data-manual-booking-unit]')?.dispatchEvent(new Event('change', {bubbles: true}));
         form.querySelector('[data-manual-booking-duration-unit]')?.dispatchEvent(new Event('change', {bubbles: true}));
         await renderQueue();
-        showSyncNotice('Outside booking saved on this device. It will sync automatically after reconnecting.');
+    };
+
+    const queueManualBooking = async (form, operation = manualBookingOperation(form).operation, message = 'Outside booking saved on this device. It will sync automatically after reconnecting.') => {
+        await saveOperation(operation);
+        await resetManualBookingForm(form);
+        showSyncNotice(message);
+    };
+
+    const submitManualBookingOnline = async (form) => {
+        const {formData, operation} = manualBookingOperation(form);
+        let response;
+        try {
+            response = await fetch(form.action, {
+                method: (form.method || 'POST').toUpperCase(),
+                body: formData,
+                credentials: 'same-origin',
+                headers: {'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'},
+            });
+        } catch (error) {
+            await queueManualBooking(form, operation, 'The connection was interrupted, so this outside booking was saved on this device and will retry automatically.');
+            return false;
+        }
+
+        const result = await response.json().catch(() => ({}));
+        if (response.ok) {
+            window.location.assign(result.redirect_url || window.location.href);
+            return true;
+        }
+
+        if (response.status >= 500) {
+            await queueManualBooking(form, operation, 'The server had a temporary problem, so this outside booking was saved safely and will retry automatically.');
+            return false;
+        }
+
+        if ([401, 419].includes(response.status)) {
+            showSyncNotice('Your session expired. Sign in again, then submit this outside booking.', true);
+            return false;
+        }
+
+        const validationMessage = Object.values(result.errors || {}).flat()[0];
+        showSyncNotice(validationMessage || result.message || 'The server could not accept this outside booking. Review the form and try again.', true);
+        return false;
     };
 
     manualForm?.addEventListener('submit', async (event) => {
-        if (manualForm.dataset.offlineSubmitBypass === 'true') {
-            delete manualForm.dataset.offlineSubmitBypass;
-            return;
-        }
-
         event.preventDefault();
         const submitter = event.submitter;
-        const online = await window.DavaoRentZoneConnectivity?.check?.();
-        if (online) {
-            manualForm.dataset.offlineSubmitBypass = 'true';
-            manualForm.requestSubmit(submitter);
-            return;
+        const originalSubmitHtml = submitter?.innerHTML;
+        if (submitter) {
+            submitter.disabled = true;
+            submitter.setAttribute('aria-busy', 'true');
+            submitter.textContent = 'Saving outside booking…';
         }
 
         try {
-            await queueManualBooking(manualForm);
+            const online = await window.DavaoRentZoneConnectivity?.check?.();
+            if (online) await submitManualBookingOnline(manualForm);
+            else await queueManualBooking(manualForm);
         } catch (error) {
-            showSyncNotice('This device could not save the offline booking. Keep this page open and try again.', true);
+            showSyncNotice('This outside booking could not be submitted or saved on this device. Keep this page open and try again.', true);
+        } finally {
+            if (submitter?.isConnected) {
+                submitter.disabled = false;
+                submitter.removeAttribute('aria-busy');
+                if (originalSubmitHtml !== undefined) submitter.innerHTML = originalSubmitHtml;
+            }
         }
     });
 
