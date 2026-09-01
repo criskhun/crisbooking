@@ -2531,6 +2531,23 @@
             let highlightedGuideTarget = null;
             try { guideSteps = JSON.parse(pageGuide.querySelector('[data-guide-steps]')?.textContent || '[]'); } catch (error) {}
 
+            const findGuideTarget = (selector) => Array.from(document.querySelectorAll(selector)).find((candidate) => {
+                const style = window.getComputedStyle(candidate);
+                const bounds = candidate.getBoundingClientRect();
+                return style.display !== 'none'
+                    && style.visibility !== 'hidden'
+                    && bounds.width > 0
+                    && bounds.height > 0
+                    && bounds.right > 0
+                    && bounds.left < window.innerWidth;
+            }) || null;
+
+            guideSteps = guideSteps.filter((step) => findGuideTarget(step.selector));
+            const availableGuideSelectors = new Set(guideSteps.map((step) => step.selector));
+            pageGuide.querySelectorAll('[data-guide-focus]').forEach((button) => {
+                button.closest('li').hidden = !availableGuideSelectors.has(button.dataset.guideFocus);
+            });
+
             const stopGuide = () => {
                 highlightedGuideTarget?.classList.remove('guide-demo-highlight');
                 highlightedGuideTarget = null;
@@ -2542,7 +2559,7 @@
                 let nextIndex = index;
                 let target = null;
                 while (nextIndex < guideSteps.length && !target) {
-                    target = document.querySelector(guideSteps[nextIndex].selector);
+                    target = findGuideTarget(guideSteps[nextIndex].selector);
                     if (!target) nextIndex += 1;
                 }
                 if (!target || nextIndex >= guideSteps.length) {
@@ -2569,7 +2586,9 @@
                 const index = guideSteps.findIndex((step) => step.selector === button.dataset.guideFocus);
                 showGuideStep(Math.max(0, index));
             }));
-            pageGuide.querySelector('[data-guide-start]')?.addEventListener('click', () => {
+            const startButton = pageGuide.querySelector('[data-guide-start]');
+            if (!guideSteps.length && startButton) startButton.hidden = true;
+            startButton?.addEventListener('click', () => {
                 dialog.close();
                 showGuideStep(0);
             });
