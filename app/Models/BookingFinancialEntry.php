@@ -23,7 +23,7 @@ class BookingFinancialEntry extends Model
         'other_penalty' => 'Other penalty or charge',
     ];
 
-    protected $fillable = ['booking_id', 'recorded_by_user_id', 'kind', 'category', 'amount', 'notes', 'occurred_at'];
+    protected $fillable = ['booking_id', 'recorded_by_user_id', 'financial_account_id', 'kind', 'category', 'amount', 'notes', 'occurred_at'];
 
     protected function casts(): array
     {
@@ -38,6 +38,25 @@ class BookingFinancialEntry extends Model
     public function recordedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recorded_by_user_id');
+    }
+
+    public function financialAccount(): BelongsTo
+    {
+        return $this->belongsTo(FinancialAccount::class);
+    }
+
+    public function movesCash(): bool
+    {
+        return in_array($this->kind, ['payment', 'deposit', 'deposit_refund'], true);
+    }
+
+    public function cashDirection(): ?string
+    {
+        return match ($this->kind) {
+            'payment', 'deposit' => 'in',
+            'deposit_refund' => 'out',
+            default => null,
+        };
     }
 
     public function revisions(): HasMany

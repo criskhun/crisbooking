@@ -83,7 +83,24 @@
                                         <a href="{{ route('bookings.show', $requestExpense->booking) }}">Open booking</a>
                                     </div>
                                     @if($requestExpense->status === 'completed')
-                                        <form method="POST" action="{{ route('bookings.expenses.status', [$requestExpense->booking, $requestExpense]) }}" enctype="multipart/form-data" class="host-service-pay-form">@csrf @method('PATCH')<input type="hidden" name="status" value="paid"><label><span>Proof of payment</span><input type="file" name="payment_proof" accept="image/jpeg,image/png,image/webp,application/pdf" required></label><button class="button button-primary button-small" type="submit">Attach proof & mark paid</button></form>
+                                        @php
+                                            $servicePaymentAccounts = $financialAccountsByHost->get(
+                                                $requestExpense->booking->unit->host_id,
+                                                collect()
+                                            );
+                                        @endphp
+                                        <form method="POST" action="{{ route('bookings.expenses.status', [$requestExpense->booking, $requestExpense]) }}" enctype="multipart/form-data" class="host-service-pay-form">
+                                            @csrf
+                                            @method('PATCH')
+                                            <input type="hidden" name="status" value="paid">
+                                            <label><span>Proof of payment</span><input type="file" name="payment_proof" accept="image/jpeg,image/png,image/webp,application/pdf" required></label>
+                                            @if($servicePaymentAccounts->isNotEmpty())
+                                                <label><span>Paid from account</span><select name="financial_account_id" required><option value="">Choose an account</option>@foreach($servicePaymentAccounts as $financialAccount)<option value="{{ $financialAccount->id }}">{{ $financialAccount->displayLabel() }}</option>@endforeach</select></label>
+                                                <button class="button button-primary button-small" type="submit">Attach proof & mark paid</button>
+                                            @else
+                                                <a class="financial-account-required" href="{{ route('accounting.index').'#financial-accounts' }}"><x-fa-icon name="plus" /> Add an account before paying</a>
+                                            @endif
+                                        </form>
                                     @endif
                                 </div>
                             </article>

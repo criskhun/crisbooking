@@ -7,6 +7,7 @@ use App\Models\BookingExpense;
 use App\Models\ServiceProviderApplication;
 use App\Models\Unit;
 use App\Services\AppNotificationService;
+use App\Services\FinancialAccountSelection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -105,14 +106,19 @@ class BookingExpenseController extends Controller
         return back()->with('status', $createdExpenses->count().' '.str('expense')->plural($createdExpenses->count()).' recorded'.($createdExpenses->whereNotNull('provider_user_id')->isNotEmpty() ? '; assigned providers were notified.' : '.'));
     }
 
-    public function updateStatus(Request $request, Booking $booking, BookingExpense $expense, AppNotificationService $notifications): RedirectResponse
+    public function updateStatus(Request $request, Booking $booking, BookingExpense $expense, AppNotificationService $notifications, FinancialAccountSelection $accountSelection): RedirectResponse
     {
         abort_unless($expense->booking_id === $booking->id, 404);
         $this->authorizeManager($request, $booking);
         $validated = $request->validate([
             'status' => ['required', Rule::in(['recorded', 'assigned', 'completed', 'paid', 'cancelled'])],
             'payment_proof' => ['required_if:status,paid', 'nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
+            'financial_account_id' => ['nullable', 'integer'],
         ]);
+
+        $financialAccount = $validated['status'] === 'paid'
+            ? $accountSelection->resolve($booking->unit->host()->firstOrFail(), $validated['financial_account_id'] ?? null)
+            : null;
 
         if ($validated['status'] === 'paid') {
             abort_unless($expense->provider_user_id && $expense->status === 'completed', 422, 'A provider must complete this task before it can be marked paid.');
@@ -126,7 +132,7 @@ class BookingExpenseController extends Controller
         $proofPath = $proof?->store('booking-expenses/'.$expense->id.'/payment', 'local');
 
         try {
-            DB::transaction(function () use ($expense, $validated, $proof, $proofPath) {
+            DB::transaction(function () use ($expense, $validated, $proof, $proofPath, $financialAccount) {
                 $locked = BookingExpense::query()->lockForUpdate()->findOrFail($expense->id);
                 $status = $validated['status'];
                 abort_if($locked->status === 'payment_received', 422, 'This task is already closed.');
@@ -140,6 +146,7 @@ class BookingExpenseController extends Controller
                     'status' => $status,
                     'completed_at' => in_array($status, ['completed', 'paid'], true) ? ($locked->completed_at ?: now()) : null,
                     'paid_at' => $status === 'paid' ? now() : null,
+                    'financial_account_id' => $status === 'paid' ? $financialAccount?->id : $locked->financial_account_id,
                     'payment_proof_path' => $status === 'paid' ? $proofPath : $locked->payment_proof_path,
                     'payment_proof_name' => $status === 'paid' ? $proof?->getClientOriginalName() : $locked->payment_proof_name,
                 ]);

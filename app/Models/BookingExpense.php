@@ -28,7 +28,7 @@ class BookingExpense extends Model
     ];
 
     protected $fillable = [
-        'booking_id', 'recorded_by_user_id', 'provider_user_id', 'service_unit_id', 'service_provider_application_id',
+        'booking_id', 'recorded_by_user_id', 'financial_account_id', 'provider_user_id', 'service_unit_id', 'service_provider_application_id',
         'category', 'vendor_name', 'amount', 'status', 'notes', 'completion_images',
         'payment_proof_path', 'payment_proof_name', 'scheduled_at', 'completed_at', 'paid_at',
         'payment_received_at',
@@ -54,6 +54,11 @@ class BookingExpense extends Model
     public function recordedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recorded_by_user_id');
+    }
+
+    public function financialAccount(): BelongsTo
+    {
+        return $this->belongsTo(FinancialAccount::class);
     }
 
     public function provider(): BelongsTo

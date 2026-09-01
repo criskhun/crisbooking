@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AffiliatePartnership;
 use App\Models\Booking;
 use App\Models\BookingExpense;
+use App\Models\FinancialAccount;
 use App\Models\Inquiry;
 use App\Models\ServiceProviderApplication;
 use App\Models\Unit;
@@ -30,7 +31,7 @@ class BookingController extends Controller
             || ($booking->isManualBooking() && $booking->affiliatePartnership()->where('marketer_id', $request->user()->id)->exists());
 
         abort_unless($canView, 403);
-        $booking->load(['unit.host', 'unit.images', 'unit.rates', 'client', 'bookedBy', 'inquiry', 'affiliatePartnership.marketer', 'detailRevisions.editedBy', 'extensions.createdBy', 'extensions.chargeEntry', 'extensions.paymentEntry', 'reviews', 'financialEntries.recordedBy', 'financialEntries.revisions.editedBy', 'expenses.recordedBy', 'expenses.provider', 'expenses.serviceUnit', 'expenses.providerApplication']);
+        $booking->load(['unit.host', 'unit.images', 'unit.rates', 'client', 'bookedBy', 'inquiry', 'affiliatePartnership.marketer', 'detailRevisions.editedBy', 'extensions.createdBy', 'extensions.chargeEntry', 'extensions.paymentEntry', 'reviews', 'financialEntries.recordedBy', 'financialEntries.financialAccount', 'financialEntries.revisions.editedBy', 'expenses.recordedBy', 'expenses.financialAccount', 'expenses.provider', 'expenses.serviceUnit', 'expenses.providerApplication']);
         $canManageExpenses = $request->user()->is_admin || $booking->unit->host_id === $request->user()->id;
         $canCorrectManualBooking = $booking->isManualBooking() && $canManageExpenses;
         $manualBookingPartnerships = $canCorrectManualBooking
@@ -66,6 +67,9 @@ class BookingController extends Controller
                 ->get()
             : collect();
         $expenseCategories = BookingExpense::categoryOptions($booking->unit->category);
+        $financialAccounts = $canManageExpenses
+            ? FinancialAccount::query()->where('user_id', $booking->unit->host_id)->where('is_active', true)->orderBy('name')->get()
+            : collect();
 
         $googleCalendarUrl = 'https://calendar.google.com/calendar/render?'.http_build_query([
             'action' => 'TEMPLATE',
@@ -84,6 +88,7 @@ class BookingController extends Controller
             'manualBookingCustomerSuggestions',
             'providerApplications',
             'expenseCategories',
+            'financialAccounts',
         ));
     }
 

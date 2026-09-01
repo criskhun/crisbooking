@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\BookingExpense;
+use App\Models\FinancialAccount;
 use App\Models\ServiceProviderApplication;
 use App\Models\User;
 use App\Services\AppNotificationService;
@@ -38,6 +39,7 @@ class ServiceWorkController extends Controller
                 fn ($units) => $units->where('host_id', $request->user()->id),
             ));
         $canManageHostRequests = $request->user()->is_admin || $request->user()->isHost();
+        $financialAccountsByHost = collect();
         $hostRequests = collect();
         $hostDashboard = null;
         if ($canManageHostRequests) {
@@ -63,6 +65,12 @@ class ServiceWorkController extends Controller
                 ->latest('scheduled_at')
                 ->latest()
                 ->get();
+            $financialAccountsByHost = FinancialAccount::query()
+                ->whereIn('user_id', $hostRequests->pluck('booking.unit.host_id')->unique())
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get()
+                ->groupBy('user_id');
             $pendingApplicationCount = ServiceProviderApplication::query()
                 ->where('status', 'pending')
                 ->when(! $request->user()->is_admin, fn ($query) => $query->where('host_id', $request->user()->id))
@@ -119,6 +127,7 @@ class ServiceWorkController extends Controller
         return view('service-work.index', compact(
             'assignments', 'metrics', 'myApplications', 'receivedApplications', 'availableHosts',
             'hostRequests', 'hostDashboard', 'hostStatusOptions', 'selectedHostStatuses',
+            'financialAccountsByHost',
         ));
     }
 

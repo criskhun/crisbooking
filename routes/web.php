@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\AdminBookingController;
 use App\Http\Controllers\AdminHostApplicationController;
 use App\Http\Controllers\AdminSupportReportController;
@@ -22,6 +23,7 @@ use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\CalendarIntegrationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FavoriteUnitController;
+use App\Http\Controllers\FinancialAccountController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HostApplicationController;
 use App\Http\Controllers\HostStorefrontController;
@@ -166,6 +168,10 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     Route::post('/bookings/{booking}/reviews', [ReviewController::class, 'booking'])->name('bookings.reviews.store');
     Route::get('/workspace/clients', [WorkspaceController::class, 'clients'])->name('workspace.clients');
     Route::get('/sales', [SalesController::class, 'index'])->name('sales.index');
+    Route::get('/accounting', [AccountingController::class, 'index'])->name('accounting.index');
+    Route::patch('/accounting/transactions/account', [AccountingController::class, 'assign'])->name('accounting.transactions.assign');
+    Route::post('/accounting/accounts', [FinancialAccountController::class, 'store'])->name('accounting.accounts.store');
+    Route::patch('/accounting/accounts/{financialAccount}', [FinancialAccountController::class, 'update'])->name('accounting.accounts.update');
     Route::patch('/sales/units/{unit}/financial-profile', [UnitFinancialProfileController::class, 'update'])->name('sales.units.financial-profile.update');
     Route::post('/sales/units/{unit}/costs', [UnitCostController::class, 'store'])->name('sales.units.costs.store');
     Route::patch('/sales/units/{unit}/costs/{cost}/paid', [UnitCostController::class, 'markPaid'])->name('sales.units.costs.paid');

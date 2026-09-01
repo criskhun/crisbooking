@@ -20,6 +20,7 @@ class BookingExpenseTest extends TestCase
     {
         Storage::fake('local');
         $host = User::factory()->host()->create();
+        $account = $this->financialAccount($host);
         $client = User::factory()->create();
         $provider = User::factory()->create(['name' => 'Davao Cleaning Partner']);
         $condo = $this->unit($host, 'Expense Test Condo', 'condo');
@@ -125,6 +126,7 @@ class BookingExpenseTest extends TestCase
         $this->actingAs($host)->patch(route('bookings.expenses.status', [$booking, $expense]), [
             'status' => 'paid',
             'payment_proof' => UploadedFile::fake()->image('provider-transfer.jpg'),
+            'financial_account_id' => $account->id,
         ])->assertRedirect();
         $expense->refresh();
         $this->assertSame('paid', $expense->status);
@@ -223,6 +225,7 @@ class BookingExpenseTest extends TestCase
     public function test_host_service_dashboard_defaults_to_action_needed_and_filters_the_full_request_history(): void
     {
         $host = User::factory()->host()->create(['name' => 'Service Dashboard Host']);
+        $this->financialAccount($host);
         $provider = User::factory()->create(['name' => 'Dashboard Service Provider']);
         $pendingApplicant = User::factory()->create(['name' => 'Pending Dashboard Applicant']);
         $condo = $this->unit($host, 'Dashboard Request Condo', 'condo');

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AffiliatePartnership;
 use App\Models\Booking;
+use App\Models\FinancialAccount;
 use App\Models\Unit;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -105,6 +106,13 @@ class CalendarController extends Controller
                     'name' => $booking->customer_name,
                     'booking_count' => (int) $booking->booking_count,
                 ]);
+        $manualFinancialAccounts = $bookingMode
+            ? collect()
+            : FinancialAccount::query()
+                ->whereIn('user_id', $scheduleUnits->pluck('host_id')->unique())
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get();
 
         $units = Unit::query()
             ->with(['host.hostApplication', 'rates', 'images'])
@@ -321,6 +329,7 @@ class CalendarController extends Controller
             'manualBookingCustomerSuggestions' => $manualBookingCustomerSuggestions,
             'manualBookingSourceOptions' => Booking::MANUAL_SOURCE_OPTIONS,
             'manualBookingUnitId' => $manualBookingUnitId,
+            'manualFinancialAccounts' => $manualFinancialAccounts,
             'calendarUnitStyles' => $calendarUnitStyles,
         ]);
     }

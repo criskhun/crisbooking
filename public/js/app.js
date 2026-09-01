@@ -1144,6 +1144,9 @@
             const duration = form.querySelector('[data-manual-booking-duration]');
             const paymentOption = form.querySelector('[data-manual-payment-option]');
             const downpayment = form.querySelector('[data-manual-downpayment]');
+            const financialAccountField = form.querySelector('[data-manual-financial-account]');
+            const financialAccount = form.querySelector('[data-manual-financial-account-select]');
+            const depositCollected = form.querySelector('[data-manual-deposit-collected]');
             const fulfillment = form.querySelector('[data-manual-fulfillment]');
             const fulfillmentMethod = form.querySelector('[data-fulfillment-method]');
             const deliveryAddress = form.querySelector('[data-manual-delivery-address]');
@@ -1163,6 +1166,16 @@
                     option.disabled = !available;
                 });
                 if (affiliate.selectedOptions[0]?.disabled) affiliate.value = '';
+            };
+            const syncFinancialAccounts = () => {
+                if (!unit || !financialAccount) return;
+                const hostId = unit.selectedOptions[0]?.dataset.unitHostId || '';
+                [...financialAccount.options].slice(1).forEach((option) => {
+                    const available = hostId !== '' && option.dataset.hostId === hostId;
+                    option.hidden = !available;
+                    option.disabled = !available;
+                });
+                if (financialAccount.selectedOptions[0]?.disabled) financialAccount.value = '';
             };
             const syncUnitTimes = () => {
                 if (!unit || !startTime) return;
@@ -1215,6 +1228,7 @@
 
             const syncUnit = () => {
                 syncAffiliates();
+                syncFinancialAccounts();
                 syncUnitTimes();
                 syncDuration();
                 const selectedUnit = unit?.selectedOptions[0];
@@ -1240,6 +1254,9 @@
                 const visible = paymentOption.value === 'downpayment';
                 downpayment.hidden = !visible;
                 downpayment.querySelector('input')?.toggleAttribute('required', visible);
+                const recordsCash = paymentOption.value !== 'unpaid' || Boolean(depositCollected?.checked);
+                if (financialAccountField) financialAccountField.hidden = !recordsCash;
+                financialAccount?.toggleAttribute('required', recordsCash);
             };
 
             unit?.addEventListener('change', syncUnit);
@@ -1251,6 +1268,7 @@
             durationUnit?.addEventListener('change', syncDurationUnit);
             durationQuantity?.addEventListener('input', syncDuration);
             paymentOption?.addEventListener('change', syncPayment);
+            depositCollected?.addEventListener('change', syncPayment);
             fulfillmentMethod?.addEventListener('change', syncUnit);
             syncUnit();
             syncDurationUnit();
@@ -1281,12 +1299,18 @@
             const durationQuantity = form.querySelector('[data-extension-quantity]');
             const quantityLabel = form.querySelector('[data-extension-quantity-label]');
             const preview = form.querySelector('[data-extension-preview]');
+            const paymentStatus = form.querySelector('[data-extension-payment-status]');
+            const financialAccountField = form.querySelector('[data-extension-financial-account]');
+            const financialAccount = financialAccountField?.querySelector('select[name="financial_account_id"]');
 
             const syncExtension = () => {
                 const isHourly = durationUnit?.value === 'hour';
                 const quantity = Math.max(1, Number(durationQuantity?.value) || 1);
                 if (durationQuantity) durationQuantity.max = isHourly ? '8760' : '365';
                 if (quantityLabel) quantityLabel.textContent = isHourly ? 'Number of hours' : 'Number of days';
+                const isPaid = paymentStatus?.value === 'paid';
+                if (financialAccountField) financialAccountField.hidden = !isPaid;
+                financialAccount?.toggleAttribute('required', isPaid);
                 if (!preview) return;
 
                 const newEnd = new Date(form.dataset.currentEnd);
@@ -1298,7 +1322,34 @@
 
             durationUnit?.addEventListener('change', syncExtension);
             durationQuantity?.addEventListener('input', syncExtension);
+            paymentStatus?.addEventListener('change', syncExtension);
             syncExtension();
+        });
+
+        document.querySelectorAll('[data-deposit-action-form]').forEach((form) => {
+            const kind = form.querySelector('[data-deposit-action-kind]');
+            const accountField = form.querySelector('[data-deposit-account-field]');
+            const account = accountField?.querySelector('select[name="financial_account_id"]');
+            const syncDepositAccount = () => {
+                const movesCash = kind?.value !== 'deposit_application';
+                if (accountField) accountField.hidden = !movesCash;
+                account?.toggleAttribute('required', movesCash);
+            };
+            kind?.addEventListener('change', syncDepositAccount);
+            syncDepositAccount();
+        });
+
+        document.querySelectorAll('[data-unit-cost-status]').forEach((status) => {
+            const form = status.closest('form');
+            const accountField = form?.querySelector('[data-unit-cost-account]');
+            const account = accountField?.querySelector('select[name="financial_account_id"]');
+            const syncCostAccount = () => {
+                const isPaid = status.value === 'paid';
+                if (accountField) accountField.hidden = !isPaid;
+                account?.toggleAttribute('required', isPaid);
+            };
+            status.addEventListener('change', syncCostAccount);
+            syncCostAccount();
         });
 
         const calendarBookingDialog = document.querySelector('[data-calendar-booking-dialog]');

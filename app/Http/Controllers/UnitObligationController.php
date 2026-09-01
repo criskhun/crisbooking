@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Unit;
 use App\Models\UnitObligation;
+use App\Services\FinancialAccountSelection;
 use Carbon\Carbon;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
@@ -42,7 +43,7 @@ class UnitObligationController extends Controller
         return back()->with('status', 'Monthly payable schedule created.');
     }
 
-    public function recordPayment(Request $request, Unit $unit, UnitObligation $obligation): RedirectResponse
+    public function recordPayment(Request $request, Unit $unit, UnitObligation $obligation, FinancialAccountSelection $accountSelection): RedirectResponse
     {
         abort_unless($obligation->unit_id === $unit->id, 404);
         $this->authorizeUnit($request, $unit);
@@ -52,7 +53,9 @@ class UnitObligationController extends Controller
             'amount' => ['required', 'numeric', 'min:0.01', 'max:99999999.99'],
             'paid_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:500'],
+            'financial_account_id' => ['nullable', 'integer'],
         ]);
+        $financialAccount = $accountSelection->resolve($unit->host()->firstOrFail(), $validated['financial_account_id'] ?? null);
         $month = Carbon::createFromFormat('!Y-m', $validated['installment_month'])->startOfMonth();
         if ($month->lt($obligation->start_month->copy()->startOfMonth()) || $month->gt($obligation->endMonth())) {
             throw ValidationException::withMessages(['installment_month' => 'Choose a month inside this payable’s term.']);
@@ -64,6 +67,7 @@ class UnitObligationController extends Controller
         try {
             $obligation->payments()->create([
                 'recorded_by_user_id' => $request->user()->id,
+                'financial_account_id' => $financialAccount->id,
                 'installment_month' => $month,
                 'amount' => round((float) $validated['amount'], 2),
                 'paid_at' => ! empty($validated['paid_at']) ? Carbon::parse($validated['paid_at']) : now(),

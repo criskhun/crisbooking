@@ -6,6 +6,7 @@ use App\Models\AffiliatePartnership;
 use App\Models\Booking;
 use App\Models\Unit;
 use App\Services\AppNotificationService;
+use App\Services\FinancialAccountSelection;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -17,7 +18,7 @@ use Illuminate\Validation\ValidationException;
 
 class ManualBookingController extends Controller
 {
-    public function store(Request $request, AppNotificationService $notifications): RedirectResponse|JsonResponse
+    public function store(Request $request, AppNotificationService $notifications, FinancialAccountSelection $accountSelection): RedirectResponse|JsonResponse
     {
         $request->merge([
             'duration_unit' => $request->input('duration_unit', 'day'),
@@ -52,6 +53,7 @@ class ManualBookingController extends Controller
             'affiliate_partnership_id' => ['nullable', 'integer', 'exists:affiliate_partnerships,id'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'offline_sync_id' => ['nullable', 'uuid'],
+            'financial_account_id' => ['nullable', 'integer'],
         ]);
 
         $actor = $request->user();
@@ -59,7 +61,7 @@ class ManualBookingController extends Controller
         // application code may reach a server just before its newest migration.
         $supportsOfflineSync = Schema::hasColumn('bookings', 'offline_sync_id');
         $wasReplayed = false;
-        $booking = DB::transaction(function () use ($validated, $actor, $supportsOfflineSync, &$wasReplayed) {
+        $booking = DB::transaction(function () use ($validated, $actor, $supportsOfflineSync, &$wasReplayed, $accountSelection) {
             if ($supportsOfflineSync && ! empty($validated['offline_sync_id'])) {
                 $existingBooking = Booking::query()
                     ->where('offline_sync_id', $validated['offline_sync_id'])
@@ -179,19 +181,25 @@ class ManualBookingController extends Controller
                 'downpayment' => round((float) $validated['initial_payment_amount'], 2),
                 default => 0,
             };
+            $depositAmount = round((float) ($validated['security_deposit_amount'] ?? 0), 2);
+            $recordsCash = $initialPayment > 0 || ($depositAmount > 0 && ! empty($validated['security_deposit_collected']));
+            $financialAccount = $recordsCash
+                ? $accountSelection->resolve($unit->host()->firstOrFail(), $validated['financial_account_id'] ?? null)
+                : null;
             if ($initialPayment > 0) {
                 $booking->financialEntries()->create([
                     'recorded_by_user_id' => $actor->id,
+                    'financial_account_id' => $financialAccount?->id,
                     'kind' => 'payment',
                     'category' => $paymentOption === 'fully_paid' ? 'full_payment' : 'downpayment',
                     'amount' => $initialPayment,
                     'occurred_at' => now(),
                 ]);
             }
-            $depositAmount = round((float) ($validated['security_deposit_amount'] ?? 0), 2);
             if ($depositAmount > 0 && ! empty($validated['security_deposit_collected'])) {
                 $booking->financialEntries()->create([
                     'recorded_by_user_id' => $actor->id,
+                    'financial_account_id' => $financialAccount?->id,
                     'kind' => 'deposit',
                     'category' => 'security_deposit',
                     'amount' => $depositAmount,

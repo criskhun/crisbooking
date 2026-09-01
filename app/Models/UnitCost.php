@@ -21,7 +21,7 @@ class UnitCost extends Model
     ];
 
     protected $fillable = [
-        'unit_id', 'recorded_by_user_id', 'category', 'classification', 'amount',
+        'unit_id', 'recorded_by_user_id', 'financial_account_id', 'category', 'classification', 'amount',
         'status', 'incurred_on', 'due_on', 'paid_at', 'vendor_name', 'notes',
     ];
 
@@ -43,6 +43,11 @@ class UnitCost extends Model
     public function recordedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recorded_by_user_id');
+    }
+
+    public function financialAccount(): BelongsTo
+    {
+        return $this->belongsTo(FinancialAccount::class);
     }
 
     public function categoryLabel(): string

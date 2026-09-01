@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Services\FinancialAccountSelection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -11,7 +12,7 @@ use Illuminate\Validation\ValidationException;
 
 class BookingExtensionController extends Controller
 {
-    public function store(Request $request, Booking $booking): RedirectResponse
+    public function store(Request $request, Booking $booking, FinancialAccountSelection $accountSelection): RedirectResponse
     {
         $this->normalizeMoneyInput($request, 'additional_amount');
         $validated = $request->validate([
@@ -20,13 +21,14 @@ class BookingExtensionController extends Controller
             'additional_amount' => ['required', 'numeric', 'min:0.01', 'max:99999999.99'],
             'payment_status' => ['required', Rule::in(['paid', 'collectible'])],
             'notes' => ['nullable', 'string', 'max:500'],
+            'financial_account_id' => ['nullable', 'integer'],
         ]);
 
         if ($validated['duration_unit'] === 'day' && (int) $validated['duration_quantity'] > 365) {
             throw ValidationException::withMessages(['duration_quantity' => 'An extension can be up to 365 days.']);
         }
 
-        DB::transaction(function () use ($request, $booking, $validated) {
+        DB::transaction(function () use ($request, $booking, $validated, $accountSelection) {
             $lockedBooking = Booking::query()
                 ->with(['unit', 'financialEntries'])
                 ->lockForUpdate()
@@ -71,8 +73,10 @@ class BookingExtensionController extends Controller
             $payment = null;
 
             if ($validated['payment_status'] === 'paid') {
+                $financialAccount = $accountSelection->resolve($lockedBooking->unit->host()->firstOrFail(), $validated['financial_account_id'] ?? null);
                 $payment = $lockedBooking->financialEntries()->create([
                     'recorded_by_user_id' => $request->user()->id,
+                    'financial_account_id' => $financialAccount->id,
                     'kind' => 'payment',
                     'category' => 'balance_payment',
                     'amount' => $amount,

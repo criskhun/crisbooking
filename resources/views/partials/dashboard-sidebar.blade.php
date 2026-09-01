@@ -64,6 +64,7 @@
         @if (auth()->user()->isHost() || auth()->user()->is_admin)
             <a @class(['active' => request()->routeIs('workspace.clients')]) href="{{ route('workspace.clients') }}"><i class="fa-solid fa-address-book sidebar-nav-icon" aria-hidden="true"></i> Clients</a>
             <a @class(['active' => request()->routeIs('sales.*')]) href="{{ route('sales.index') }}"><i class="fa-solid fa-chart-column sidebar-nav-icon" aria-hidden="true"></i> Sales</a>
+            <a @class(['active' => request()->routeIs('accounting.*')]) href="{{ route('accounting.index') }}"><i class="fa-solid fa-book-open sidebar-nav-icon" aria-hidden="true"></i> Accounting ledger</a>
         @endif
     </nav>
     <form method="POST" action="{{ route('logout') }}" class="sidebar-logout">

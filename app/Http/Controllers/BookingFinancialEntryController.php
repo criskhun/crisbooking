@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\BookingFinancialEntry;
+use App\Services\FinancialAccountSelection;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,10 +14,10 @@ use Illuminate\Validation\ValidationException;
 
 class BookingFinancialEntryController extends Controller
 {
-    public function store(Request $request, Booking $booking): RedirectResponse
+    public function store(Request $request, Booking $booking, FinancialAccountSelection $accountSelection): RedirectResponse
     {
         $this->normalizeMoneyInput($request, 'amount');
-        $booking->loadMissing('unit', 'financialEntries');
+        $booking->loadMissing('unit.host', 'financialEntries');
         abort_unless($request->user()->is_admin || $booking->unit->host_id === $request->user()->id, 403);
 
         $validated = $request->validate([
@@ -25,6 +26,7 @@ class BookingFinancialEntryController extends Controller
             'amount' => ['required', 'numeric', 'min:0.01', 'max:99999999.99'],
             'notes' => ['nullable', 'string', 'max:500'],
             'occurred_at' => ['nullable', 'date'],
+            'financial_account_id' => ['nullable', 'integer'],
         ]);
 
         $amount = round((float) $validated['amount'], 2);
@@ -54,8 +56,12 @@ class BookingFinancialEntryController extends Controller
             throw ValidationException::withMessages(['amount' => 'This amount is greater than the uncollected security deposit.']);
         }
 
+        $financialAccount = in_array($validated['kind'], ['payment', 'deposit', 'deposit_refund'], true)
+            ? $accountSelection->resolve($booking->unit->host, $validated['financial_account_id'] ?? null)
+            : null;
         $booking->financialEntries()->create([
             'recorded_by_user_id' => $request->user()->id,
+            'financial_account_id' => $financialAccount?->id,
             'kind' => $validated['kind'],
             'category' => $category,
             'amount' => $amount,
@@ -66,10 +72,10 @@ class BookingFinancialEntryController extends Controller
         return back()->with('status', 'Booking financial record added.');
     }
 
-    public function update(Request $request, Booking $booking, BookingFinancialEntry $financialEntry): RedirectResponse
+    public function update(Request $request, Booking $booking, BookingFinancialEntry $financialEntry, FinancialAccountSelection $accountSelection): RedirectResponse
     {
         abort_unless($financialEntry->booking_id === $booking->id, 404);
-        $booking->loadMissing('unit');
+        $booking->loadMissing('unit.host');
         abort_unless($request->user()->is_admin || $booking->unit->host_id === $request->user()->id, 403);
         $this->normalizeMoneyInput($request, 'amount');
 
@@ -79,9 +85,15 @@ class BookingFinancialEntryController extends Controller
             'notes' => ['nullable', 'string', 'max:500'],
             'occurred_at' => ['required', 'date'],
             'correction_reason' => ['required', 'string', 'min:5', 'max:500'],
+            'financial_account_id' => ['nullable', 'integer'],
         ]);
 
-        DB::transaction(function () use ($booking, $financialEntry, $validated, $request) {
+        $selectedAccount = null;
+        if ($financialEntry->movesCash() && array_key_exists('financial_account_id', $validated)) {
+            $selectedAccount = $accountSelection->resolve($booking->unit->host, $validated['financial_account_id']);
+        }
+
+        DB::transaction(function () use ($booking, $financialEntry, $validated, $request, $selectedAccount) {
             $lockedBooking = Booking::query()->lockForUpdate()->with('financialEntries')->findOrFail($booking->id);
             $entry = BookingFinancialEntry::query()->lockForUpdate()->findOrFail($financialEntry->id);
             abort_unless($entry->booking_id === $lockedBooking->id, 404);
@@ -96,9 +108,10 @@ class BookingFinancialEntryController extends Controller
                 'amount' => $amount,
                 'notes' => filled($validated['notes'] ?? null) ? trim($validated['notes']) : null,
                 'occurred_at' => Carbon::parse($validated['occurred_at']),
+                'financial_account_id' => $entry->movesCash() && $selectedAccount ? $selectedAccount->id : $entry->financial_account_id,
             ]);
 
-            if (! $entry->isDirty(['category', 'amount', 'notes', 'occurred_at'])) {
+            if (! $entry->isDirty(['category', 'amount', 'notes', 'occurred_at', 'financial_account_id'])) {
                 throw ValidationException::withMessages(['amount' => 'Change at least one ledger detail before saving the correction.']);
             }
 
@@ -158,7 +171,7 @@ class BookingFinancialEntryController extends Controller
         }
     }
 
-    /** @return array{category:string, amount:string, notes:?string, occurred_at:string} */
+    /** @return array{category:string, amount:string, notes:?string, occurred_at:string, financial_account_id:?int} */
     private function auditSnapshot(BookingFinancialEntry $entry): array
     {
         return [
@@ -166,6 +179,7 @@ class BookingFinancialEntryController extends Controller
             'amount' => number_format((float) $entry->amount, 2, '.', ''),
             'notes' => $entry->notes,
             'occurred_at' => $entry->occurred_at->toIso8601String(),
+            'financial_account_id' => $entry->financial_account_id,
         ];
     }
 

@@ -46,6 +46,11 @@ class User extends Authenticatable implements MustVerifyEmailContract
         return $this->hasMany(Unit::class, 'host_id');
     }
 
+    public function financialAccounts(): HasMany
+    {
+        return $this->hasMany(FinancialAccount::class)->orderByDesc('is_active')->orderBy('name');
+    }
+
     public function favoriteUnits(): BelongsToMany
     {
         return $this->belongsToMany(Unit::class, 'favorite_units')->withTimestamps();

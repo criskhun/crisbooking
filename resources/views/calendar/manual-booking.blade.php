@@ -1,4 +1,4 @@
-<details id="manual-booking" class="manual-booking-card" data-manual-booking-card @if($manualBookingUnitId || $errors->hasAny(['unit_id', 'start_date', 'start_time', 'duration_unit', 'duration_quantity', 'source_channel', 'source_details', 'external_customer_name', 'fulfillment_method', 'delivery_address', 'total_amount', 'payment_option', 'initial_payment_amount', 'security_deposit_amount', 'party_size', 'affiliate_partnership_id', 'notes'])) open @endif>
+<details id="manual-booking" class="manual-booking-card" data-manual-booking-card @if($manualBookingUnitId || $errors->hasAny(['unit_id', 'start_date', 'start_time', 'duration_unit', 'duration_quantity', 'source_channel', 'source_details', 'external_customer_name', 'fulfillment_method', 'delivery_address', 'total_amount', 'payment_option', 'initial_payment_amount', 'security_deposit_amount', 'financial_account_id', 'party_size', 'affiliate_partnership_id', 'notes'])) open @endif>
     <summary>
         <span><x-fa-icon name="plus" /></span>
         <div>
@@ -26,7 +26,7 @@
             <select id="manual_unit_id" name="unit_id" required data-manual-booking-unit>
                 <option value="">Choose a listing</option>
                 @foreach($scheduleUnits as $manualUnit)
-                    <option value="{{ $manualUnit->id }}" data-category="{{ str($manualUnit->category)->replace('_', ' ')->title() }}" data-unit-category="{{ $manualUnit->category }}" data-fulfillment-options="{{ collect($manualUnit->car_details['fulfillment_options'] ?? ['pickup'])->join(',') }}" data-start-time="{{ $manualUnit->category === 'condo' ? $manualUnit->condoCheckInTime() : '' }}" data-end-time="{{ $manualUnit->category === 'condo' ? $manualUnit->condoCheckOutTime() : '' }}" @selected((int) old('unit_id', $manualBookingUnitId) === $manualUnit->id)>{{ $manualUnit->name }} · {{ str($manualUnit->category)->replace('_', ' ')->title() }}</option>
+                    <option value="{{ $manualUnit->id }}" data-category="{{ str($manualUnit->category)->replace('_', ' ')->title() }}" data-unit-category="{{ $manualUnit->category }}" data-unit-host-id="{{ $manualUnit->host_id }}" data-fulfillment-options="{{ collect($manualUnit->car_details['fulfillment_options'] ?? ['pickup'])->join(',') }}" data-start-time="{{ $manualUnit->category === 'condo' ? $manualUnit->condoCheckInTime() : '' }}" data-end-time="{{ $manualUnit->category === 'condo' ? $manualUnit->condoCheckOutTime() : '' }}" @selected((int) old('unit_id', $manualBookingUnitId) === $manualUnit->id)>{{ $manualUnit->name }} · {{ str($manualUnit->category)->replace('_', ' ')->title() }}</option>
                 @endforeach
             </select>
             @error('unit_id')<p class="error-text">{{ $message }}</p>@enderror
@@ -127,7 +127,20 @@
             <div class="money-input"><span>₱</span><input id="manual_security_deposit_amount" name="security_deposit_amount" type="text" inputmode="decimal" value="{{ number_format((float) old('security_deposit_amount', 0), 2, '.', ',') }}" data-accounting-input></div>
             @error('security_deposit_amount')<p class="error-text">{{ $message }}</p>@enderror
         </div>
-        <label class="availability-toggle"><input type="hidden" name="security_deposit_collected" value="0"><input type="checkbox" name="security_deposit_collected" value="1" @checked(old('security_deposit_collected'))><span><strong>Security deposit already collected</strong><small>Keep this separate from sales until it is returned or applied to charges.</small></span></label>
+        <label class="availability-toggle"><input type="hidden" name="security_deposit_collected" value="0"><input type="checkbox" name="security_deposit_collected" value="1" @checked(old('security_deposit_collected')) data-manual-deposit-collected><span><strong>Security deposit already collected</strong><small>Keep this separate from sales until it is returned or applied to charges.</small></span></label>
+        <div class="field-group manual-booking-wide" data-manual-financial-account>
+            <label for="manual_financial_account_id">Account that received the money</label>
+            @if($manualFinancialAccounts->isNotEmpty())
+                <select id="manual_financial_account_id" name="financial_account_id" data-manual-financial-account-select>
+                    <option value="">Choose an account</option>
+                    @foreach($manualFinancialAccounts as $financialAccount)<option value="{{ $financialAccount->id }}" data-host-id="{{ $financialAccount->user_id }}" @selected((int) old('financial_account_id') === $financialAccount->id)>{{ $financialAccount->displayLabel() }} · {{ $financialAccount->typeLabel() }}</option>@endforeach
+                </select>
+                <small class="field-help">Required when a booking payment or security deposit was collected.</small>
+            @else
+                <a class="financial-account-required" href="{{ route('accounting.index').'#financial-accounts' }}"><x-fa-icon name="plus" /> Add a financial account before recording collected money</a>
+            @endif
+            @error('financial_account_id')<p class="error-text">{{ $message }}</p>@enderror
+        </div>
         <div class="field-group">
             <label for="manual_party_size">Guests, passengers, or quantity</label>
             <input id="manual_party_size" name="party_size" type="number" min="1" max="10000" value="{{ old('party_size', 1) }}">

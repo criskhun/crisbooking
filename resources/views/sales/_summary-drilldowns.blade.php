@@ -79,22 +79,28 @@
             <div class="sales-drilldown-summary"><div><small>Items requiring action</small><strong>{{ $payableInstallmentRows->count() + $payableCostRows->count() }}</strong></div><div><small>Payables due</small><strong>₱{{ number_format($metrics['due_payables'], 2) }}</strong></div></div>
             <div class="sales-summary-list sales-summary-action-list">
                 @foreach($payableInstallmentRows as $due)
-                    @php($overdue = $due['due_date']->isBefore(today()))
+                    @php
+                        $overdue = $due['due_date']->isBefore(today());
+                        $dueAccounts = $financialAccountsByHost->get($due['unit']->host_id, collect());
+                    @endphp
                     <article>
                         <div><span class="sales-summary-icon attention"><x-fa-icon name="calendar-check" /></span><span><strong>{{ $due['obligation']->name }}</strong><small>{{ $due['unit']->name }} · {{ $due['month']->format('F Y') }} installment</small></span></div>
                         <div><span class="summary-status {{ $overdue ? 'is-overdue' : 'is-pending' }}">{{ $overdue ? 'Overdue' : 'Due '.$due['due_date']->format('M j') }}</span><small>{{ $due['obligation']->categoryLabel() }}</small></div>
                         <div><strong>₱{{ number_format($due['amount'], 2) }}</strong><small>Scheduled amount</small></div>
-                        <form method="POST" action="{{ route('sales.units.obligations.payments.store', [$due['unit'], $due['obligation']]) }}">@csrf<input type="hidden" name="installment_month" value="{{ $due['month']->format('Y-m') }}"><input type="hidden" name="amount" value="{{ number_format($due['amount'], 2, '.', '') }}"><input type="hidden" name="notes" value="Recorded from the payables due list."><button class="button button-primary button-small" type="submit">Record payment</button><a href="{{ route('sales.index', array_filter(['unit' => $due['unit']->id, 'month' => $reportMonth?->format('Y-m')])) }}">Open unit</a></form>
+                        <form method="POST" action="{{ route('sales.units.obligations.payments.store', [$due['unit'], $due['obligation']]) }}">@csrf<input type="hidden" name="installment_month" value="{{ $due['month']->format('Y-m') }}"><input type="hidden" name="amount" value="{{ number_format($due['amount'], 2, '.', '') }}"><input type="hidden" name="notes" value="Recorded from the payables due list.">@if($dueAccounts->isNotEmpty())<select name="financial_account_id" required aria-label="Account used for {{ $due['obligation']->name }}"><option value="">Paid from account</option>@foreach($dueAccounts as $financialAccount)<option value="{{ $financialAccount->id }}">{{ $financialAccount->displayLabel() }}</option>@endforeach</select><button class="button button-primary button-small" type="submit">Record payment</button>@else<a class="financial-account-required compact" href="{{ route('accounting.index').'#financial-accounts' }}">Add account first</a>@endif<a href="{{ route('sales.index', array_filter(['unit' => $due['unit']->id, 'month' => $reportMonth?->format('Y-m')])) }}">Open unit</a></form>
                     </article>
                 @endforeach
                 @foreach($payableCostRows as $row)
-                    @php($costDate = $row['cost']->due_on ?: $row['cost']->incurred_on)
-                    @php($overdue = $costDate->isBefore(today()))
+                    @php
+                        $costDate = $row['cost']->due_on ?: $row['cost']->incurred_on;
+                        $overdue = $costDate->isBefore(today());
+                        $costAccounts = $financialAccountsByHost->get($row['unit']->host_id, collect());
+                    @endphp
                     <article>
                         <div><span class="sales-summary-icon attention"><x-fa-icon name="file-invoice-dollar" /></span><span><strong>{{ $row['cost']->categoryLabel() }}</strong><small>{{ $row['unit']->name }}{{ $row['cost']->vendor_name ? ' · '.$row['cost']->vendor_name : '' }}</small></span></div>
                         <div><span class="summary-status {{ $overdue ? 'is-overdue' : 'is-pending' }}">{{ $overdue ? 'Overdue' : 'Due '.$costDate->format('M j') }}</span><small>{{ $row['cost']->due_on ? 'Due '.$row['cost']->due_on->format('M j, Y') : 'Recorded '.$row['cost']->incurred_on->format('M j, Y') }}</small></div>
                         <div><strong>₱{{ number_format((float) $row['cost']->amount, 2) }}</strong><small>Unpaid unit cost</small></div>
-                        <form method="POST" action="{{ route('sales.units.costs.paid', [$row['unit'], $row['cost']]) }}">@csrf @method('PATCH')<button class="button button-primary button-small" type="submit">Mark paid</button><a href="{{ route('sales.index', array_filter(['unit' => $row['unit']->id, 'month' => $reportMonth?->format('Y-m')])) }}">Open unit</a></form>
+                        <form method="POST" action="{{ route('sales.units.costs.paid', [$row['unit'], $row['cost']]) }}">@csrf @method('PATCH')@if($costAccounts->isNotEmpty())<select name="financial_account_id" required aria-label="Account used for {{ $row['cost']->categoryLabel() }}"><option value="">Paid from account</option>@foreach($costAccounts as $financialAccount)<option value="{{ $financialAccount->id }}">{{ $financialAccount->displayLabel() }}</option>@endforeach</select><button class="button button-primary button-small" type="submit">Mark paid</button>@else<a class="financial-account-required compact" href="{{ route('accounting.index').'#financial-accounts' }}">Add account first</a>@endif<a href="{{ route('sales.index', array_filter(['unit' => $row['unit']->id, 'month' => $reportMonth?->format('Y-m')])) }}">Open unit</a></form>
                     </article>
                 @endforeach
                 @if($payableInstallmentRows->isEmpty() && $payableCostRows->isEmpty())
@@ -107,12 +113,15 @@
             <div class="sales-drilldown-summary"><div><small>Customers with balances</small><strong>{{ $collectibleBookings->count() }}</strong></div><div><small>Customer collectibles</small><strong>₱{{ number_format($metrics['receivables'], 2) }}</strong></div></div>
             <div class="sales-summary-list sales-summary-action-list sales-collectible-list">
                 @forelse($collectibleBookings as $booking)
-                    @php($overdue = $booking->end_at->isBefore(now()))
+                    @php
+                        $overdue = $booking->end_at->isBefore(now());
+                        $collectionAccounts = $financialAccountsByHost->get($booking->unit->host_id, collect());
+                    @endphp
                     <article>
                         <div><span class="sales-summary-icon"><x-fa-icon name="hand-holding-dollar" /></span><span><a href="{{ route('bookings.show', $booking) }}">{{ $booking->customerDisplayName() }}</a><small>Booking #{{ $booking->id }} · {{ $booking->unit->name }}</small></span></div>
                         <div><span class="summary-status {{ $overdue ? 'is-overdue' : 'is-pending' }}">{{ $overdue ? 'Past stay · balance due' : $booking->paymentStatusLabel() }}</span><small>{{ $booking->start_at->format('M j') }}–{{ $booking->end_at->format('M j, Y') }} · collected ₱{{ number_format($booking->paymentTotal(), 2) }}</small></div>
                         <div><strong>₱{{ number_format($booking->outstandingBalance(), 2) }}</strong><small>Remaining balance</small></div>
-                        <form method="POST" action="{{ route('bookings.financial-entries.store', $booking) }}">@csrf<input type="hidden" name="kind" value="payment"><input type="hidden" name="category" value="balance_payment"><label><span class="sr-only">Amount collected for booking #{{ $booking->id }}</span><span class="money-input"><span>₱</span><input name="amount" inputmode="decimal" value="{{ number_format($booking->outstandingBalance(), 2, '.', ',') }}" required data-accounting-input aria-label="Amount collected for booking #{{ $booking->id }}"></span></label><input type="hidden" name="notes" value="Recorded from the customer collectibles list."><button class="button button-primary button-small" type="submit">Record collected</button><a href="{{ route('bookings.show', $booking) }}">Open ledger</a></form>
+                        <form method="POST" action="{{ route('bookings.financial-entries.store', $booking) }}">@csrf<input type="hidden" name="kind" value="payment"><input type="hidden" name="category" value="balance_payment"><label><span class="sr-only">Amount collected for booking #{{ $booking->id }}</span><span class="money-input"><span>₱</span><input name="amount" inputmode="decimal" value="{{ number_format($booking->outstandingBalance(), 2, '.', ',') }}" required data-accounting-input aria-label="Amount collected for booking #{{ $booking->id }}"></span></label>@if($collectionAccounts->isNotEmpty())<select name="financial_account_id" required aria-label="Account that received collection for booking #{{ $booking->id }}"><option value="">Received into account</option>@foreach($collectionAccounts as $financialAccount)<option value="{{ $financialAccount->id }}">{{ $financialAccount->displayLabel() }}</option>@endforeach</select><input type="hidden" name="notes" value="Recorded from the customer collectibles list."><button class="button button-primary button-small" type="submit">Record collected</button>@else<a class="financial-account-required compact" href="{{ route('accounting.index').'#financial-accounts' }}">Add account first</a>@endif<a href="{{ route('bookings.show', $booking) }}">Open ledger</a></form>
                     </article>
                 @empty
                     <div class="sales-drilldown-empty"><strong>Nothing to collect.</strong><p>All confirmed outside bookings in this report are fully paid.</p></div>

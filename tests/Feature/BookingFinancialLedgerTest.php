@@ -17,6 +17,7 @@ class BookingFinancialLedgerTest extends TestCase
         $host = User::factory()->host()->create();
         $other = User::factory()->host()->create();
         $car = $this->unit($host, 'Ledger Rental Car', 'car');
+        $account = $this->financialAccount($host);
         $start = today()->addDays(3);
 
         $this->actingAs($host)->post(route('calendar.manual-bookings.store'), [
@@ -31,6 +32,7 @@ class BookingFinancialLedgerTest extends TestCase
             'initial_payment_amount' => '2,000.00',
             'security_deposit_amount' => '1,500.00',
             'security_deposit_collected' => 1,
+            'financial_account_id' => $account->id,
             'party_size' => 1,
         ])->assertRedirect();
 
@@ -74,6 +76,7 @@ class BookingFinancialLedgerTest extends TestCase
         ])->assertRedirect();
         $this->actingAs($host)->post(route('bookings.financial-entries.store', $booking), [
             'kind' => 'payment', 'category' => 'balance_payment', 'amount' => '3,400.00',
+            'financial_account_id' => $account->id,
         ])->assertRedirect();
 
         $booking->refresh()->load('financialEntries');
@@ -113,6 +116,7 @@ class BookingFinancialLedgerTest extends TestCase
     {
         $host = User::factory()->host()->create(['name' => 'Extension Host']);
         $condo = $this->unit($host, 'Extension Residence', 'condo');
+        $account = $this->financialAccount($host);
         $start = today()->addDays(5)->setTime(14, 0);
         $booking = Booking::create([
             'unit_id' => $condo->id, 'client_id' => $host->id, 'booked_by_user_id' => $host->id,
@@ -146,7 +150,7 @@ class BookingFinancialLedgerTest extends TestCase
 
         $this->actingAs($host)->post(route('bookings.extensions.store', $booking), [
             'duration_unit' => 'hour', 'duration_quantity' => 3, 'additional_amount' => 300,
-            'payment_status' => 'paid',
+            'payment_status' => 'paid', 'financial_account_id' => $account->id,
         ])->assertRedirect()->assertSessionHas('status');
 
         $booking->refresh()->load(['extensions.createdBy', 'extensions.chargeEntry', 'extensions.paymentEntry', 'financialEntries']);

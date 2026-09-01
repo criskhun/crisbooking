@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Unit;
 use App\Models\UnitCost;
+use App\Services\FinancialAccountSelection;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -11,7 +12,7 @@ use Illuminate\Validation\Rule;
 
 class UnitCostController extends Controller
 {
-    public function store(Request $request, Unit $unit): RedirectResponse
+    public function store(Request $request, Unit $unit, FinancialAccountSelection $accountSelection): RedirectResponse
     {
         $this->authorizeUnit($request, $unit);
         $this->normalizeMoneyInput($request, 'amount');
@@ -23,10 +24,15 @@ class UnitCostController extends Controller
             'due_on' => ['nullable', 'date'],
             'vendor_name' => ['nullable', 'string', 'max:120'],
             'notes' => ['nullable', 'string', 'max:500'],
+            'financial_account_id' => ['nullable', 'integer'],
         ]);
+        $financialAccount = $validated['status'] === 'paid'
+            ? $accountSelection->resolve($unit->host()->firstOrFail(), $validated['financial_account_id'] ?? null)
+            : null;
 
         $unit->costs()->create([
             'recorded_by_user_id' => $request->user()->id,
+            'financial_account_id' => $financialAccount?->id,
             'category' => $validated['category'],
             'classification' => $validated['category'] === 'capital_improvement' ? 'capital' : 'operating',
             'amount' => round((float) $validated['amount'], 2),
@@ -43,13 +49,15 @@ class UnitCostController extends Controller
             : 'Unit cost recorded.');
     }
 
-    public function markPaid(Request $request, Unit $unit, UnitCost $cost): RedirectResponse
+    public function markPaid(Request $request, Unit $unit, UnitCost $cost, FinancialAccountSelection $accountSelection): RedirectResponse
     {
         abort_unless($cost->unit_id === $unit->id, 404);
         $this->authorizeUnit($request, $unit);
-        $validated = $request->validate(['paid_at' => ['nullable', 'date']]);
+        $validated = $request->validate(['paid_at' => ['nullable', 'date'], 'financial_account_id' => ['nullable', 'integer']]);
+        $financialAccount = $accountSelection->resolve($unit->host()->firstOrFail(), $validated['financial_account_id'] ?? null);
         $cost->update([
             'status' => 'paid',
+            'financial_account_id' => $financialAccount->id,
             'paid_at' => ! empty($validated['paid_at']) ? Carbon::parse($validated['paid_at']) : now(),
         ]);
 

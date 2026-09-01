@@ -17,6 +17,7 @@ class UnitFinanceReportTest extends TestCase
     public function test_host_can_track_unit_profit_shares_costs_asset_value_and_monthly_payables(): void
     {
         $host = User::factory()->host()->create(['name' => 'Managing Host']);
+        $account = $this->financialAccount($host);
         $unit = $this->unit($host, 'Managed Profit Condo', 'condo');
         $booking = Booking::create([
             'unit_id' => $unit->id,
@@ -63,6 +64,7 @@ class UnitFinanceReportTest extends TestCase
         ] as $cost) {
             $this->actingAs($host)->post(route('sales.units.costs.store', $unit), [
                 ...$cost,
+                'financial_account_id' => $cost['status'] === 'paid' ? $account->id : null,
                 'incurred_on' => now()->toDateString(),
                 'due_on' => now()->toDateString(),
                 'notes' => 'Unit finance test record.',
@@ -108,6 +110,7 @@ class UnitFinanceReportTest extends TestCase
         $this->actingAs($host)->post(route('sales.units.obligations.payments.store', [$unit, $obligation]), [
             'installment_month' => now()->format('Y-m'),
             'amount' => '1,000.00',
+            'financial_account_id' => $account->id,
         ])->assertRedirect()->assertSessionHas('status');
         $this->assertDatabaseHas('unit_obligation_payments', [
             'unit_obligation_id' => $obligation->id,
@@ -201,6 +204,7 @@ class UnitFinanceReportTest extends TestCase
     public function test_financial_summary_cards_open_actionable_payable_and_collectible_lists(): void
     {
         $host = User::factory()->host()->create();
+        $account = $this->financialAccount($host);
         $unit = $this->unit($host, 'Summary Action Condo', 'condo');
         $booking = Booking::create([
             'unit_id' => $unit->id,
@@ -277,6 +281,7 @@ class UnitFinanceReportTest extends TestCase
             'category' => 'balance_payment',
             'amount' => 4000,
             'notes' => 'Collected from financial summary.',
+            'financial_account_id' => $account->id,
         ])->assertRedirect();
 
         $this->assertSame(0.0, $booking->fresh()->load('financialEntries')->outstandingBalance());
@@ -288,6 +293,7 @@ class UnitFinanceReportTest extends TestCase
     public function test_unit_payable_month_can_only_be_recorded_once(): void
     {
         $host = User::factory()->host()->create();
+        $account = $this->financialAccount($host);
         $unit = $this->unit($host, 'Payment Schedule Car', 'car');
         $obligation = UnitObligation::create([
             'unit_id' => $unit->id,
@@ -300,7 +306,7 @@ class UnitFinanceReportTest extends TestCase
             'due_day' => 10,
             'status' => 'active',
         ]);
-        $payload = ['installment_month' => now()->format('Y-m'), 'amount' => 9000];
+        $payload = ['installment_month' => now()->format('Y-m'), 'amount' => 9000, 'financial_account_id' => $account->id];
 
         $this->actingAs($host)->post(route('sales.units.obligations.payments.store', [$unit, $obligation]), $payload)->assertRedirect();
         $this->actingAs($host)->from(route('sales.index', ['unit' => $unit->id]))

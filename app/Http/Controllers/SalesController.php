@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\FinancialAccount;
 use App\Models\Unit;
 use App\Models\UnitCost;
 use App\Models\UnitObligation;
@@ -48,6 +49,12 @@ class SalesController extends Controller
             ->when($selectedCategory, fn ($units) => $units->where('category', $selectedCategory))
             ->when($selectedUnit, fn ($units) => $units->where('id', $selectedUnit->id))
             ->values();
+        $financialAccountsByHost = FinancialAccount::query()
+            ->whereIn('user_id', $reportingUnits->pluck('host_id')->unique())
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get()
+            ->groupBy('user_id');
         $unitReports = $reportingUnits
             ->map(fn (Unit $unit) => $financeReports->report($unit, $reportMonth, $asOfMonth))
             ->sortByDesc('operating_profit')
@@ -200,6 +207,7 @@ class SalesController extends Controller
             'selectedUnitReport', 'selectedUnitBookings', 'maxMonthlySale', 'maxCategorySale', 'maxSourceSale',
             'recentBookings', 'chartDrilldowns', 'summaryConfirmedBookings', 'collectibleBookings',
             'bookingExpenseRows', 'unitOperatingCostRows', 'payableInstallmentRows', 'payableCostRows'
+            , 'financialAccountsByHost'
         ) + [
             'costCategoryOptions' => UnitCost::CATEGORY_LABELS,
             'obligationCategoryOptions' => UnitObligation::CATEGORY_LABELS,

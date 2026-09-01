@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class UnitObligationPayment extends Model
 {
     protected $fillable = [
-        'unit_obligation_id', 'recorded_by_user_id', 'installment_month', 'amount', 'paid_at', 'notes',
+        'unit_obligation_id', 'recorded_by_user_id', 'financial_account_id', 'installment_month', 'amount', 'paid_at', 'notes',
     ];
 
     protected function casts(): array
@@ -28,5 +28,10 @@ class UnitObligationPayment extends Model
     public function recordedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recorded_by_user_id');
+    }
+
+    public function financialAccount(): BelongsTo
+    {
+        return $this->belongsTo(FinancialAccount::class);
     }
 }

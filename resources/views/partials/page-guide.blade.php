@@ -107,6 +107,14 @@
             ['selector' => '.workspace-hero', 'title' => 'Understand your client list', 'copy' => 'This workspace contains customers with successful booking records, not unconfirmed inquiries.'],
             ['selector' => '.workspace-client-grid', 'title' => 'Review each client relationship', 'copy' => 'Open a client profile or their latest booking to review history and continue service.'],
         ];
+    } elseif (request()->routeIs('accounting.index')) {
+        $guideTitle = 'Accounting ledger guide';
+        $guideSteps = [
+            ['selector' => '.accounting-summary-grid', 'title' => 'Read your cash position', 'copy' => 'Compare tracked balances, money received, money paid, and net cash flow for the active filters.'],
+            ['selector' => '.financial-accounts-panel', 'title' => 'Register where money is kept', 'copy' => 'Add cash, bank, card, and e-wallet accounts. Only active accounts can be selected for new collections and payments.'],
+            ['selector' => '.accounting-filter-form', 'title' => 'Focus the ledger', 'copy' => 'Filter by account, month, or money direction to review the exact cash activity you need.'],
+            ['selector' => '.accounting-ledger-table-wrap', 'title' => 'Audit and assign every transaction', 'copy' => 'Open the source record for each movement and assign historical unassigned entries to the correct account.'],
+        ];
     } elseif (request()->routeIs('sales.index')) {
         $guideTitle = 'Sales and profitability guide';
         $guideSteps = [
