@@ -116,6 +116,28 @@ class SalesController extends Controller
         $maxCategorySale = max(1, (float) $categorySales->max('value'));
         $maxSourceSale = max(1, (float) $sourceSales->max('value'));
         $recentBookings = $bookings->take(20);
+        $summaryConfirmedBookings = $confirmed->sortByDesc('start_at')->values();
+        $collectibleBookings = $summaryConfirmedBookings
+            ->filter(fn (Booking $booking) => $booking->isManualBooking() && $booking->outstandingBalance() > 0)
+            ->values();
+        $bookingExpenseRows = $summaryConfirmedBookings->flatMap(fn (Booking $booking) => $booking->expenses
+            ->where('status', '!=', 'cancelled')
+            ->map(fn ($expense) => ['booking' => $booking, 'expense' => $expense]))
+            ->sortByDesc(fn ($row) => $row['expense']->created_at)
+            ->values();
+        $unitOperatingCostRows = $unitReports->flatMap(fn ($report) => $report['costs']
+            ->where('classification', 'operating')
+            ->map(fn ($cost) => ['unit' => $report['unit'], 'cost' => $cost]))
+            ->sortByDesc(fn ($row) => $row['cost']->incurred_on)
+            ->values();
+        $payableInstallmentRows = $unitReports->flatMap(fn ($report) => $report['outstanding_installments']
+            ->map(fn ($due) => [...$due, 'unit' => $report['unit']]))
+            ->sortBy('due_date')
+            ->values();
+        $payableCostRows = $unitReports->flatMap(fn ($report) => $report['cost_payables']
+            ->map(fn ($cost) => ['unit' => $report['unit'], 'cost' => $cost]))
+            ->sortBy(fn ($row) => $row['cost']->due_on ?: $row['cost']->incurred_on)
+            ->values();
         $selectedUnitReport = $selectedUnit
             ? $financeReports->report($selectedUnit, $reportMonth, $asOfMonth)
             : null;
@@ -176,7 +198,8 @@ class SalesController extends Controller
             'categories', 'accessibleUnits', 'selectedCategory', 'selectedUnit', 'selectedUnitId',
             'reportMonth', 'asOfMonth', 'metrics', 'monthlySales', 'categorySales', 'sourceSales', 'unitReports',
             'selectedUnitReport', 'selectedUnitBookings', 'maxMonthlySale', 'maxCategorySale', 'maxSourceSale',
-            'recentBookings', 'chartDrilldowns'
+            'recentBookings', 'chartDrilldowns', 'summaryConfirmedBookings', 'collectibleBookings',
+            'bookingExpenseRows', 'unitOperatingCostRows', 'payableInstallmentRows', 'payableCostRows'
         ) + [
             'costCategoryOptions' => UnitCost::CATEGORY_LABELS,
             'obligationCategoryOptions' => UnitObligation::CATEGORY_LABELS,

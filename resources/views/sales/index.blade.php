@@ -22,12 +22,12 @@
                 </form>
 
                 <div class="sales-metric-grid sales-profit-metrics">
-                    <article class="primary"><span>Gross booking sales</span><strong>₱{{ number_format($metrics['sales_total'], 2) }}</strong><small>{{ $metrics['confirmed_count'] }} confirmed {{ Str::plural('booking', $metrics['confirmed_count']) }}</small></article>
-                    <article><span>Operating expenses</span><strong>₱{{ number_format($metrics['operating_expenses'], 2) }}</strong><small>Booking and unit-level costs</small></article>
-                    <article class="{{ $metrics['operating_profit'] < 0 ? 'negative' : 'positive' }}"><span>Operating profit</span><strong>₱{{ number_format($metrics['operating_profit'], 2) }}</strong><small>{{ number_format($metrics['profit_margin'], 1) }}% margin</small></article>
-                    <article><span>Cash after obligations</span><strong>₱{{ number_format($metrics['cash_after_obligations'], 2) }}</strong><small>After financing and improvements</small></article>
-                    <article class="{{ $metrics['due_payables'] > 0 ? 'attention' : '' }}"><span>Payables due</span><strong>₱{{ number_format($metrics['due_payables'], 2) }}</strong><small>Unpaid costs and installments</small></article>
-                    <article><span>Customer collectibles</span><strong>₱{{ number_format($metrics['receivables'], 2) }}</strong><small>Confirmed booking balances</small></article>
+                    <button class="sales-metric-card primary" type="button" data-sales-summary-target="gross" data-sales-summary-title="Gross booking sales" data-sales-summary-subtitle="Confirmed bookings included in this report and their collection status."><span>Gross booking sales</span><strong>₱{{ number_format($metrics['sales_total'], 2) }}</strong><small>{{ $metrics['confirmed_count'] }} confirmed {{ Str::plural('booking', $metrics['confirmed_count']) }}</small><i aria-hidden="true">View bookings →</i></button>
+                    <button class="sales-metric-card" type="button" data-sales-summary-target="expenses" data-sales-summary-title="Operating expenses" data-sales-summary-subtitle="Booking expenses and unit-level operating costs included in this report."><span>Operating expenses</span><strong>₱{{ number_format($metrics['operating_expenses'], 2) }}</strong><small>Booking and unit-level costs</small><i aria-hidden="true">View expenses →</i></button>
+                    <button class="sales-metric-card {{ $metrics['operating_profit'] < 0 ? 'negative' : 'positive' }}" type="button" data-sales-summary-target="profit" data-sales-summary-title="Operating profit" data-sales-summary-subtitle="Gross sales minus booking expenses and unit operating costs, broken down by unit."><span>Operating profit</span><strong>₱{{ number_format($metrics['operating_profit'], 2) }}</strong><small>{{ number_format($metrics['profit_margin'], 1) }}% margin</small><i aria-hidden="true">View breakdown →</i></button>
+                    <button class="sales-metric-card" type="button" data-sales-summary-target="cash" data-sales-summary-title="Cash after obligations" data-sales-summary-subtitle="Operating profit after paid financing installments and capital improvements."><span>Cash after obligations</span><strong>₱{{ number_format($metrics['cash_after_obligations'], 2) }}</strong><small>After financing and improvements</small><i aria-hidden="true">View cash position →</i></button>
+                    <button class="sales-metric-card {{ $metrics['due_payables'] > 0 ? 'attention' : '' }}" type="button" data-sales-summary-target="payables" data-sales-summary-title="Payables due" data-sales-summary-subtitle="Review every unpaid cost and installment, then record it when paid."><span>Payables due</span><strong>₱{{ number_format($metrics['due_payables'], 2) }}</strong><small>Unpaid costs and installments</small><i aria-hidden="true">Review & pay →</i></button>
+                    <button class="sales-metric-card" type="button" data-sales-summary-target="collectibles" data-sales-summary-title="Customer collectibles" data-sales-summary-subtitle="Scan outstanding confirmed outside-booking balances and record full or partial collections."><span>Customer collectibles</span><strong>₱{{ number_format($metrics['receivables'], 2) }}</strong><small>Confirmed booking balances</small><i aria-hidden="true">Review & collect →</i></button>
                 </div>
 
                 <section class="sales-unit-report-card">
@@ -224,5 +224,6 @@
     @if($selectedUnit && $selectedUnitReport)
         @include('sales._unit-profit-report')
     @endif
+    @include('sales._summary-drilldowns')
     @include('sales._chart-drilldown')
 @endsection

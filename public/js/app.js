@@ -1456,6 +1456,37 @@
             });
         }
 
+        const salesSummaryDialog = document.querySelector('[data-sales-summary-dialog]');
+        if (salesSummaryDialog) {
+            const summaryPanels = Array.from(salesSummaryDialog.querySelectorAll('[data-sales-summary-panel]'));
+            const summaryTitle = salesSummaryDialog.querySelector('[data-sales-summary-title]');
+            const summarySubtitle = salesSummaryDialog.querySelector('[data-sales-summary-subtitle]');
+            const closeSalesSummary = () => {
+                if (typeof salesSummaryDialog.close === 'function') salesSummaryDialog.close();
+                else salesSummaryDialog.removeAttribute('open');
+            };
+
+            document.querySelectorAll('[data-sales-summary-target]').forEach((trigger) => {
+                trigger.addEventListener('click', () => {
+                    const target = trigger.dataset.salesSummaryTarget;
+                    const activePanel = summaryPanels.find((panel) => panel.dataset.salesSummaryPanel === target);
+                    if (!activePanel) return;
+
+                    summaryPanels.forEach((panel) => { panel.hidden = panel !== activePanel; });
+                    if (summaryTitle) summaryTitle.textContent = trigger.dataset.salesSummaryTitle || 'Financial details';
+                    if (summarySubtitle) summarySubtitle.textContent = trigger.dataset.salesSummarySubtitle || '';
+                    if (typeof salesSummaryDialog.showModal === 'function') salesSummaryDialog.showModal();
+                    else salesSummaryDialog.setAttribute('open', '');
+                });
+            });
+            salesSummaryDialog.querySelectorAll('[data-sales-summary-close]').forEach((button) => {
+                button.addEventListener('click', closeSalesSummary);
+            });
+            salesSummaryDialog.addEventListener('click', (event) => {
+                if (event.target === salesSummaryDialog) closeSalesSummary();
+            });
+        }
+
         document.querySelector('[data-copy-calendar-feed]')?.addEventListener('click', async (event) => {
             const input = document.querySelector('[data-calendar-feed-url]');
             if (!input) return;

@@ -198,6 +198,93 @@ class UnitFinanceReportTest extends TestCase
             ->assertSee('fa-scale-balanced', false);
     }
 
+    public function test_financial_summary_cards_open_actionable_payable_and_collectible_lists(): void
+    {
+        $host = User::factory()->host()->create();
+        $unit = $this->unit($host, 'Summary Action Condo', 'condo');
+        $booking = Booking::create([
+            'unit_id' => $unit->id,
+            'client_id' => $host->id,
+            'booking_origin' => 'manual',
+            'source_channel' => 'direct',
+            'external_customer_name' => 'Collectible Guest',
+            'start_at' => now()->subDays(2),
+            'end_at' => now()->subDay(),
+            'status' => 'confirmed',
+            'total_amount' => 5000,
+            'party_size' => 2,
+        ]);
+        $booking->financialEntries()->create([
+            'recorded_by_user_id' => $host->id,
+            'kind' => 'payment',
+            'category' => 'downpayment',
+            'amount' => 1000,
+            'occurred_at' => now(),
+        ]);
+        BookingExpense::create([
+            'booking_id' => $booking->id,
+            'recorded_by_user_id' => $host->id,
+            'category' => 'cleaning',
+            'vendor_name' => 'Clean Davao',
+            'amount' => 250,
+            'status' => 'recorded',
+        ]);
+
+        $this->actingAs($host)->post(route('sales.units.costs.store', $unit), [
+            'category' => 'electricity',
+            'amount' => 300,
+            'status' => 'payable',
+            'incurred_on' => now()->toDateString(),
+            'due_on' => now()->toDateString(),
+            'vendor_name' => 'Power Utility',
+        ])->assertRedirect();
+        $obligation = UnitObligation::create([
+            'unit_id' => $unit->id,
+            'created_by_user_id' => $host->id,
+            'name' => 'Monthly mortgage',
+            'category' => 'amortization',
+            'monthly_amount' => 700,
+            'start_month' => now()->startOfMonth(),
+            'term_months' => 12,
+            'due_day' => 1,
+            'status' => 'active',
+        ]);
+        $cost = $unit->costs()->sole();
+
+        $response = $this->actingAs($host)->get(route('sales.index'));
+        $response->assertOk()
+            ->assertSee('data-sales-summary-target="gross"', false)
+            ->assertSee('data-sales-summary-target="expenses"', false)
+            ->assertSee('data-sales-summary-target="profit"', false)
+            ->assertSee('data-sales-summary-target="cash"', false)
+            ->assertSee('data-sales-summary-target="payables"', false)
+            ->assertSee('data-sales-summary-target="collectibles"', false)
+            ->assertSee('data-sales-summary-dialog', false)
+            ->assertSee('Collectible Guest')
+            ->assertSee('₱4,000.00')
+            ->assertSee('Partially paid')
+            ->assertSee('Record collected')
+            ->assertSee('Monthly mortgage')
+            ->assertSee('Record payment')
+            ->assertSee('Power Utility')
+            ->assertSee('Mark paid')
+            ->assertSee(route('bookings.financial-entries.store', $booking), false)
+            ->assertSee(route('sales.units.obligations.payments.store', [$unit, $obligation]), false)
+            ->assertSee(route('sales.units.costs.paid', [$unit, $cost]), false);
+
+        $this->actingAs($host)->post(route('bookings.financial-entries.store', $booking), [
+            'kind' => 'payment',
+            'category' => 'balance_payment',
+            'amount' => 4000,
+            'notes' => 'Collected from financial summary.',
+        ])->assertRedirect();
+
+        $this->assertSame(0.0, $booking->fresh()->load('financialEntries')->outstandingBalance());
+        $this->actingAs($host)->get(route('sales.index'))->assertOk()
+            ->assertSee('Nothing to collect.')
+            ->assertSee('All confirmed outside bookings in this report are fully paid.');
+    }
+
     public function test_unit_payable_month_can_only_be_recorded_once(): void
     {
         $host = User::factory()->host()->create();
