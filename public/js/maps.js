@@ -47,6 +47,14 @@
     };
     const coordinateText = (position) => `${position.lat.toFixed(5)}, ${position.lng.toFixed(5)}`;
     const geolocate = (container, callback) => {
+        if (window.DavaoRentZoneNativeLocation?.getCurrentPosition) {
+            setStatus(container, 'Finding your current location…');
+            window.DavaoRentZoneNativeLocation.getCurrentPosition()
+                .then(callback)
+                .catch(() => setStatus(container, 'Location permission was not granted. You can click the map instead.'));
+            return;
+        }
+
         if (!navigator.geolocation) {
             setStatus(container, 'Location access is not supported by this browser.');
             return;

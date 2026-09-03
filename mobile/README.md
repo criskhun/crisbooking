@@ -42,6 +42,12 @@ GOOGLE_APPLICATION_CREDENTIALS=/home/your-hostinger-user/firebase/davao-rent-zon
 
 Never place the service-account JSON in `public_html`, the downloadable APK, or Git. After deploying, run the database migration and refresh Laravel's configuration cache. Rebuild and reinstall the APK because `google-services.json` is compiled into the Android app.
 
+## Android permissions
+
+On the first native app launch, Android asks for notification and location access in sequence. Location is used by the listing maps; users can still search or place a pin manually when they decline it. Photo and document uploads use Android's system picker, which grants access only to the files a user selects, so the app intentionally does not request broad gallery or storage access.
+
+Android does not allow an app to reopen a permission dialog after the user permanently blocks it. In that case, the user must re-enable that permission from the Davao Rent Zone app settings.
+
 ## Release build
 
 Do not commit a signing key or its passwords. Create a private Android signing key, configure it outside Git, and generate a signed release APK before distributing the app to users. Users who install an APK directly must permit installation from the browser or file manager they use to open it.

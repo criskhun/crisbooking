@@ -1,6 +1,7 @@
 import { App } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
+import { Geolocation } from '@capacitor/geolocation';
 import { Network } from '@capacitor/network';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { SplashScreen } from '@capacitor/splash-screen';
@@ -15,7 +16,17 @@ const nativePushUserId = bridgeScript?.dataset.nativePushUserId || '';
 const nativePushSubscribeUrl = bridgeScript?.dataset.nativePushSubscribeUrl || '';
 const nativePushUnsubscribeUrl = bridgeScript?.dataset.nativePushUnsubscribeUrl || '';
 const nativePushAvailable = Capacitor.isPluginAvailable('PushNotifications');
+const nativeLocationAvailable = Capacitor.isPluginAvailable('Geolocation');
+const startupPermissionsKey = 'davao-rent-zone-startup-permissions-v1';
 let checkingPendingOAuth = false;
+
+type NativeLocationBridge = {
+    getCurrentPosition: () => Promise<{ lat: number; lng: number }>;
+};
+
+const nativeWindow = window as Window & {
+    DavaoRentZoneNativeLocation?: NativeLocationBridge;
+};
 
 const hidePageLoader = () => {
     const loading = (window as Window & {
@@ -68,11 +79,6 @@ if (isAndroidApp) {
             return;
         }
 
-        if (!nativePushSubscribeUrl || !nativePushUserId) {
-            emitNativePushState('disabled', 'Log in to enable notifications on this device.');
-            return;
-        }
-
         emitNativePushState('working', 'Connecting this device to notifications…');
 
         try {
@@ -91,6 +97,11 @@ if (isAndroidApp) {
                 return;
             }
 
+            if (!nativePushSubscribeUrl || !nativePushUserId) {
+                emitNativePushState('disabled', 'Log in to connect notifications to your account.');
+                return;
+            }
+
             await PushNotifications.createChannel({
                 id: 'davao_rent_zone_updates',
                 name: 'Booking updates',
@@ -103,6 +114,49 @@ if (isAndroidApp) {
             await PushNotifications.register();
         } catch (error) {
             emitNativePushState('error', error instanceof Error ? error.message : 'Mobile notifications could not be enabled.');
+        }
+    };
+
+    const requestNativeLocationPermission = async () => {
+        if (!nativeLocationAvailable) return;
+
+        try {
+            let permission = await Geolocation.checkPermissions();
+
+            if (permission.location === 'prompt' || permission.location === 'prompt-with-rationale') {
+                permission = await Geolocation.requestPermissions({ permissions: ['location'] });
+            }
+
+            if (permission.location !== 'granted') return;
+
+            nativeWindow.DavaoRentZoneNativeLocation = {
+                getCurrentPosition: async () => {
+                    const position = await Geolocation.getCurrentPosition({
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 60000,
+                    });
+
+                    return {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude,
+                    };
+                },
+            };
+        } catch {
+            // Maps still allow the user to search or place the pin manually.
+        }
+    };
+
+    const requestStartupPermissions = async () => {
+        if (!nativePushAvailable || !nativeLocationAvailable) return;
+        if (localStorage.getItem(startupPermissionsKey) === 'requested') return;
+
+        try {
+            await registerNativePush(true);
+            await requestNativeLocationPermission();
+        } finally {
+            localStorage.setItem(startupPermissionsKey, 'requested');
         }
     };
 
@@ -175,18 +229,43 @@ if (isAndroidApp) {
     });
 
     window.addEventListener('davaorentzone:native-push-sync', () => {
-        const token = localStorage.getItem(nativePushTokenKey);
-        const userId = localStorage.getItem(nativePushUserKey);
+        void (async () => {
+            if (!nativePushAvailable) {
+                emitNativePushState('error', 'Update the Android app before enabling native notifications.');
+                return;
+            }
 
-        if (token && userId === nativePushUserId) {
-            emitNativePushState('enabled', 'Mobile notifications are enabled on this device.');
-            return;
-        }
+            const permission = await PushNotifications.checkPermissions();
+            if (permission.receive !== 'granted') {
+                emitNativePushState(
+                    permission.receive === 'denied' ? 'denied' : 'disabled',
+                    permission.receive === 'denied'
+                        ? 'Notifications are blocked. Allow them in Android app settings.'
+                        : 'Mobile notifications are not enabled on this device.',
+                );
+                return;
+            }
 
-        void registerNativePush(false);
+            const token = localStorage.getItem(nativePushTokenKey);
+            const userId = localStorage.getItem(nativePushUserKey);
+
+            if (token && userId === nativePushUserId) {
+                emitNativePushState('enabled', 'Mobile notifications are enabled on this device.');
+                return;
+            }
+
+            await registerNativePush(false);
+        })().catch(() => {
+            emitNativePushState('error', 'Mobile notification status could not be checked.');
+        });
     });
 
-    if (nativePushUserId) void registerNativePush(false);
+    if (localStorage.getItem(startupPermissionsKey) === 'requested') {
+        void requestNativeLocationPermission();
+        if (nativePushUserId) void registerNativePush(false);
+    } else {
+        void requestStartupPermissions();
+    }
 
     const clearPendingOAuth = () => localStorage.removeItem(pendingOAuthKey);
 

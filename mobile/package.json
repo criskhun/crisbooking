@@ -1,7 +1,7 @@
 {
     "$schema": "https://www.schemastore.org/package.json",
     "name": "davao-rent-zone-android",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "private": true,
     "type": "module",
     "scripts": {
@@ -17,6 +17,7 @@
         "@capacitor/app": "^8.1.1",
         "@capacitor/browser": "^8.0.4",
         "@capacitor/core": "8.5.1",
+        "@capacitor/geolocation": "^8.2.2",
         "@capacitor/network": "^8.0.1",
         "@capacitor/push-notifications": "^8.1.2",
         "@capacitor/splash-screen": "^8.0.2",

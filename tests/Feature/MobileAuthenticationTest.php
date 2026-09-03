@@ -36,6 +36,15 @@ class MobileAuthenticationTest extends TestCase
         $this->assertIsString($bridge);
         $this->assertStringContainsString('auth/mobile/status', $bridge);
         $this->assertStringContainsString('browserFinished', $bridge);
+        $this->assertStringContainsString('davao-rent-zone-startup-permissions-v1', $bridge);
+        $this->assertStringContainsString('DavaoRentZoneNativeLocation', $bridge);
+
+        $manifest = file_get_contents(base_path('mobile/android/app/src/main/AndroidManifest.xml'));
+        $this->assertIsString($manifest);
+        $this->assertStringContainsString('android.permission.ACCESS_COARSE_LOCATION', $manifest);
+        $this->assertStringContainsString('android.permission.ACCESS_FINE_LOCATION', $manifest);
+        $this->assertStringNotContainsString('android.permission.READ_MEDIA_IMAGES', $manifest);
+        $this->assertStringNotContainsString('android.permission.READ_EXTERNAL_STORAGE', $manifest);
     }
 
     public function test_mobile_oauth_can_start_when_chrome_already_has_a_website_session(): void
