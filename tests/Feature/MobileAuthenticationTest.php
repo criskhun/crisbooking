@@ -31,6 +31,11 @@ class MobileAuthenticationTest extends TestCase
             ->assertSee(route('auth.facebook.redirect', ['mobile' => 'android']))
             ->assertSee('data-native-oauth', false)
             ->assertSee('data-no-loading', false);
+
+        $bridge = file_get_contents(public_path('js/capacitor-android-v1.js'));
+        $this->assertIsString($bridge);
+        $this->assertStringContainsString('auth/mobile/status', $bridge);
+        $this->assertStringContainsString('browserFinished', $bridge);
     }
 
     public function test_mobile_oauth_can_start_when_chrome_already_has_a_website_session(): void
@@ -53,9 +58,26 @@ class MobileAuthenticationTest extends TestCase
         config()->set('services.google.client_secret', 'client-secret');
         Socialite::fake('google');
 
-        $this->get('/auth/google?mobile=android')
+        $attempt = $this->postJson(route('auth.mobile.attempt'), [
+            'provider' => 'google',
+        ])->assertOk()
+            ->assertJsonStructure(['token', 'authorization_url'])
+            ->json();
+
+        $this->assertSame(64, strlen($attempt['token']));
+        $this->assertSame(
+            hash('sha256', $attempt['token']),
+            session(MobileAuthHandoff::APP_ATTEMPT_SESSION_KEY),
+        );
+
+        $this->get($attempt['authorization_url'])
             ->assertRedirect()
-            ->assertSessionHas(MobileAuthHandoff::SESSION_KEY, 'android');
+            ->assertSessionHas(MobileAuthHandoff::SESSION_KEY, 'android')
+            ->assertSessionHas(MobileAuthHandoff::BROWSER_TOKEN_SESSION_KEY, $attempt['token']);
+
+        $this->getJson(route('auth.mobile.status', ['token' => $attempt['token']]))
+            ->assertOk()
+            ->assertExactJson(['ready' => false]);
 
         Socialite::fake('google', SocialiteUser::fake([
             'id' => 'mobile-google-123',
@@ -71,7 +93,12 @@ class MobileAuthenticationTest extends TestCase
         $this->assertStringStartsWith(route('auth.mobile.return').'?token=', $location);
         parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
         $this->assertArrayHasKey('token', $query);
+        $this->assertSame($attempt['token'], $query['token']);
         $this->assertDatabaseCount('mobile_auth_tokens', 1);
+
+        $this->getJson(route('auth.mobile.status', ['token' => $attempt['token']]))
+            ->assertOk()
+            ->assertExactJson(['ready' => true]);
 
         $this->get($location)
             ->assertOk()
@@ -101,7 +128,11 @@ class MobileAuthenticationTest extends TestCase
         config()->set('services.facebook.client_secret', 'app-secret');
         Socialite::fake('facebook');
 
-        $this->get('/auth/facebook?mobile=android')
+        $attempt = $this->postJson(route('auth.mobile.attempt'), [
+            'provider' => 'facebook',
+        ])->assertOk()->json();
+
+        $this->get($attempt['authorization_url'])
             ->assertRedirect()
             ->assertSessionHas(MobileAuthHandoff::SESSION_KEY, 'android');
 
@@ -111,8 +142,23 @@ class MobileAuthenticationTest extends TestCase
             'email' => 'mobile-facebook@example.com',
         ]));
 
-        $this->get('/auth/facebook/callback')
-            ->assertRedirect()
-            ->assertRedirectContains('/auth/mobile/return?token=');
+        $callback = $this->get('/auth/facebook/callback')
+            ->assertRedirect();
+
+        $callback->assertRedirectContains('/auth/mobile/return?token='.$attempt['token']);
+
+        $this->getJson(route('auth.mobile.status', ['token' => $attempt['token']]))
+            ->assertOk()
+            ->assertExactJson(['ready' => true]);
+    }
+
+    public function test_mobile_oauth_status_rejects_a_token_from_another_app_session(): void
+    {
+        $this->postJson(route('auth.mobile.attempt'), [
+            'provider' => 'google',
+        ])->assertOk();
+
+        $this->getJson(route('auth.mobile.status', ['token' => str_repeat('a', 64)]))
+            ->assertForbidden();
     }
 }

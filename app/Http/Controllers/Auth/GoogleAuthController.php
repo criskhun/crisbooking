@@ -28,8 +28,10 @@ class GoogleAuthController extends Controller
 
         if ($request->query('mobile') === 'android') {
             $request->session()->put(MobileAuthHandoff::SESSION_KEY, 'android');
+            $handoff->rememberBrowserToken($request, $request->query('handoff'));
         } else {
             $request->session()->forget(MobileAuthHandoff::SESSION_KEY);
+            $request->session()->forget(MobileAuthHandoff::BROWSER_TOKEN_SESSION_KEY);
         }
 
         return Socialite::driver('google')->redirect();
@@ -38,6 +40,7 @@ class GoogleAuthController extends Controller
     public function callback(Request $request, MobileAuthHandoff $handoff): RedirectResponse
     {
         $mobileTarget = $request->session()->pull(MobileAuthHandoff::SESSION_KEY);
+        $mobileToken = $handoff->pullBrowserToken($request);
 
         try {
             $googleUser = Socialite::driver('google')->user();
@@ -89,7 +92,7 @@ class GoogleAuthController extends Controller
         }
 
         if ($mobileTarget === 'android') {
-            $redirect = $handoff->issue($user);
+            $redirect = $handoff->issue($user, $mobileToken);
 
             return redirect()->away($redirect);
         }

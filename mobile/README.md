@@ -32,6 +32,6 @@ Do not commit a signing key or its passwords. Create a private Android signing k
 
 ## Social sign-in
 
-Google and Facebook authentication opens in Android's secure browser tab because those providers can reject embedded web views. After authentication, Laravel creates a short-lived, single-use handoff token and returns through the `davaorentzone://auth/callback` app link. The browser return page also provides an **Open Davao Rent Zone** button if Android does not reopen the app automatically.
+Google and Facebook authentication opens in Android's secure browser tab because those providers can reject embedded web views. Before opening it, the app prepares a short-lived, single-use handoff token. When the browser closes or the app resumes, the app checks that pending handoff and completes sign-in even when Android blocks the automatic app link. The browser return page also provides an **Open Davao Rent Zone** button as a fallback.
 
 Deploy the Laravel routes, return page, and compiled `public/js/capacitor-android-v1.js` before distributing a newly built APK so the server and native shell use the same handoff flow.

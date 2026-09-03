@@ -62,6 +62,12 @@ Route::get('/calendar/feed/{user}/{token}.ics', [CalendarIntegrationController::
 Route::get('/auth/mobile/complete', [MobileAuthController::class, 'complete'])
     ->middleware('throttle:10,1')
     ->name('auth.mobile.complete');
+Route::post('/auth/mobile/attempt', [MobileAuthController::class, 'attempt'])
+    ->middleware('throttle:10,1')
+    ->name('auth.mobile.attempt');
+Route::get('/auth/mobile/status', [MobileAuthController::class, 'status'])
+    ->middleware('throttle:30,1')
+    ->name('auth.mobile.status');
 Route::get('/auth/mobile/return', [MobileAuthController::class, 'showReturn'])
     ->middleware('throttle:20,1')
     ->name('auth.mobile.return');

@@ -28,8 +28,10 @@ class FacebookAuthController extends Controller
 
         if ($request->query('mobile') === 'android') {
             $request->session()->put(MobileAuthHandoff::SESSION_KEY, 'android');
+            $handoff->rememberBrowserToken($request, $request->query('handoff'));
         } else {
             $request->session()->forget(MobileAuthHandoff::SESSION_KEY);
+            $request->session()->forget(MobileAuthHandoff::BROWSER_TOKEN_SESSION_KEY);
         }
 
         return Socialite::driver('facebook')->scopes(['email'])->redirect();
@@ -38,6 +40,7 @@ class FacebookAuthController extends Controller
     public function callback(Request $request, MobileAuthHandoff $handoff): RedirectResponse
     {
         $mobileTarget = $request->session()->pull(MobileAuthHandoff::SESSION_KEY);
+        $mobileToken = $handoff->pullBrowserToken($request);
 
         try {
             $facebookUser = Socialite::driver('facebook')->user();
@@ -79,7 +82,7 @@ class FacebookAuthController extends Controller
         }
 
         if ($mobileTarget === 'android') {
-            $redirect = $handoff->issue($user);
+            $redirect = $handoff->issue($user, $mobileToken);
 
             return redirect()->away($redirect);
         }

@@ -6,6 +6,8 @@ import { SplashScreen } from '@capacitor/splash-screen';
 import { StatusBar, Style } from '@capacitor/status-bar';
 
 const isAndroidApp = Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android';
+const pendingOAuthKey = 'davao-rent-zone-pending-oauth';
+let checkingPendingOAuth = false;
 
 const hidePageLoader = () => {
     const loading = (window as Window & {
@@ -23,6 +25,95 @@ if (isAndroidApp) {
     void StatusBar.setStyle({ style: Style.Dark }).catch(() => undefined);
     void StatusBar.setBackgroundColor({ color: '#ffffff' }).catch(() => undefined);
     void SplashScreen.hide().catch(() => undefined);
+
+    const clearPendingOAuth = () => localStorage.removeItem(pendingOAuthKey);
+
+    const completePendingOAuth = async () => {
+        if (checkingPendingOAuth) return;
+
+        const token = localStorage.getItem(pendingOAuthKey);
+        if (!token || !/^[a-zA-Z0-9]{64}$/.test(token)) {
+            clearPendingOAuth();
+            return;
+        }
+
+        checkingPendingOAuth = true;
+
+        try {
+            for (let attempt = 0; attempt < 4; attempt += 1) {
+                const response = await fetch(
+                    `https://davaorentzone.com/auth/mobile/status?token=${encodeURIComponent(token)}`,
+                    {
+                        credentials: 'include',
+                        headers: { Accept: 'application/json' },
+                        cache: 'no-store',
+                    },
+                );
+
+                if (response.status === 403) {
+                    clearPendingOAuth();
+                    return;
+                }
+
+                if (!response.ok) return;
+
+                const result = await response.json() as { ready?: boolean };
+                if (result.ready) {
+                    clearPendingOAuth();
+                    hidePageLoader();
+                    void Browser.close().catch(() => undefined);
+                    window.location.replace(
+                        `https://davaorentzone.com/auth/mobile/complete?token=${encodeURIComponent(token)}`,
+                    );
+                    return;
+                }
+
+                await new Promise((resolve) => window.setTimeout(resolve, 700));
+            }
+        } catch {
+            // A later app resume will retry if the network was temporarily unavailable.
+        } finally {
+            checkingPendingOAuth = false;
+        }
+    };
+
+    const openMobileOAuth = async (provider: 'google' | 'facebook', fallbackUrl: string) => {
+        try {
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
+            const response = await fetch('https://davaorentzone.com/auth/mobile/attempt', {
+                method: 'POST',
+                credentials: 'include',
+                cache: 'no-store',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
+                },
+                body: JSON.stringify({ provider }),
+            });
+
+            if (!response.ok) throw new Error('Could not prepare mobile sign-in.');
+
+            const result = await response.json() as {
+                token?: string;
+                authorization_url?: string;
+            };
+
+            if (!result.token || !result.authorization_url) {
+                throw new Error('Mobile sign-in response was incomplete.');
+            }
+
+            localStorage.setItem(pendingOAuthKey, result.token);
+            await Browser.open({ url: result.authorization_url }).catch(() => {
+                clearPendingOAuth();
+                hidePageLoader();
+            });
+        } catch {
+            clearPendingOAuth();
+            hidePageLoader();
+            await Browser.open({ url: fallbackUrl }).catch(() => undefined);
+        }
+    };
 
     void App.addListener('backButton', ({ canGoBack }) => {
         const openDialog = document.querySelector<HTMLDialogElement>('dialog[open]');
@@ -53,11 +144,13 @@ if (isAndroidApp) {
 
                 const token = destination.searchParams.get('token');
                 if (token) {
+                    clearPendingOAuth();
                     window.location.replace(`https://davaorentzone.com/auth/mobile/complete?token=${encodeURIComponent(token)}`);
                     return;
                 }
 
                 const message = destination.searchParams.get('error') || 'Social sign-in could not be completed. Please try again.';
+                clearPendingOAuth();
                 window.location.replace(`https://davaorentzone.com/login?mobile_oauth_error=${encodeURIComponent(message)}`);
                 return;
             }
@@ -66,6 +159,7 @@ if (isAndroidApp) {
                 if (destination.pathname === '/auth/mobile/return') {
                     const token = destination.searchParams.get('token');
                     if (token) {
+                        clearPendingOAuth();
                         void Browser.close().catch(() => undefined);
                         window.location.replace(`https://davaorentzone.com/auth/mobile/complete?token=${encodeURIComponent(token)}`);
                         return;
@@ -83,6 +177,12 @@ if (isAndroidApp) {
         if (!isActive) return;
 
         hidePageLoader();
+        window.setTimeout(() => void completePendingOAuth(), 250);
+    });
+
+    void Browser.addListener('browserFinished', () => {
+        hidePageLoader();
+        void completePendingOAuth();
     });
 
     void Network.addListener('networkStatusChange', ({ connected }) => {
@@ -111,9 +211,8 @@ if (isAndroidApp) {
         if (isAppHost && link.hasAttribute('data-native-oauth')) {
             event.preventDefault();
             hidePageLoader();
-            void Browser.open({ url: destination.href }).catch(() => {
-                hidePageLoader();
-            });
+            const provider = destination.pathname.endsWith('/facebook') ? 'facebook' : 'google';
+            void openMobileOAuth(provider, destination.href);
             return;
         }
 
