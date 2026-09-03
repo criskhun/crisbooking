@@ -62,6 +62,17 @@ Route::get('/calendar/feed/{user}/{token}.ics', [CalendarIntegrationController::
 Route::get('/auth/mobile/complete', [MobileAuthController::class, 'complete'])
     ->middleware('throttle:10,1')
     ->name('auth.mobile.complete');
+Route::get('/auth/mobile/return', [MobileAuthController::class, 'showReturn'])
+    ->middleware('throttle:20,1')
+    ->name('auth.mobile.return');
+
+// These routes must remain accessible when Chrome already has a website session.
+// Android's secure browser tab shares Chrome cookies and still needs to complete
+// the native handoff instead of being redirected by the guest middleware.
+Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])->name('auth.google.redirect');
+Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('auth.google.callback');
+Route::get('/auth/facebook', [FacebookAuthController::class, 'redirect'])->name('auth.facebook.redirect');
+Route::get('/auth/facebook/callback', [FacebookAuthController::class, 'callback'])->name('auth.facebook.callback');
 
 Route::middleware('guest')->group(function () {
     Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
@@ -74,11 +85,6 @@ Route::middleware('guest')->group(function () {
     Route::get('/reset-password/{token}', [NewPasswordController::class, 'create'])->name('password.reset');
     Route::post('/reset-password', [NewPasswordController::class, 'store'])->name('password.store');
 
-    Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])->name('auth.google.redirect');
-    Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('auth.google.callback');
-
-    Route::get('/auth/facebook', [FacebookAuthController::class, 'redirect'])->name('auth.facebook.redirect');
-    Route::get('/auth/facebook/callback', [FacebookAuthController::class, 'callback'])->name('auth.facebook.callback');
 });
 
 Route::middleware(['auth', 'active'])->group(function () {

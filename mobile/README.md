@@ -30,6 +30,8 @@ The Android shell intentionally permits navigation only to the production Davao 
 
 Do not commit a signing key or its passwords. Create a private Android signing key, configure it outside Git, and generate a signed release APK before distributing the app to users. Users who install an APK directly must permit installation from the browser or file manager they use to open it.
 
-## Current authentication limitation
+## Social sign-in
 
-Email/password authentication works in the Android shell. Google and Facebook can reject OAuth inside embedded web views. Add native Google and Facebook authentication with an app deep-link callback before relying on those methods in the Android build.
+Google and Facebook authentication opens in Android's secure browser tab because those providers can reject embedded web views. After authentication, Laravel creates a short-lived, single-use handoff token and returns through the `davaorentzone://auth/callback` app link. The browser return page also provides an **Open Davao Rent Zone** button if Android does not reopen the app automatically.
+
+Deploy the Laravel routes, return page, and compiled `public/js/capacitor-android-v1.js` before distributing a newly built APK so the server and native shell use the same handoff flow.

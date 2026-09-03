@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\MobileAuthToken;
+use App\Models\User;
 use App\Support\MobileAuthHandoff;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
@@ -28,7 +29,22 @@ class MobileAuthenticationTest extends TestCase
             ->assertOk()
             ->assertSee(route('auth.google.redirect', ['mobile' => 'android']))
             ->assertSee(route('auth.facebook.redirect', ['mobile' => 'android']))
-            ->assertSee('data-native-oauth', false);
+            ->assertSee('data-native-oauth', false)
+            ->assertSee('data-no-loading', false);
+    }
+
+    public function test_mobile_oauth_can_start_when_chrome_already_has_a_website_session(): void
+    {
+        config()->set('services.google.client_id', 'client-id');
+        config()->set('services.google.client_secret', 'client-secret');
+        Socialite::fake('google');
+
+        $response = $this->actingAs(User::factory()->create())
+            ->get('/auth/google?mobile=android');
+
+        $response->assertRedirect()
+            ->assertSessionHas(MobileAuthHandoff::SESSION_KEY, 'android');
+        $this->assertNotSame(route('dashboard'), $response->headers->get('Location'));
     }
 
     public function test_google_mobile_login_issues_and_consumes_a_single_use_app_token(): void
@@ -52,10 +68,17 @@ class MobileAuthenticationTest extends TestCase
         $location = $callback->headers->get('Location');
 
         $this->assertIsString($location);
-        $this->assertStringStartsWith('davaorentzone://auth/callback?token=', $location);
+        $this->assertStringStartsWith(route('auth.mobile.return').'?token=', $location);
         parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
         $this->assertArrayHasKey('token', $query);
         $this->assertDatabaseCount('mobile_auth_tokens', 1);
+
+        $this->get($location)
+            ->assertOk()
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertSee('Open Davao Rent Zone')
+            ->assertSee('davaorentzone:', false)
+            ->assertSee('intent://auth/callback?token=', false);
 
         Auth::logout();
         $this->assertGuest();
@@ -90,6 +113,6 @@ class MobileAuthenticationTest extends TestCase
 
         $this->get('/auth/facebook/callback')
             ->assertRedirect()
-            ->assertRedirectContains('davaorentzone://auth/callback?token=');
+            ->assertRedirectContains('/auth/mobile/return?token=');
     }
 }

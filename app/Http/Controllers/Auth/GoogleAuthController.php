@@ -90,8 +90,6 @@ class GoogleAuthController extends Controller
 
         if ($mobileTarget === 'android') {
             $redirect = $handoff->issue($user);
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
 
             return redirect()->away($redirect);
         }

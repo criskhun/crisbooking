@@ -7,6 +7,15 @@ import { StatusBar, Style } from '@capacitor/status-bar';
 
 const isAndroidApp = Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android';
 
+const hidePageLoader = () => {
+    const loading = (window as Window & {
+        DavaoRentZoneLoading?: { hide?: () => void };
+    }).DavaoRentZoneLoading;
+
+    loading?.hide?.();
+    document.body?.classList.remove('is-loading', 'is-booting');
+};
+
 if (isAndroidApp) {
     document.documentElement.dataset.nativePlatform = 'android';
     document.body?.classList.add('is-native-android');
@@ -32,6 +41,8 @@ if (isAndroidApp) {
     });
 
     void App.addListener('appUrlOpen', ({ url }) => {
+        hidePageLoader();
+
         try {
             const destination = new URL(url);
 
@@ -52,11 +63,26 @@ if (isAndroidApp) {
             }
 
             if (destination.hostname === 'davaorentzone.com' || destination.hostname === 'www.davaorentzone.com') {
+                if (destination.pathname === '/auth/mobile/return') {
+                    const token = destination.searchParams.get('token');
+                    if (token) {
+                        void Browser.close().catch(() => undefined);
+                        window.location.replace(`https://davaorentzone.com/auth/mobile/complete?token=${encodeURIComponent(token)}`);
+                        return;
+                    }
+                }
+
                 window.location.assign(destination.href);
             }
         } catch {
             // Ignore malformed deep links.
         }
+    });
+
+    void App.addListener('appStateChange', ({ isActive }) => {
+        if (!isActive) return;
+
+        hidePageLoader();
     });
 
     void Network.addListener('networkStatusChange', ({ connected }) => {
@@ -84,7 +110,10 @@ if (isAndroidApp) {
 
         if (isAppHost && link.hasAttribute('data-native-oauth')) {
             event.preventDefault();
-            void Browser.open({ url: destination.href });
+            hidePageLoader();
+            void Browser.open({ url: destination.href }).catch(() => {
+                hidePageLoader();
+            });
             return;
         }
 

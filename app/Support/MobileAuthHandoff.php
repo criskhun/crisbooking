@@ -21,15 +21,15 @@ class MobileAuthHandoff
             'expires_at' => now()->addMinutes(3),
         ]);
 
-        return 'davaorentzone://auth/callback?token='.rawurlencode($plainToken);
+        return route('auth.mobile.return', ['token' => $plainToken]);
     }
 
     public function error(string $provider, string $message): string
     {
-        return 'davaorentzone://auth/callback?'.http_build_query([
+        return route('auth.mobile.return', [
             'provider' => $provider,
             'error' => $message,
-        ], encoding_type: PHP_QUERY_RFC3986);
+        ]);
     }
 
     public function consume(string $plainToken): ?User
