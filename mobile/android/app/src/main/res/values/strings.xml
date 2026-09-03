@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Davao Rent Zone</string>
+    <string name="title_activity_main">Davao Rent Zone</string>
+    <string name="package_name">com.davaorentzone.app</string>
+    <string name="custom_url_scheme">com.davaorentzone.app</string>
+</resources>

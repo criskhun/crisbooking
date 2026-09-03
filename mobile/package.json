@@ -1,0 +1,29 @@
+{
+    "$schema": "https://www.schemastore.org/package.json",
+    "name": "davao-rent-zone-android",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "pnpm run build:bridge && pnpm run cap:sync",
+        "build:bridge": "esbuild src/native-bridge.ts --bundle --format=iife --platform=browser --target=chrome120 --minify --outfile=../public/js/capacitor-android-v1.js",
+        "cap:sync": "cap sync android",
+        "android:open": "cap open android",
+        "android:debug": "pnpm run build && cd android && ./gradlew assembleDebug",
+        "android:lint": "pnpm run build && cd android && ./gradlew lintDebug"
+    },
+    "dependencies": {
+        "@capacitor/android": "8.5.1",
+        "@capacitor/app": "^8.1.1",
+        "@capacitor/browser": "^8.0.4",
+        "@capacitor/core": "8.5.1",
+        "@capacitor/network": "^8.0.1",
+        "@capacitor/splash-screen": "^8.0.2",
+        "@capacitor/status-bar": "^8.0.3"
+    },
+    "devDependencies": {
+        "@capacitor/cli": "8.5.1",
+        "esbuild": "^0.28.2",
+        "typescript": "^7.0.2"
+    }
+}

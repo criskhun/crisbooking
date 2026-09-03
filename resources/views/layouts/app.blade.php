@@ -37,6 +37,9 @@
     <script src="{{ asset('js/app.js') }}?v={{ filemtime(public_path('js/app.js')) }}" defer></script>
     <script src="{{ asset('js/maps.js') }}?v={{ filemtime(public_path('js/maps.js')) }}" defer></script>
     <script src="{{ asset('js/mobile-shell-v5.js') }}" defer></script>
+    @if (file_exists(public_path('js/capacitor-android-v1.js')))
+        <script src="{{ asset('js/capacitor-android-v1.js') }}?v={{ filemtime(public_path('js/capacitor-android-v1.js')) }}" defer></script>
+    @endif
     <script src="{{ asset('js/pwa.js') }}?v={{ filemtime(public_path('js/pwa.js')) }}" data-service-worker="{{ asset('sw.js') }}" data-connectivity-url="{{ url('/up') }}" defer></script>
     <script src="{{ asset('js/offline-workspace-v21.js') }}?v={{ filemtime(public_path('js/offline-workspace-v21.js')) }}" data-offline-user-id="{{ auth()->id() }}" data-offline-session-url="{{ auth()->check() ? route('offline-sync.session') : '' }}" defer></script>
     @if (config('services.google.maps_api_key'))
