@@ -11,6 +11,7 @@ use App\Http\Controllers\AppManifestController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\FacebookAuthController;
 use App\Http\Controllers\Auth\GoogleAuthController;
+use App\Http\Controllers\Auth\MobileAuthController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -58,6 +59,9 @@ Route::get('/available', AvailabilityController::class)->name('availability.inde
 Route::get('/listings/{unit}', [PublicListingController::class, 'show'])->name('listings.show');
 Route::get('/hosts/{host}', HostStorefrontController::class)->name('hosts.show');
 Route::get('/calendar/feed/{user}/{token}.ics', [CalendarIntegrationController::class, 'feed'])->name('calendar.feed');
+Route::get('/auth/mobile/complete', [MobileAuthController::class, 'complete'])
+    ->middleware('throttle:10,1')
+    ->name('auth.mobile.complete');
 
 Route::middleware('guest')->group(function () {
     Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');

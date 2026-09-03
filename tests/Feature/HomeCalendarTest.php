@@ -18,10 +18,10 @@ class HomeCalendarTest extends TestCase
         $this->get(route('home'))
             ->assertOk()
             ->assertSee('Download Android app')
-            ->assertSee(asset('downloads/DavaoRentZone-Android-v1.0.0.apk'))
-            ->assertSee('download="DavaoRentZone-Android-v1.0.0.apk"', false);
+            ->assertSee(asset('downloads/DavaoRentZone-Android-v1.0.1.apk'))
+            ->assertSee('download="DavaoRentZone-Android-v1.0.1.apk"', false);
 
-        $this->assertFileExists(public_path('downloads/DavaoRentZone-Android-v1.0.0.apk'));
+        $this->assertFileExists(public_path('downloads/DavaoRentZone-Android-v1.0.1.apk'));
     }
 
     public function test_home_shows_the_highest_rated_available_listing_per_category_with_a_review_preview(): void

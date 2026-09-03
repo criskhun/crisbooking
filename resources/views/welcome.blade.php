@@ -16,6 +16,7 @@
             'end_date' => $endDate->toDateString(),
             'category' => $selectedCategory,
         ];
+        $isAndroidApp = Str::contains((string) request()->userAgent(), 'DavaoRentZoneAndroid/');
     @endphp
 
     <main class="landing-shell">
@@ -53,12 +54,14 @@
                     @else
                         <a class="button button-primary" href="{{ route('register') }}">Start with {{ $branding->site_name }} <span aria-hidden="true">→</span></a>
                     @endauth
-                    <a
-                        class="button button-android"
-                        href="{{ asset('downloads/DavaoRentZone-Android-v1.0.0.apk') }}"
-                        download="DavaoRentZone-Android-v1.0.0.apk"
-                        aria-label="Download Davao Rent Zone for Android"
-                    ><x-fa-icon name="mobile-screen-button" /> Download Android app <x-fa-icon name="download" /></a>
+                    @unless($isAndroidApp)
+                        <a
+                            class="button button-android"
+                            href="{{ asset('downloads/DavaoRentZone-Android-v1.0.1.apk') }}"
+                            download="DavaoRentZone-Android-v1.0.1.apk"
+                            aria-label="Download Davao Rent Zone for Android"
+                        ><x-fa-icon name="mobile-screen-button" /> Download Android app <x-fa-icon name="download" /></a>
+                    @endunless
                     @guest
                         <a class="text-link" href="{{ route('login') }}">I already have an account</a>
                     @endguest

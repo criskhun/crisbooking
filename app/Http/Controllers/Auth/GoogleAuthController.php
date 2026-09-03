@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\MobileAuthHandoff;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,27 +14,37 @@ use Throwable;
 
 class GoogleAuthController extends Controller
 {
-    public function redirect(): RedirectResponse
+    public function redirect(Request $request, MobileAuthHandoff $handoff): RedirectResponse
     {
         if (! config('services.google.client_id') || ! config('services.google.client_secret')) {
+            if ($request->query('mobile') === 'android') {
+                return redirect()->away($handoff->error('google', 'Google sign-in is not configured yet.'));
+            }
+
             return redirect()->route('login')->withErrors([
                 'google' => 'Google sign-in is not configured yet. Add your Google OAuth credentials to the application environment.',
             ]);
         }
 
+        if ($request->query('mobile') === 'android') {
+            $request->session()->put(MobileAuthHandoff::SESSION_KEY, 'android');
+        } else {
+            $request->session()->forget(MobileAuthHandoff::SESSION_KEY);
+        }
+
         return Socialite::driver('google')->redirect();
     }
 
-    public function callback(Request $request): RedirectResponse
+    public function callback(Request $request, MobileAuthHandoff $handoff): RedirectResponse
     {
+        $mobileTarget = $request->session()->pull(MobileAuthHandoff::SESSION_KEY);
+
         try {
             $googleUser = Socialite::driver('google')->user();
         } catch (Throwable $exception) {
             report($exception);
 
-            return redirect()->route('login')->withErrors([
-                'google' => 'Google sign-in could not be completed. Please try again.',
-            ]);
+            return $this->failure($handoff, $mobileTarget, 'Google sign-in could not be completed. Please try again.');
         }
 
         $email = Str::lower((string) $googleUser->getEmail());
@@ -43,9 +54,7 @@ class GoogleAuthController extends Controller
         );
 
         if ($email === '' || ! $isVerified) {
-            return redirect()->route('login')->withErrors([
-                'google' => 'Google did not provide a verified email address for this account.',
-            ]);
+            return $this->failure($handoff, $mobileTarget, 'Google did not provide a verified email address for this account.');
         }
 
         $user = User::query()->where('google_id', $googleUser->getId())->first();
@@ -54,17 +63,13 @@ class GoogleAuthController extends Controller
             $user = User::query()->where('email', $email)->first();
 
             if ($user?->google_id && $user->google_id !== $googleUser->getId()) {
-                return redirect()->route('login')->withErrors([
-                    'google' => 'This email address is already connected to another Google account.',
-                ]);
+                return $this->failure($handoff, $mobileTarget, 'This email address is already connected to another Google account.');
             }
         }
 
         if ($user) {
             if (! $user->is_active) {
-                return redirect()->route('login')->withErrors([
-                    'google' => 'This account has been suspended. Contact an administrator for help.',
-                ]);
+                return $this->failure($handoff, $mobileTarget, 'This account has been suspended. Contact an administrator for help.');
             }
 
             $user->forceFill([
@@ -83,9 +88,26 @@ class GoogleAuthController extends Controller
             ]);
         }
 
+        if ($mobileTarget === 'android') {
+            $redirect = $handoff->issue($user);
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->away($redirect);
+        }
+
         Auth::login($user, true);
         $request->session()->regenerate();
 
         return redirect()->intended(route('dashboard'))->with('status', 'You are signed in with Google.');
+    }
+
+    private function failure(MobileAuthHandoff $handoff, mixed $mobileTarget, string $message): RedirectResponse
+    {
+        if ($mobileTarget === 'android') {
+            return redirect()->away($handoff->error('google', $message));
+        }
+
+        return redirect()->route('login')->withErrors(['google' => $message]);
     }
 }

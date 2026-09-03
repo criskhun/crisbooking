@@ -34,6 +34,23 @@ if (isAndroidApp) {
     void App.addListener('appUrlOpen', ({ url }) => {
         try {
             const destination = new URL(url);
+
+            if (destination.protocol === 'davaorentzone:'
+                && destination.hostname === 'auth'
+                && destination.pathname === '/callback') {
+                void Browser.close().catch(() => undefined);
+
+                const token = destination.searchParams.get('token');
+                if (token) {
+                    window.location.replace(`https://davaorentzone.com/auth/mobile/complete?token=${encodeURIComponent(token)}`);
+                    return;
+                }
+
+                const message = destination.searchParams.get('error') || 'Social sign-in could not be completed. Please try again.';
+                window.location.replace(`https://davaorentzone.com/login?mobile_oauth_error=${encodeURIComponent(message)}`);
+                return;
+            }
+
             if (destination.hostname === 'davaorentzone.com' || destination.hostname === 'www.davaorentzone.com') {
                 window.location.assign(destination.href);
             }
@@ -64,6 +81,12 @@ if (isAndroidApp) {
 
         const isAppHost = destination.hostname === 'davaorentzone.com'
             || destination.hostname === 'www.davaorentzone.com';
+
+        if (isAppHost && link.hasAttribute('data-native-oauth')) {
+            event.preventDefault();
+            void Browser.open({ url: destination.href });
+            return;
+        }
 
         if (isAppHost && link.target !== '_blank') return;
 
