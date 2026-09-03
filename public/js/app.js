@@ -672,7 +672,20 @@
                 if (!input) return;
                 const reveal = input.type === 'password';
                 input.type = reveal ? 'text' : 'password';
-                button.textContent = reveal ? 'Hide password' : 'Show password';
+                const label = reveal ? 'Hide password' : 'Show password';
+                const icon = button.querySelector('i');
+                const text = button.querySelector('[data-password-reveal-label]');
+                button.setAttribute('aria-label', label);
+                button.setAttribute('title', label);
+                button.setAttribute('aria-pressed', String(reveal));
+                if (icon) {
+                    icon.classList.toggle('fa-eye', !reveal);
+                    icon.classList.toggle('fa-eye-slash', reveal);
+                } else if (text) {
+                    text.textContent = label;
+                } else {
+                    button.textContent = label;
+                }
             });
         });
         syncCategoryOptions();

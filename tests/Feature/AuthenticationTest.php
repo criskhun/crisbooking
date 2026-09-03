@@ -58,6 +58,10 @@ class AuthenticationTest extends TestCase
             ->assertSee('fill="#4285F4"', false)
             ->assertSee('fill="#34A853"', false)
             ->assertSee('facebook-button', false)
+            ->assertSee('class="password-visibility-toggle"', false)
+            ->assertSee('data-password-reveal', false)
+            ->assertSee('aria-label="Show password"', false)
+            ->assertSee('fa-eye', false)
             ->assertDontSee('fa-solid fa-g"', false)
             ->assertDontSee('fa-solid fa-f"', false)
             ->assertSee(route('password.request'));

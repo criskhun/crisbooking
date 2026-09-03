@@ -260,6 +260,7 @@ button, input, select, textarea { font: inherit; }
 .field-group input::placeholder { color: #a1aaa6; }
 .field-group input:focus, .field-group select:focus, .field-group textarea:focus { border-color: #4d7c6f; box-shadow: 0 0 0 4px rgba(77,124,111,.1); background: white; }
 .field-group input.field-error { border-color: #c76860; }
+.password-input-shell { position: relative; }.password-input-shell > input { padding-right: 3.25rem; }.password-visibility-toggle { position: absolute; top: 50%; right: .55rem; display: grid; place-items: center; width: 2.3rem; height: 2.3rem; padding: 0; border: 0; border-radius: 9px; color: var(--muted); background: transparent; cursor: pointer; transform: translateY(-50%); transition: color .16s, background .16s; }.password-visibility-toggle:hover, .password-visibility-toggle:focus-visible { color: var(--forest); background: var(--mint); outline: none; }.password-visibility-toggle i { font-size: .88rem; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: .85rem; }
 .error-text { margin: 0; color: var(--danger); font-size: .78rem; }
 .error-after-row { margin-top: -.75rem; }

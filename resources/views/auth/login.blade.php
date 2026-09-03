@@ -73,7 +73,10 @@
                             <label for="password">Password</label>
                             <a href="{{ route('password.request') }}">Forgot email or password?</a>
                         </div>
-                        <input id="password" name="password" type="password" autocomplete="current-password" required placeholder="Enter your password" class="@error('password') field-error @enderror">
+                        <div class="password-input-shell">
+                            <input id="password" name="password" type="password" autocomplete="current-password" required placeholder="Enter your password" class="@error('password') field-error @enderror">
+                            <button class="password-visibility-toggle" type="button" data-password-reveal aria-label="Show password" aria-pressed="false" title="Show password"><x-fa-icon name="eye" /></button>
+                        </div>
                         @error('password')<p class="error-text">{{ $message }}</p>@enderror
                     </div>
 
