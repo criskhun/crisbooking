@@ -52,8 +52,16 @@
                         <a class="button button-primary" href="{{ route('dashboard') }}">Go to dashboard <span aria-hidden="true">→</span></a>
                     @else
                         <a class="button button-primary" href="{{ route('register') }}">Start with {{ $branding->site_name }} <span aria-hidden="true">→</span></a>
-                        <a class="text-link" href="{{ route('login') }}">I already have an account</a>
                     @endauth
+                    <a
+                        class="button button-android"
+                        href="{{ asset('downloads/DavaoRentZone-Android-v1.0.0.apk') }}"
+                        download="DavaoRentZone-Android-v1.0.0.apk"
+                        aria-label="Download Davao Rent Zone for Android"
+                    ><x-fa-icon name="mobile-screen-button" /> Download Android app <x-fa-icon name="download" /></a>
+                    @guest
+                        <a class="text-link" href="{{ route('login') }}">I already have an account</a>
+                    @endguest
                 </div>
 
                 <nav class="service-list" aria-label="Filter listings by category">
