@@ -7,14 +7,16 @@ use App\Models\Booking;
 use App\Models\Inquiry;
 use App\Models\ProfileImage;
 use App\Models\User;
+use App\Services\SystemBranding;
 use App\Support\PhoneNumber;
 use App\Support\ProfileOptions;
-use App\Services\SystemBranding;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -132,6 +134,31 @@ class ProfileController extends Controller
         }
 
         return redirect()->route('profile.edit')->with('status', 'Your verification profile is complete and ready to share with booking partners.');
+    }
+
+    public function updatePassword(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+        $currentPasswordRules = $user->password_set_at
+            ? ['required', 'current_password']
+            : ['nullable'];
+
+        $validated = $request->validate([
+            'current_password' => $currentPasswordRules,
+            'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()],
+        ]);
+
+        $user->forceFill([
+            'password' => Hash::make($validated['password']),
+            'password_set_at' => now(),
+        ])->save();
+
+        $request->session()->regenerate();
+
+        return redirect()->route('profile.edit')->with(
+            'status',
+            'Your email password has been saved. You can now sign in with either your password or a connected social account.',
+        );
     }
 
     public function show(Request $request, User $profile): View

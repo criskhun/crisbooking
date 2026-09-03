@@ -32,6 +32,7 @@ class AuthenticationTest extends TestCase
         $this->assertAuthenticated();
         $this->assertDatabaseHas('users', ['email' => 'cris@example.com']);
         $this->assertTrue(Hash::check('booking123', User::firstOrFail()->password));
+        $this->assertNotNull(User::firstOrFail()->password_set_at);
         $this->assertNull(User::firstOrFail()->email_verified_at);
     }
 
@@ -89,6 +90,7 @@ class AuthenticationTest extends TestCase
         ])->assertRedirect(route('login'));
 
         $this->assertTrue(Hash::check('newbooking123', $user->fresh()->password));
+        $this->assertNotNull($user->fresh()->password_set_at);
     }
 
     public function test_mail_transport_failure_returns_to_recovery_form_instead_of_a_500_error(): void

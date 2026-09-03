@@ -115,6 +115,11 @@ if (isAndroidApp) {
         }
     };
 
+    const resumePendingOAuth = () => {
+        hidePageLoader();
+        window.setTimeout(() => void completePendingOAuth(), 250);
+    };
+
     void App.addListener('backButton', ({ canGoBack }) => {
         const openDialog = document.querySelector<HTMLDialogElement>('dialog[open]');
 
@@ -176,14 +181,19 @@ if (isAndroidApp) {
     void App.addListener('appStateChange', ({ isActive }) => {
         if (!isActive) return;
 
-        hidePageLoader();
-        window.setTimeout(() => void completePendingOAuth(), 250);
+        resumePendingOAuth();
     });
 
     void Browser.addListener('browserFinished', () => {
-        hidePageLoader();
-        void completePendingOAuth();
+        resumePendingOAuth();
     });
+
+    window.addEventListener('focus', resumePendingOAuth);
+    window.addEventListener('pageshow', resumePendingOAuth);
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') resumePendingOAuth();
+    });
+    resumePendingOAuth();
 
     void Network.addListener('networkStatusChange', ({ connected }) => {
         window.dispatchEvent(new Event(connected ? 'online' : 'offline'));

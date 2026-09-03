@@ -15,7 +15,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
 
-#[Fillable(['name', 'email', 'email_verified_at', 'password', 'google_id', 'google_avatar', 'facebook_id', 'facebook_avatar', 'profile_image_path', 'calendar_feed_token', 'is_admin', 'is_active', 'role', 'phone', 'date_of_birth', 'nationality', 'address', 'country', 'province', 'city', 'barangay', 'bio', 'emergency_contact_name', 'emergency_contact_phone', 'government_id_type', 'government_id_number', 'government_id_path', 'profile_completed_at', 'last_seen_at'])]
+#[Fillable(['name', 'email', 'email_verified_at', 'password', 'password_set_at', 'google_id', 'google_avatar', 'facebook_id', 'facebook_avatar', 'profile_image_path', 'calendar_feed_token', 'is_admin', 'is_active', 'role', 'phone', 'date_of_birth', 'nationality', 'address', 'country', 'province', 'city', 'barangay', 'bio', 'emergency_contact_name', 'emergency_contact_phone', 'government_id_type', 'government_id_number', 'government_id_path', 'profile_completed_at', 'last_seen_at'])]
 #[Hidden(['password', 'remember_token', 'calendar_feed_token', 'government_id_number', 'government_id_path'])]
 class User extends Authenticatable implements MustVerifyEmailContract
 {
@@ -32,6 +32,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'password_set_at' => 'datetime',
             'is_admin' => 'boolean',
             'is_active' => 'boolean',
             'date_of_birth' => 'date',

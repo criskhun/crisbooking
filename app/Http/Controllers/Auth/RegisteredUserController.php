@@ -28,7 +28,10 @@ class RegisteredUserController extends Controller
             'role' => ['sometimes', Rule::in(['client', 'host'])],
         ]);
 
-        $user = User::create($validated);
+        $user = User::create([
+            ...$validated,
+            'password_set_at' => now(),
+        ]);
 
         event(new Registered($user));
         Auth::login($user);

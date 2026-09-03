@@ -152,6 +152,7 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     Route::patch('/bookings/{booking}/cancel', [BookingController::class, 'cancel'])->name('bookings.cancel');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
     Route::post('/profile/images', [ProfileController::class, 'storeImage'])->name('profile-images.store');
     Route::patch('/profile/images/{profileImage}', [ProfileController::class, 'selectImage'])->name('profile-images.select');
     Route::delete('/profile/images/{profileImage}', [ProfileController::class, 'destroyImage'])->name('profile-images.destroy');

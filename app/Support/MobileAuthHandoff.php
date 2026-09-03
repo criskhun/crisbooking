@@ -12,20 +12,11 @@ class MobileAuthHandoff
 {
     public const SESSION_KEY = 'oauth_mobile_target';
 
-    public const APP_ATTEMPT_SESSION_KEY = 'mobile_oauth_attempt_hash';
-
     public const BROWSER_TOKEN_SESSION_KEY = 'oauth_mobile_handoff_token';
 
-    public function prepare(Request $request): string
+    public function prepare(): string
     {
-        $plainToken = bin2hex(random_bytes(32));
-
-        $request->session()->put(
-            self::APP_ATTEMPT_SESSION_KEY,
-            hash('sha256', $plainToken),
-        );
-
-        return $plainToken;
+        return bin2hex(random_bytes(32));
     }
 
     public function rememberBrowserToken(Request $request, mixed $plainToken): void
@@ -44,15 +35,6 @@ class MobileAuthHandoff
         $plainToken = $request->session()->pull(self::BROWSER_TOKEN_SESSION_KEY);
 
         return $this->hasValidFormat($plainToken) ? $plainToken : null;
-    }
-
-    public function belongsToAppSession(Request $request, mixed $plainToken): bool
-    {
-        $expectedHash = $request->session()->get(self::APP_ATTEMPT_SESSION_KEY);
-
-        return is_string($expectedHash)
-            && $this->hasValidFormat($plainToken)
-            && hash_equals($expectedHash, hash('sha256', $plainToken));
     }
 
     public function isReady(string $plainToken): bool

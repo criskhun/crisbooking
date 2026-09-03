@@ -19,7 +19,7 @@ class MobileAuthController extends Controller
             'provider' => ['required', Rule::in(['google', 'facebook'])],
         ]);
         $provider = $validated['provider'];
-        $token = $handoff->prepare($request);
+        $token = $handoff->prepare();
 
         return response()->json([
             'token' => $token,
@@ -33,8 +33,6 @@ class MobileAuthController extends Controller
     public function status(Request $request, MobileAuthHandoff $handoff): JsonResponse
     {
         $token = (string) $request->query('token');
-
-        abort_unless($handoff->belongsToAppSession($request, $token), 403);
 
         return response()->json([
             'ready' => $handoff->isReady($token),
@@ -68,14 +66,6 @@ class MobileAuthController extends Controller
     public function complete(Request $request, MobileAuthHandoff $handoff): RedirectResponse
     {
         $token = (string) $request->query('token');
-        $hasPreparedAttempt = $request->session()->has(MobileAuthHandoff::APP_ATTEMPT_SESSION_KEY);
-
-        if ($hasPreparedAttempt && ! $handoff->belongsToAppSession($request, $token)) {
-            return redirect()->route('login')->withErrors([
-                'mobile' => 'This mobile sign-in belongs to a different app session. Please try again.',
-            ]);
-        }
-
         $user = $handoff->consume($token);
 
         if (! $user || ! $user->is_active) {
@@ -84,7 +74,6 @@ class MobileAuthController extends Controller
             ]);
         }
 
-        $request->session()->forget(MobileAuthHandoff::APP_ATTEMPT_SESSION_KEY);
         Auth::login($user, true);
         $request->session()->regenerate();
 

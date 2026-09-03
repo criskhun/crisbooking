@@ -65,10 +65,6 @@ class MobileAuthenticationTest extends TestCase
             ->json();
 
         $this->assertSame(64, strlen($attempt['token']));
-        $this->assertSame(
-            hash('sha256', $attempt['token']),
-            session(MobileAuthHandoff::APP_ATTEMPT_SESSION_KEY),
-        );
 
         $this->get($attempt['authorization_url'])
             ->assertRedirect()
@@ -152,13 +148,14 @@ class MobileAuthenticationTest extends TestCase
             ->assertExactJson(['ready' => true]);
     }
 
-    public function test_mobile_oauth_status_rejects_a_token_from_another_app_session(): void
+    public function test_mobile_oauth_status_safely_reports_an_unknown_token_as_not_ready(): void
     {
         $this->postJson(route('auth.mobile.attempt'), [
             'provider' => 'google',
         ])->assertOk();
 
         $this->getJson(route('auth.mobile.status', ['token' => str_repeat('a', 64)]))
-            ->assertForbidden();
+            ->assertOk()
+            ->assertExactJson(['ready' => false]);
     }
 }

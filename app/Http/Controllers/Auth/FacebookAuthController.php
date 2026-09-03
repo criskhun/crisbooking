@@ -81,7 +81,7 @@ class FacebookAuthController extends Controller
             ]);
         }
 
-        if ($mobileTarget === 'android') {
+        if ($mobileTarget === 'android' || $mobileToken !== null) {
             $redirect = $handoff->issue($user, $mobileToken);
 
             return redirect()->away($redirect);

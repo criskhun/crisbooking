@@ -48,6 +48,24 @@
                     @endif
                 </section>
 
+                <form method="POST" action="{{ route('profile.password.update') }}" class="verification-form profile-password-form">
+                    @csrf @method('PUT')
+                    <section>
+                        <div class="verification-section-heading"><span><x-fa-icon name="lock" /></span><div><h2>{{ $profileUser->password_set_at ? 'Change email password' : 'Set an email password' }}</h2><p>Use your verified email address and this password whenever Google or Facebook sign-in is unavailable on a device.</p></div></div>
+                        @unless($profileUser->password_set_at)
+                            <div class="password-setup-note" role="note"><x-fa-icon name="circle-info" /><span>Your account was created through social sign-in, so no current password is required for this first setup.</span></div>
+                        @endunless
+                        <div class="verification-grid">
+                            @if($profileUser->password_set_at)
+                                <div class="field-group verification-wide"><label for="current_password">Current password</label><input id="current_password" name="current_password" type="password" autocomplete="current-password" required>@error('current_password')<p class="error-text">{{ $message }}</p>@enderror</div>
+                            @endif
+                            <div class="field-group"><label for="profile_password">New password</label><input id="profile_password" name="password" type="password" autocomplete="new-password" minlength="8" required placeholder="At least 8 characters">@error('password')<p class="error-text">{{ $message }}</p>@enderror</div>
+                            <div class="field-group"><label for="profile_password_confirmation">Confirm new password</label><input id="profile_password_confirmation" name="password_confirmation" type="password" autocomplete="new-password" minlength="8" required placeholder="Repeat the new password"></div>
+                        </div>
+                        <div class="verification-actions"><p>Use at least eight characters containing letters and numbers.</p><button class="button button-primary" type="submit">{{ $profileUser->password_set_at ? 'Change password' : 'Set password' }}</button></div>
+                    </section>
+                </form>
+
                 <div @class(['verification-status-card', 'complete' => $profileUser->hasCompleteProfile()])>
                     <span><x-fa-icon :name="$profileUser->hasCompleteProfile() ? 'check' : 'triangle-exclamation'" /></span>
                     <div><small>{{ $profileUser->hasCompleteProfile() ? 'Profile complete' : 'Action required' }}</small><h2>{{ $profileUser->hasCompleteProfile() ? 'You can inquire, chat, and transact.' : 'Complete this profile before you continue.' }}</h2><p>Your contact details and ID are shared only with your booking partner and administrators for validation.</p></div>
