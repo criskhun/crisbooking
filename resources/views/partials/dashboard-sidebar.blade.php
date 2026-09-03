@@ -30,11 +30,12 @@
             <i class="fa-solid fa-xmark sidebar-toggle-glyph sidebar-toggle-glyph-close"></i>
         </span>
     </button>
-    <a class="brand brand-light" href="{{ route('dashboard') }}">
-        <span class="brand-mark" aria-hidden="true"><img src="{{ $branding->logo_url }}" alt=""></span>
-        <span class="brand-name">{{ $branding->site_name }}</span>
-    </a>
-    <nav class="sidebar-nav" id="dashboard-navigation">
+    <div class="sidebar-panel">
+        <a class="brand brand-light" href="{{ route('dashboard') }}">
+            <span class="brand-mark" aria-hidden="true"><img src="{{ $branding->logo_url }}" alt=""></span>
+            <span class="brand-name">{{ $branding->site_name }}</span>
+        </a>
+        <nav class="sidebar-nav" id="dashboard-navigation" aria-label="Workspace navigation">
         <a @class(['active' => request()->routeIs('dashboard')]) href="{{ route('dashboard') }}"><i class="fa-solid fa-gauge-high sidebar-nav-icon" aria-hidden="true"></i> Overview</a>
         <a @class(['active' => request()->routeIs('calendar.*') && (request('mode') === 'book' || (auth()->user()->isClient() && request('mode') !== 'manage'))]) href="{{ route('calendar.index', ['mode' => 'book']) }}"><i class="fa-solid fa-calendar-check sidebar-nav-icon" aria-hidden="true"></i> Book now</a>
         <a @class(['active' => request()->routeIs('favorites.*')]) href="{{ route('favorites.index') }}"><i class="fa-solid fa-heart sidebar-nav-icon" aria-hidden="true"></i> Favorites @if($favoriteCount)<b class="sidebar-notification-badge favorite-count" data-sidebar-favorite-count title="{{ $favoriteCount }} saved {{ Str::plural('listing', $favoriteCount) }}">{{ $favoriteCount > 99 ? '99+' : $favoriteCount }}</b>@endif</a>
@@ -66,9 +67,10 @@
             <a @class(['active' => request()->routeIs('sales.*')]) href="{{ route('sales.index') }}"><i class="fa-solid fa-chart-column sidebar-nav-icon" aria-hidden="true"></i> Sales</a>
             <a @class(['active' => request()->routeIs('accounting.*')]) href="{{ route('accounting.index') }}"><i class="fa-solid fa-book-open sidebar-nav-icon" aria-hidden="true"></i> Accounting ledger</a>
         @endif
-    </nav>
-    <form method="POST" action="{{ route('logout') }}" class="sidebar-logout">
-        @csrf
-        <button type="submit"><i class="fa-solid fa-right-from-bracket sidebar-nav-icon" aria-hidden="true"></i> Log out</button>
-    </form>
+        </nav>
+        <form method="POST" action="{{ route('logout') }}" class="sidebar-logout">
+            @csrf
+            <button type="submit"><i class="fa-solid fa-right-from-bracket sidebar-nav-icon" aria-hidden="true"></i> Log out</button>
+        </form>
+    </div>
 </aside>

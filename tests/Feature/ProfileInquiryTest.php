@@ -90,6 +90,8 @@ class ProfileInquiryTest extends TestCase
             ->assertSee('class="profile-verification-shell"', false)
             ->assertSee('class="profile-date-input"', false)
             ->assertSee('data-mobile-sidebar-toggle', false)
+            ->assertSee('class="sidebar-panel"', false)
+            ->assertSee('aria-label="Workspace navigation"', false)
             ->assertSee('vendor/fontawesome/css/fontawesome.min.css', false)
             ->assertSee('vendor/fontawesome/css/solid.min.css', false)
             ->assertSee('sidebar-toggle-glyph-menu', false)

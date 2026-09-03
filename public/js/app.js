@@ -337,6 +337,7 @@
         const mobileSidebarToggle = document.querySelector('[data-mobile-sidebar-toggle]');
         const mobileSidebarLabel = document.querySelector('[data-mobile-sidebar-label]');
         const mobileSidebarClose = document.querySelector('[data-mobile-sidebar-close]');
+        const mobileSidebarNavigation = mobileSidebar?.querySelector('.sidebar-nav');
         const mobileSidebarQuery = window.matchMedia('(max-width: 740px)');
 
         const setMobileSidebarOpen = (open, returnFocus = false) => {
@@ -348,6 +349,12 @@
             if (mobileSidebarLabel) mobileSidebarLabel.textContent = shouldOpen ? 'Close navigation menu' : 'Open navigation menu';
             if (mobileSidebarClose) mobileSidebarClose.hidden = !shouldOpen;
             document.body.classList.toggle('mobile-sidebar-open', shouldOpen);
+
+            if (shouldOpen) {
+                window.requestAnimationFrame(() => {
+                    mobileSidebarNavigation?.querySelector('.active')?.scrollIntoView({block: 'nearest'});
+                });
+            }
 
             if (!shouldOpen && returnFocus) mobileSidebarToggle.focus();
         };

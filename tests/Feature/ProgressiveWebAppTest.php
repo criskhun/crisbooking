@@ -56,6 +56,20 @@ class ProgressiveWebAppTest extends TestCase
         $this->assertStringContainsString('connectivityStatus.classList.remove(\'is-offline\')', $script);
     }
 
+    public function test_mobile_sidebar_has_an_independent_touch_scroll_region(): void
+    {
+        $appStyles = file_get_contents(public_path('css/app.css'));
+        $mobileStyles = file_get_contents(public_path('css/mobile-menu-v6.css'));
+        $appScript = file_get_contents(public_path('js/app.js'));
+
+        $this->assertStringContainsString('.sidebar-panel { display: flex;', $appStyles);
+        $this->assertStringContainsString('overflow-y: auto', $appStyles);
+        $this->assertStringContainsString('-webkit-overflow-scrolling: touch', $appStyles);
+        $this->assertStringContainsString('.sidebar-panel {', $mobileStyles);
+        $this->assertStringContainsString('overflow: hidden !important', $mobileStyles);
+        $this->assertStringContainsString('mobileSidebarNavigation?.querySelector(\'.active\')?.scrollIntoView', $appScript);
+    }
+
     public function test_service_worker_preserves_a_private_calendar_for_offline_work(): void
     {
         $serviceWorker = file_get_contents(public_path('sw.js'));
