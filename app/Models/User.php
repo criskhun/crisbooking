@@ -112,6 +112,11 @@ class User extends Authenticatable implements MustVerifyEmailContract
         return $this->hasMany(PushSubscription::class);
     }
 
+    public function nativePushSubscriptions(): HasMany
+    {
+        return $this->hasMany(NativePushSubscription::class);
+    }
+
     public function reviewsReceived(): HasMany
     {
         return $this->hasMany(Review::class, 'reviewee_id');

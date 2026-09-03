@@ -1899,8 +1899,14 @@
                 const raw = atob((value + padding).replace(/-/g, '+').replace(/_/g, '/'));
                 return Uint8Array.from([...raw].map((character) => character.charCodeAt(0)));
             };
+            const isNativeAndroid = document.documentElement.dataset.nativePlatform === 'android';
             const syncPushState = async () => {
                 if (!pushToggle || !pushStatus) return;
+                if (isNativeAndroid) {
+                    pushToggle.hidden = false;
+                    window.dispatchEvent(new CustomEvent('davaorentzone:native-push-sync'));
+                    return;
+                }
                 if (!('serviceWorker' in navigator) || !('PushManager' in window) || !notificationCenter.dataset.vapidPublicKey) {
                     pushToggle.hidden = true;
                     pushStatus.textContent = 'Push notifications are not supported on this browser.';
@@ -1914,6 +1920,14 @@
             };
             pushToggle?.addEventListener('click', async () => {
                 pushToggle.disabled = true;
+                if (isNativeAndroid) {
+                    window.dispatchEvent(new CustomEvent(
+                        pushToggle.dataset.subscribed === '1'
+                            ? 'davaorentzone:native-push-disable'
+                            : 'davaorentzone:native-push-enable',
+                    ));
+                    return;
+                }
                 try {
                     const registration = await navigator.serviceWorker.ready;
                     let subscription = await registration.pushManager.getSubscription();
@@ -1934,6 +1948,21 @@
                     pushToggle.disabled = false;
                 }
             });
+
+            window.addEventListener('davaorentzone:native-push-state', (event) => {
+                if (!isNativeAndroid || !pushToggle || !pushStatus) return;
+                const detail = event.detail || {};
+                const enabled = detail.state === 'enabled';
+                pushToggle.hidden = false;
+                pushToggle.disabled = detail.state === 'working';
+                pushToggle.dataset.subscribed = enabled ? '1' : '0';
+                pushToggle.textContent = enabled ? 'Disable mobile notifications' : 'Enable mobile notifications';
+                pushStatus.textContent = detail.message || (enabled
+                    ? 'Mobile notifications are enabled on this device.'
+                    : 'Receive updates even when the app is closed.');
+            });
+
+            window.addEventListener('davaorentzone:native-notification-received', refresh);
 
             navigator.serviceWorker?.addEventListener('message', (event) => {
                 if (event.data?.type === 'APP_NOTIFICATION') refresh();

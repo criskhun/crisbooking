@@ -14,6 +14,8 @@ use Minishlink\WebPush\WebPush;
 
 class AppNotificationService
 {
+    public function __construct(private readonly FirebaseCloudMessaging $firebase) {}
+
     public function send(
         User $user,
         string $type,
@@ -31,7 +33,8 @@ class AppNotificationService
             return $notification;
         }
 
-        $this->sendPush($user, $notification);
+        $this->sendWebPush($user, $notification);
+        $this->firebase->send($user, $notification);
 
         return $notification;
     }
@@ -245,7 +248,7 @@ class AppNotificationService
         return compact('sent', 'failed');
     }
 
-    private function sendPush(User $user, UserNotification $notification): void
+    private function sendWebPush(User $user, UserNotification $notification): void
     {
         $publicKey = config('services.webpush.public_key');
         $privateKey = config('services.webpush.private_key');

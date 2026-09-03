@@ -18,6 +18,8 @@
 /public/fonts-manifest.dev.json
 /public/hot
 /public/storage
+/mobile/android/app/google-services.json
+/storage/app/firebase/*.json
 /storage/*.key
 /storage/pail
 /vendor

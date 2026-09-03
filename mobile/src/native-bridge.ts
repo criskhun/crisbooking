@@ -2,11 +2,19 @@ import { App } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
 import { Network } from '@capacitor/network';
+import { PushNotifications } from '@capacitor/push-notifications';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { StatusBar, Style } from '@capacitor/status-bar';
 
 const isAndroidApp = Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android';
 const pendingOAuthKey = 'davao-rent-zone-pending-oauth';
+const nativePushTokenKey = 'davao-rent-zone-native-push-token';
+const nativePushUserKey = 'davao-rent-zone-native-push-user';
+const bridgeScript = document.currentScript as HTMLScriptElement | null;
+const nativePushUserId = bridgeScript?.dataset.nativePushUserId || '';
+const nativePushSubscribeUrl = bridgeScript?.dataset.nativePushSubscribeUrl || '';
+const nativePushUnsubscribeUrl = bridgeScript?.dataset.nativePushUnsubscribeUrl || '';
+const nativePushAvailable = Capacitor.isPluginAvailable('PushNotifications');
 let checkingPendingOAuth = false;
 
 const hidePageLoader = () => {
@@ -25,6 +33,160 @@ if (isAndroidApp) {
     void StatusBar.setStyle({ style: Style.Dark }).catch(() => undefined);
     void StatusBar.setBackgroundColor({ color: '#ffffff' }).catch(() => undefined);
     void SplashScreen.hide().catch(() => undefined);
+
+    type NativePushState = 'disabled' | 'enabled' | 'denied' | 'working' | 'error';
+
+    const emitNativePushState = (state: NativePushState, message: string) => {
+        window.dispatchEvent(new CustomEvent('davaorentzone:native-push-state', {
+            detail: { state, message },
+        }));
+    };
+
+    const nativePushRequest = async (url: string, method: 'POST' | 'DELETE', token: string) => {
+        const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
+        const response = await fetch(url, {
+            method,
+            credentials: 'include',
+            cache: 'no-store',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
+            },
+            body: JSON.stringify({ token, platform: 'android' }),
+        });
+
+        if (!response.ok) {
+            const result = await response.json().catch(() => ({})) as { message?: string };
+            throw new Error(result.message || 'The device could not be registered for notifications.');
+        }
+    };
+
+    const registerNativePush = async (askPermission: boolean) => {
+        if (!nativePushAvailable) {
+            emitNativePushState('error', 'Update the Android app before enabling native notifications.');
+            return;
+        }
+
+        if (!nativePushSubscribeUrl || !nativePushUserId) {
+            emitNativePushState('disabled', 'Log in to enable notifications on this device.');
+            return;
+        }
+
+        emitNativePushState('working', 'Connecting this device to notifications…');
+
+        try {
+            let permission = await PushNotifications.checkPermissions();
+            if (permission.receive === 'prompt' && askPermission) {
+                permission = await PushNotifications.requestPermissions();
+            }
+
+            if (permission.receive === 'prompt') {
+                emitNativePushState('disabled', 'Tap enable to allow Android notifications.');
+                return;
+            }
+
+            if (permission.receive !== 'granted') {
+                emitNativePushState('denied', 'Notifications are blocked. Allow them in Android app settings.');
+                return;
+            }
+
+            await PushNotifications.createChannel({
+                id: 'davao_rent_zone_updates',
+                name: 'Booking updates',
+                description: 'Bookings, messages, payments, and service updates',
+                importance: 5,
+                visibility: 1,
+                sound: 'default',
+                vibration: true,
+            });
+            await PushNotifications.register();
+        } catch (error) {
+            emitNativePushState('error', error instanceof Error ? error.message : 'Mobile notifications could not be enabled.');
+        }
+    };
+
+    if (nativePushAvailable) {
+        void PushNotifications.addListener('registration', ({ value }) => {
+            if (!nativePushSubscribeUrl || !nativePushUserId) return;
+
+            void nativePushRequest(nativePushSubscribeUrl, 'POST', value)
+                .then(() => {
+                    localStorage.setItem(nativePushTokenKey, value);
+                    localStorage.setItem(nativePushUserKey, nativePushUserId);
+                    emitNativePushState('enabled', 'Mobile notifications are enabled on this device.');
+                })
+                .catch((error: unknown) => {
+                    emitNativePushState('error', error instanceof Error ? error.message : 'The server could not save this device.');
+                });
+        });
+
+        void PushNotifications.addListener('registrationError', ({ error }) => {
+            emitNativePushState('error', error || 'Firebase could not register this Android device.');
+        });
+
+        void PushNotifications.addListener('pushNotificationReceived', () => {
+            window.dispatchEvent(new CustomEvent('davaorentzone:native-notification-received'));
+        });
+
+        void PushNotifications.addListener('pushNotificationActionPerformed', ({ notification }) => {
+            const target = notification.data?.url;
+            if (typeof target !== 'string' || target === '') return;
+
+            try {
+                const destination = new URL(target, 'https://davaorentzone.com');
+                if (!['davaorentzone.com', 'www.davaorentzone.com'].includes(destination.hostname)) return;
+
+                const notificationId = notification.data?.notification_id;
+                if (notificationId) destination.searchParams.set('notification', String(notificationId));
+                window.location.assign(destination.href);
+            } catch {
+                // Ignore malformed or untrusted notification destinations.
+            }
+        });
+    }
+
+    window.addEventListener('davaorentzone:native-push-enable', () => {
+        void registerNativePush(true);
+    });
+
+    window.addEventListener('davaorentzone:native-push-disable', () => {
+        if (!nativePushAvailable) {
+            emitNativePushState('error', 'Update the Android app before changing native notifications.');
+            return;
+        }
+
+        const token = localStorage.getItem(nativePushTokenKey);
+        emitNativePushState('working', 'Turning off notifications on this device…');
+
+        void (async () => {
+            try {
+                if (token && nativePushUnsubscribeUrl) {
+                    await nativePushRequest(nativePushUnsubscribeUrl, 'DELETE', token);
+                }
+                await PushNotifications.unregister();
+                localStorage.removeItem(nativePushTokenKey);
+                localStorage.removeItem(nativePushUserKey);
+                emitNativePushState('disabled', 'Notifications are disabled on this device.');
+            } catch (error) {
+                emitNativePushState('error', error instanceof Error ? error.message : 'Mobile notifications could not be disabled.');
+            }
+        })();
+    });
+
+    window.addEventListener('davaorentzone:native-push-sync', () => {
+        const token = localStorage.getItem(nativePushTokenKey);
+        const userId = localStorage.getItem(nativePushUserKey);
+
+        if (token && userId === nativePushUserId) {
+            emitNativePushState('enabled', 'Mobile notifications are enabled on this device.');
+            return;
+        }
+
+        void registerNativePush(false);
+    });
+
+    if (nativePushUserId) void registerNativePush(false);
 
     const clearPendingOAuth = () => localStorage.removeItem(pendingOAuthKey);
 

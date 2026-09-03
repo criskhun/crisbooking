@@ -57,8 +57,8 @@
                     @unless($isAndroidApp)
                         <a
                             class="button button-android"
-                            href="{{ asset('downloads/DavaoRentZone-Android-v1.0.2.apk') }}"
-                            download="DavaoRentZone-Android-v1.0.2.apk"
+                            href="{{ asset('downloads/DavaoRentZone-Android-v1.0.3.apk') }}"
+                            download="DavaoRentZone-Android-v1.0.3.apk"
                             aria-label="Download Davao Rent Zone for Android"
                         ><x-fa-icon name="mobile-screen-button" /> Download Android app <x-fa-icon name="download" /></a>
                     @endunless

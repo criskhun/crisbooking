@@ -32,6 +32,7 @@ use App\Http\Controllers\InquiryController;
 use App\Http\Controllers\ListingSearchController;
 use App\Http\Controllers\ManualBookingController;
 use App\Http\Controllers\ManualBookingDetailController;
+use App\Http\Controllers\NativePushSubscriptionController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OfflineSyncSessionController;
 use App\Http\Controllers\PriceProposalController;
@@ -121,6 +122,8 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'read'])->name('notifications.read');
     Route::post('/push-subscriptions', [NotificationController::class, 'subscribe'])->name('push-subscriptions.store');
     Route::delete('/push-subscriptions', [NotificationController::class, 'unsubscribe'])->name('push-subscriptions.destroy');
+    Route::post('/native-push-subscriptions', [NativePushSubscriptionController::class, 'store'])->name('native-push-subscriptions.store');
+    Route::delete('/native-push-subscriptions', [NativePushSubscriptionController::class, 'destroy'])->name('native-push-subscriptions.destroy');
     Route::get('/listings/{unit}/favorite-after-login', [FavoriteUnitController::class, 'afterLogin'])->name('listings.favorite.after-login');
 });
 

@@ -42,6 +42,11 @@ return [
         'private_key' => env('VAPID_PRIVATE_KEY'),
     ],
 
+    'firebase' => [
+        'project_id' => env('FIREBASE_PROJECT_ID'),
+        'credentials' => env('GOOGLE_APPLICATION_CREDENTIALS'),
+    ],
+
     'notifications' => [
         'email_fallback_after_minutes' => (int) env(
             'NOTIFICATION_EMAIL_FALLBACK_MINUTES',

@@ -5,11 +5,15 @@ namespace Tests\Feature;
 use App\Mail\UnseenNotificationMail;
 use App\Models\Booking;
 use App\Models\Inquiry;
+use App\Models\NativePushSubscription;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\AppNotificationService;
+use App\Services\FirebaseCloudMessaging;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Mockery;
 use Tests\TestCase;
 
 class NotificationTest extends TestCase
@@ -137,7 +141,125 @@ class NotificationTest extends TestCase
         $this->actingAs($user)->get(route('dashboard'))
             ->assertOk()
             ->assertSee('data-notification-center', false)
-            ->assertSee('Enable mobile notifications');
+            ->assertSee('Enable mobile notifications')
+            ->assertSee(route('native-push-subscriptions.store'), false)
+            ->assertSee(route('native-push-subscriptions.destroy'), false);
+    }
+
+    public function test_user_can_register_reassign_and_remove_an_android_push_subscription(): void
+    {
+        config()->set('services.firebase.project_id', 'davao-rent-zone-test');
+        config()->set('services.firebase.credentials', __FILE__);
+        $firstUser = User::factory()->create();
+        $secondUser = User::factory()->create();
+        $token = str_repeat('native-device-token-', 12);
+        $tokenHash = hash('sha256', $token);
+
+        $this->actingAs($firstUser)->postJson(route('native-push-subscriptions.store'), [
+            'token' => $token,
+            'platform' => 'android',
+            'device_name' => 'Pixel test device',
+        ])->assertOk()->assertJson(['subscribed' => true]);
+
+        $this->assertDatabaseHas('native_push_subscriptions', [
+            'user_id' => $firstUser->id,
+            'token_hash' => $tokenHash,
+            'platform' => 'android',
+        ]);
+
+        $this->actingAs($secondUser)->postJson(route('native-push-subscriptions.store'), [
+            'token' => $token,
+            'platform' => 'android',
+        ])->assertOk();
+
+        $this->assertDatabaseCount('native_push_subscriptions', 1);
+        $subscription = NativePushSubscription::firstOrFail();
+        $this->assertSame($secondUser->id, $subscription->user_id);
+        $this->assertSame($token, $subscription->token);
+
+        $this->actingAs($firstUser)->deleteJson(route('native-push-subscriptions.destroy'), [
+            'token' => $token,
+        ])->assertOk();
+        $this->assertDatabaseCount('native_push_subscriptions', 1);
+
+        $this->actingAs($secondUser)->deleteJson(route('native-push-subscriptions.destroy'), [
+            'token' => $token,
+        ])->assertOk()->assertJson(['subscribed' => false]);
+        $this->assertDatabaseCount('native_push_subscriptions', 0);
+    }
+
+    public function test_native_subscription_requires_server_side_firebase_configuration(): void
+    {
+        config()->set('services.firebase.project_id', null);
+        config()->set('services.firebase.credentials', null);
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->postJson(route('native-push-subscriptions.store'), [
+            'token' => str_repeat('unconfigured-token-', 12),
+            'platform' => 'android',
+        ])->assertServiceUnavailable()
+            ->assertJsonPath('message', 'Native push delivery is not configured on the server.');
+    }
+
+    public function test_new_application_notification_is_forwarded_to_native_push_delivery(): void
+    {
+        $user = User::factory()->create();
+        $firebase = Mockery::mock(FirebaseCloudMessaging::class);
+        $firebase->shouldReceive('send')
+            ->once()
+            ->withArgs(fn (User $recipient, $notification) => $recipient->is($user)
+                && $notification->title === 'Native delivery test');
+        $this->app->instance(FirebaseCloudMessaging::class, $firebase);
+
+        app(AppNotificationService::class)->send(
+            $user,
+            'system',
+            'Native delivery test',
+            'This notification should be forwarded to FCM.',
+            route('dashboard'),
+        );
+
+        $this->assertDatabaseHas('user_notifications', [
+            'user_id' => $user->id,
+            'title' => 'Native delivery test',
+        ]);
+    }
+
+    public function test_firebase_delivery_uses_the_device_token_and_notification_destination(): void
+    {
+        config()->set('services.firebase.project_id', 'davao-rent-zone-test');
+        config()->set('services.firebase.credentials', __FILE__);
+        Http::fake([
+            'https://fcm.googleapis.com/*' => Http::response(['name' => 'projects/test/messages/1']),
+        ]);
+        $user = User::factory()->create();
+        $token = str_repeat('fcm-test-token-', 12);
+        $user->nativePushSubscriptions()->create([
+            'token' => $token,
+            'token_hash' => hash('sha256', $token),
+            'platform' => 'android',
+        ]);
+        $notification = $user->appNotifications()->create([
+            'type' => 'booking_request',
+            'title' => 'New booking request',
+            'body' => 'A customer requested your unit.',
+            'url' => route('bookings.show', 123),
+        ]);
+        $firebase = new class extends FirebaseCloudMessaging
+        {
+            protected function accessToken(): string
+            {
+                return 'test-access-token';
+            }
+        };
+
+        $firebase->send($user, $notification);
+
+        Http::assertSent(fn ($request) => $request->url() === 'https://fcm.googleapis.com/v1/projects/davao-rent-zone-test/messages:send'
+            && $request->hasHeader('Authorization', 'Bearer test-access-token')
+            && $request['message']['token'] === $token
+            && $request['message']['data']['url'] === route('bookings.show', 123)
+            && $request['message']['android']['notification']['channel_id'] === 'davao_rent_zone_updates');
     }
 
     public function test_unseen_notification_is_emailed_after_the_fallback_delay_only_once(): void

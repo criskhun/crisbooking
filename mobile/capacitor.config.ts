@@ -4,7 +4,7 @@ const config: CapacitorConfig = {
     appId: 'com.davaorentzone.app',
     appName: 'Davao Rent Zone',
     webDir: 'www',
-    appendUserAgent: 'DavaoRentZoneAndroid/1.0.2',
+    appendUserAgent: 'DavaoRentZoneAndroid/1.0.3',
     backgroundColor: '#173f35',
     loggingBehavior: 'none',
     server: {
@@ -33,6 +33,9 @@ const config: CapacitorConfig = {
             style: 'DARK',
             backgroundColor: '#ffffff',
             overlaysWebView: false,
+        },
+        PushNotifications: {
+            presentationOptions: ['alert', 'sound'],
         },
     },
 };

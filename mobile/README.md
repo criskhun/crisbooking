@@ -26,6 +26,22 @@ android/app/build/outputs/apk/debug/app-debug.apk
 
 The Android shell intentionally permits navigation only to the production Davao Rent Zone domains and disables clear-text traffic and WebView debugging. It uses the same Laravel sessions, API, and database as the website.
 
+## Native push notifications
+
+The Capacitor app uses Firebase Cloud Messaging (FCM), while normal browsers continue to use Web Push/VAPID.
+
+1. Create or open a Firebase project, add an Android app with package name `com.davaorentzone.app`, and download `google-services.json`.
+2. Save that client file locally as `mobile/android/app/google-services.json`. It is intentionally ignored by Git, so copy it onto any computer that builds the APK.
+3. In Firebase project settings, open **Service accounts**, generate a new private key, and upload the downloaded service-account JSON to a private directory on the Laravel server outside `public_html`.
+4. Configure the production Laravel `.env` with the Firebase project ID and the absolute private path to that server credential file:
+
+```dotenv
+FIREBASE_PROJECT_ID=your-firebase-project-id
+GOOGLE_APPLICATION_CREDENTIALS=/home/your-hostinger-user/firebase/davao-rent-zone-service-account.json
+```
+
+Never place the service-account JSON in `public_html`, the downloadable APK, or Git. After deploying, run the database migration and refresh Laravel's configuration cache. Rebuild and reinstall the APK because `google-services.json` is compiled into the Android app.
+
 ## Release build
 
 Do not commit a signing key or its passwords. Create a private Android signing key, configure it outside Git, and generate a signed release APK before distributing the app to users. Users who install an APK directly must permit installation from the browser or file manager they use to open it.
