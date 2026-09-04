@@ -88,7 +88,7 @@
                                         <label><span>Opening balance</span><div class="money-input"><span>₱</span><input name="opening_balance" inputmode="decimal" value="{{ number_format((float) $account->opening_balance, 2, '.', ',') }}" required data-accounting-input></div></label>
                                         <label><span>Balance start date</span><input name="opened_on" type="date" value="{{ $account->opened_on?->toDateString() }}"></label>
                                         <label class="availability-toggle"><input type="hidden" name="is_active" value="0"><input type="checkbox" name="is_active" value="1" @checked($account->is_active)><span><strong>Active account</strong><small>Inactive accounts stay in history but cannot be selected for new payments.</small></span></label>
-                                        <button class="button button-ghost button-small" type="submit">Save account</button>
+                                        <button class="button button-small financial-account-save-button" type="submit"><x-fa-icon name="floppy-disk" /> <span>Save account</span></button>
                                     </form>
                                 </details>
                                 @endforeach

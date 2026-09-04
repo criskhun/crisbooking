@@ -2114,6 +2114,9 @@ html[data-color-mode="dark"] .finance-control > span { border-color: var(--card-
 .financial-account-card > form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6rem; padding: .8rem; border-top: 1px solid var(--row-line); background: var(--surface-soft); }
 .financial-account-card form .availability-toggle { grid-column: 1 / -1; }
 .financial-account-card form > button { grid-column: 1 / -1; justify-self: end; }
+.financial-account-card form > .financial-account-save-button { color: #fff !important; -webkit-text-fill-color: #fff; border-color: #247a64; background: #247a64; box-shadow: 0 8px 18px rgba(36, 122, 100, .22); opacity: 1; visibility: visible; }
+.financial-account-card form > .financial-account-save-button:hover { color: #fff !important; border-color: #1c6251; background: #1c6251; box-shadow: 0 11px 22px rgba(28, 98, 81, .28); }
+.financial-account-save-button > span { display: inline; color: inherit; -webkit-text-fill-color: inherit; font-weight: 850; }
 .accounting-empty { display: grid; justify-items: center; gap: .25rem; padding: 2rem 1rem; color: var(--muted); text-align: center; }
 .accounting-empty > span { display: grid; place-items: center; width: 2.4rem; height: 2.4rem; border-radius: 50%; color: var(--forest); background: var(--mint); }
 .accounting-empty strong { color: var(--ink); font-size: .65rem; }
@@ -2179,6 +2182,7 @@ html[data-color-mode="dark"] .financial-account-required, html[data-color-mode="
     .financial-account-form, .financial-account-card > form, .accounting-filter-form { grid-template-columns: minmax(0, 1fr); }
     .financial-account-form-heading, .accounting-category-map, .financial-account-form > button, .financial-account-card form .availability-toggle, .financial-account-card form > button, .accounting-filter-form label:nth-child(-n+3) { grid-column: auto; }
     .financial-account-form > button, .financial-account-card form > button { width: 100%; }
+    .financial-account-card form > .financial-account-save-button { display: inline-flex; min-height: 3.15rem; justify-content: center; font-size: .68rem; letter-spacing: .01em; }
     .financial-account-card > summary { grid-template-columns: auto minmax(0, 1fr); }
     .financial-account-card > summary > span:nth-child(3) { grid-column: 2; }
     .financial-account-card > summary > b { grid-column: 2; grid-row: auto; justify-self: start; }
