@@ -21,7 +21,8 @@ class AccountingLedgerTest extends TestCase
         $otherHost = User::factory()->host()->create();
 
         $this->actingAs($host)->post(route('accounting.accounts.store'), [
-            'category' => 'assets',
+            'accounting_type' => 'assets',
+            'account_category' => 'cash_and_cash_equivalents',
             'name' => 'BDO Operations',
             'type' => 'bank',
             'institution_name' => 'BDO',
@@ -32,8 +33,9 @@ class AccountingLedgerTest extends TestCase
 
         $account = FinancialAccount::query()->sole();
         $this->assertTrue($account->is_active);
-        $this->assertSame('assets', $account->category);
-        $this->assertSame('Assets → BDO Operations · •••• 4821', $account->selectionLabel());
+        $this->assertSame('assets', $account->accounting_type);
+        $this->assertSame('cash_and_cash_equivalents', $account->account_category);
+        $this->assertSame('Assets → Cash & Cash Equivalents → BDO Operations · •••• 4821', $account->selectionLabel());
         $this->assertSame('BDO Operations · •••• 4821', $account->displayLabel());
         $this->assertSame('12500.00', $account->opening_balance);
 
@@ -45,7 +47,8 @@ class AccountingLedgerTest extends TestCase
         ])->assertForbidden();
 
         $this->actingAs($host)->patch(route('accounting.accounts.update', $account), [
-            'category' => 'assets',
+            'accounting_type' => 'assets',
+            'account_category' => 'cash_and_cash_equivalents',
             'name' => 'BDO Operations',
             'type' => 'bank',
             'institution_name' => 'BDO',
@@ -75,11 +78,11 @@ class AccountingLedgerTest extends TestCase
         ]);
 
         foreach ([
-            ['category' => 'assets', 'name' => 'BDO', 'type' => 'bank'],
-            ['category' => 'revenue', 'name' => 'Condo Rental Income', 'type' => 'other'],
-            ['category' => 'expenses', 'name' => 'Electricity', 'type' => 'other'],
-            ['category' => 'liabilities', 'name' => 'Guest Deposits', 'type' => 'other'],
-            ['category' => 'equity', 'name' => 'Owner’s Capital', 'type' => 'other'],
+            ['accounting_type' => 'assets', 'account_category' => 'cash_and_cash_equivalents', 'name' => 'GCash – Facebook Bookings', 'type' => 'e_wallet'],
+            ['accounting_type' => 'revenue', 'account_category' => 'condo_rental_income', 'name' => 'Condo Rentals – Direct', 'type' => 'other'],
+            ['accounting_type' => 'expenses', 'account_category' => 'supplies_and_amenities', 'name' => 'Drinking Water Expense', 'type' => 'other'],
+            ['accounting_type' => 'liabilities', 'account_category' => 'customer_guest_deposits', 'name' => 'Guest Deposits', 'type' => 'other'],
+            ['accounting_type' => 'equity', 'account_category' => 'owners_capital', 'name' => 'Owner’s Capital', 'type' => 'other'],
         ] as $accountData) {
             $this->actingAs($host)->post(route('accounting.accounts.store'), $accountData + [
                 'opening_balance' => 0,
@@ -87,8 +90,8 @@ class AccountingLedgerTest extends TestCase
             ])->assertRedirect()->assertSessionHasNoErrors();
         }
 
-        $revenue = FinancialAccount::where('name', 'Condo Rental Income')->sole();
-        $expense = FinancialAccount::where('name', 'Electricity')->sole();
+        $revenue = FinancialAccount::where('name', 'Condo Rentals – Direct')->sole();
+        $expense = FinancialAccount::where('name', 'Drinking Water Expense')->sole();
         $booking->financialEntries()->create([
             'recorded_by_user_id' => $host->id,
             'financial_account_id' => $revenue->id,
@@ -109,15 +112,21 @@ class AccountingLedgerTest extends TestCase
 
         $this->actingAs($host)->get(route('accounting.index'))
             ->assertOk()
-            ->assertSee('Security Deposits Receivable')
+            ->assertSee('Cash &amp; Cash Equivalents', false)
+            ->assertSee('Accounts Receivable')
+            ->assertSee('Property &amp; Equipment', false)
             ->assertSee('Car Rental Income')
-            ->assertSee('Drinking Water')
-            ->assertSee('Payables')
+            ->assertSee('Airport Transport Income')
+            ->assertSee('Supplies &amp; Amenities', false)
+            ->assertSee('Accounts Payable')
             ->assertSee('Owner’s Drawings')
-            ->assertSee('Assets → BDO')
-            ->assertSee('Revenue → Condo Rental Income');
+            ->assertSee('Assets → Cash &amp; Cash Equivalents → GCash – Facebook Bookings', false)
+            ->assertSee('Expenses → Supplies &amp; Amenities → Drinking Water Expense', false);
 
-        $this->actingAs($host)->get(route('accounting.index', ['category' => 'expenses']))
+        $this->actingAs($host)->get(route('accounting.index', [
+            'accounting_type' => 'expenses',
+            'account_category' => 'supplies_and_amenities',
+        ]))
             ->assertOk()
             ->assertViewHas('report', fn (array $report) =>
                 $report['summary']['transaction_count'] === 1
@@ -126,8 +135,10 @@ class AccountingLedgerTest extends TestCase
                 && $report['movements']->first()['account']->is($expense)
             );
 
-        $this->actingAs($host)->get(route('accounting.index', ['category' => 'not-a-category']))
-            ->assertSessionHasErrors('category');
+        $this->actingAs($host)->get(route('accounting.index', [
+            'accounting_type' => 'assets',
+            'account_category' => 'utilities',
+        ]))->assertSessionHasErrors('account_category');
     }
 
     public function test_ledger_combines_collections_deposits_services_costs_and_financing_by_account(): void

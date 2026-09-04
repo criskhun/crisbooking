@@ -12,7 +12,10 @@ class FinancialAccountController extends Controller
     public function store(Request $request): RedirectResponse
     {
         abort_unless($request->user()->isHost() || $request->user()->is_admin, 403);
-        $request->mergeIfMissing(['category' => 'assets']);
+        $request->mergeIfMissing([
+            'accounting_type' => 'assets',
+            'account_category' => 'cash_and_cash_equivalents',
+        ]);
         $this->normalizeMoney($request);
         $validated = $request->validate($this->rules($request));
         $request->user()->financialAccounts()->create($this->attributes($validated, true));
@@ -23,7 +26,10 @@ class FinancialAccountController extends Controller
     public function update(Request $request, FinancialAccount $financialAccount): RedirectResponse
     {
         abort_unless($financialAccount->user_id === $request->user()->id, 403);
-        $request->mergeIfMissing(['category' => $financialAccount->category]);
+        $request->mergeIfMissing([
+            'accounting_type' => $financialAccount->accounting_type,
+            'account_category' => $financialAccount->account_category,
+        ]);
         $this->normalizeMoney($request);
         $validated = $request->validate($this->rules($request, $financialAccount));
         $financialAccount->update($this->attributes($validated));
@@ -35,7 +41,8 @@ class FinancialAccountController extends Controller
     private function rules(Request $request, ?FinancialAccount $account = null): array
     {
         return [
-            'category' => ['required', Rule::in(array_keys(FinancialAccount::CATEGORY_LABELS))],
+            'accounting_type' => ['required', Rule::in(array_keys(FinancialAccount::ACCOUNTING_TYPE_LABELS))],
+            'account_category' => ['required', Rule::in(array_keys(FinancialAccount::categoriesFor($request->input('accounting_type'))))],
             'name' => [
                 'required', 'string', 'max:100',
                 Rule::unique('financial_accounts')->where('user_id', $request->user()->id)->ignore($account?->id),
@@ -53,7 +60,8 @@ class FinancialAccountController extends Controller
     private function attributes(array $validated, bool $defaultActive = false): array
     {
         return [
-            'category' => $validated['category'],
+            'accounting_type' => $validated['accounting_type'],
+            'account_category' => $validated['account_category'],
             'name' => trim($validated['name']),
             'type' => $validated['type'],
             'institution_name' => filled($validated['institution_name'] ?? null) ? trim($validated['institution_name']) : null,

@@ -21,7 +21,11 @@ class AccountingController extends Controller
         abort_unless($request->user()->isHost() || $request->user()->is_admin, 403);
         $validated = $request->validate([
             'account' => ['nullable', 'integer'],
-            'category' => ['nullable', Rule::in(array_keys(FinancialAccount::CATEGORY_LABELS))],
+            'accounting_type' => ['nullable', Rule::in(array_keys(FinancialAccount::ACCOUNTING_TYPE_LABELS))],
+            'account_category' => [
+                'nullable',
+                Rule::in(array_keys(FinancialAccount::categoriesFor($request->input('accounting_type')))),
+            ],
             'month' => ['nullable', 'date_format:Y-m'],
             'direction' => ['nullable', Rule::in(['in', 'out'])],
         ]);
@@ -32,13 +36,15 @@ class AccountingController extends Controller
             ? Carbon::createFromFormat('!Y-m', $validated['month'])->startOfMonth()
             : null;
         $direction = $validated['direction'] ?? null;
-        $category = $validated['category'] ?? null;
-        $report = $ledger->report($request->user(), $selectedAccount, $month, $direction, $category);
+        $accountingType = $validated['accounting_type'] ?? null;
+        $accountCategory = $validated['account_category'] ?? null;
+        $report = $ledger->report($request->user(), $selectedAccount, $month, $direction, $accountingType, $accountCategory);
 
-        return view('accounting.index', compact('report', 'selectedAccount', 'month', 'direction', 'category') + [
+        return view('accounting.index', compact('report', 'selectedAccount', 'month', 'direction', 'accountingType', 'accountCategory') + [
             'accountTypeOptions' => FinancialAccount::TYPE_LABELS,
-            'accountCategoryOptions' => FinancialAccount::CATEGORY_LABELS,
-            'accountCategorySuggestions' => FinancialAccount::CATEGORY_ACCOUNT_SUGGESTIONS,
+            'accountingTypeOptions' => FinancialAccount::ACCOUNTING_TYPE_LABELS,
+            'accountCategoryOptions' => FinancialAccount::ACCOUNT_CATEGORY_LABELS,
+            'accountCategoryDescriptions' => FinancialAccount::ACCOUNT_CATEGORY_DESCRIPTIONS,
         ]);
     }
 

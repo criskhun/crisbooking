@@ -14,13 +14,14 @@ use Illuminate\Support\Collection;
 class AccountingLedgerService
 {
     /** @return array<string, mixed> */
-    public function report(User $owner, ?FinancialAccount $selectedAccount = null, ?Carbon $month = null, ?string $direction = null, ?string $category = null): array
+    public function report(User $owner, ?FinancialAccount $selectedAccount = null, ?Carbon $month = null, ?string $direction = null, ?string $accountingType = null, ?string $accountCategory = null): array
     {
-        $categoryOrder = array_flip(array_keys(FinancialAccount::CATEGORY_LABELS));
+        $typeOrder = array_flip(array_keys(FinancialAccount::ACCOUNTING_TYPE_LABELS));
         $accounts = $owner->financialAccounts()->get()
             ->sortBy(fn (FinancialAccount $account) => sprintf(
-                '%02d|%s',
-                $categoryOrder[$account->category] ?? 99,
+                '%02d|%02d|%s',
+                $typeOrder[$account->accounting_type] ?? 99,
+                array_search($account->account_category, array_keys(FinancialAccount::categoriesFor($account->accounting_type)), true) ?: 0,
                 str($account->name)->lower(),
             ))
             ->values();
@@ -63,7 +64,8 @@ class AccountingLedgerService
 
         $filtered = $movements
             ->when($selectedAccount, fn (Collection $rows) => $rows->where('account.id', $selectedAccount->id))
-            ->when($category, fn (Collection $rows) => $rows->where('account.category', $category))
+            ->when($accountingType, fn (Collection $rows) => $rows->where('account.accounting_type', $accountingType))
+            ->when($accountCategory, fn (Collection $rows) => $rows->where('account.account_category', $accountCategory))
             ->when($month, fn (Collection $rows) => $rows->filter(fn ($row) => $row['occurred_at']->isSameMonth($month)))
             ->when($direction, fn (Collection $rows) => $rows->where('direction', $direction))
             ->sortByDesc('occurred_at')

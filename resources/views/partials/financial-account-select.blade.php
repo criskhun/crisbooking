@@ -9,8 +9,8 @@
     @if($accounts->isNotEmpty())
         <select id="{{ $accountFieldId }}" name="{{ $accountFieldName }}" required>
             <option value="">Choose an account</option>
-            @foreach($accounts->groupBy('category') as $accountCategory => $categoryAccounts)
-                <optgroup label="{{ \App\Models\FinancialAccount::CATEGORY_LABELS[$accountCategory] ?? str($accountCategory)->title() }}">
+            @foreach($accounts->groupBy(fn ($account) => $account->accounting_type.'|'.$account->account_category) as $categoryAccounts)
+                <optgroup label="{{ $categoryAccounts->first()->accountingTypeLabel() }} → {{ $categoryAccounts->first()->accountCategoryLabel() }}">
                     @foreach($categoryAccounts as $financialAccount)
                         <option value="{{ $financialAccount->id }}" @selected((int) $accountFieldValue === $financialAccount->id)>{{ $financialAccount->displayLabel() }} · {{ $financialAccount->typeLabel() }}</option>
                     @endforeach

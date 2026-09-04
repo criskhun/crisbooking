@@ -2096,6 +2096,8 @@ html[data-color-mode="dark"] .finance-control > span { border-color: var(--card-
 .financial-account-form input, .financial-account-form select, .financial-account-card form input, .financial-account-card form select { width: 100%; min-width: 0; }
 .financial-account-form > button { grid-column: 1 / -1; justify-self: end; }
 .financial-account-list { display: grid; gap: .55rem; }
+.financial-account-type-group { display: grid; gap: .55rem; }
+.financial-account-type-heading { padding: .42rem .55rem; border-radius: 8px; color: var(--forest); background: var(--mint); font-size: .52rem; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }
 .financial-account-group { display: grid; gap: .55rem; }
 .financial-account-group-heading { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .2rem .1rem 0; color: var(--muted); }
 .financial-account-group-heading strong { color: var(--ink); font-size: .55rem; }
@@ -2116,7 +2118,7 @@ html[data-color-mode="dark"] .finance-control > span { border-color: var(--card-
 .accounting-empty > span { display: grid; place-items: center; width: 2.4rem; height: 2.4rem; border-radius: 50%; color: var(--forest); background: var(--mint); }
 .accounting-empty strong { color: var(--ink); font-size: .65rem; }
 .accounting-empty p { max-width: 430px; margin: 0; font-size: .52rem; }
-.accounting-filter-form { display: grid; grid-template-columns: minmax(130px, .7fr) minmax(180px, 1fr) 155px 155px auto auto; align-items: end; gap: .6rem; padding: .75rem; margin-top: .85rem; border: 1px solid var(--row-line); border-radius: 11px; background: var(--surface-soft); }
+.accounting-filter-form { display: grid; grid-template-columns: minmax(110px, .65fr) minmax(160px, 1fr) minmax(180px, 1.2fr) 145px 145px auto auto; align-items: end; gap: .6rem; padding: .75rem; margin-top: .85rem; border: 1px solid var(--row-line); border-radius: 11px; background: var(--surface-soft); }
 .accounting-filter-form label { display: grid; gap: .25rem; min-width: 0; }
 .accounting-filter-form label > span { color: var(--muted); font-size: .47rem; font-weight: 800; }
 .accounting-filter-form input, .accounting-filter-form select { width: 100%; min-width: 0; }
@@ -2159,7 +2161,7 @@ html[data-color-mode="dark"] .financial-account-required, html[data-color-mode="
     .financial-account-card > summary > b { grid-column: 3; grid-row: 1 / span 2; }
     .financial-account-card > form { grid-template-columns: 1fr 1fr; }
     .accounting-filter-form { grid-template-columns: 1fr 1fr; }
-    .accounting-filter-form label:nth-child(-n+2) { grid-column: 1 / -1; }
+    .accounting-filter-form label:nth-child(-n+3) { grid-column: 1 / -1; }
     .accounting-filter-form .button { width: 100%; }
     .accounting-ledger-table-wrap { overflow: visible; border: 0; }
     .accounting-ledger-table { display: block; min-width: 0; }
@@ -2175,7 +2177,7 @@ html[data-color-mode="dark"] .financial-account-required, html[data-color-mode="
 @media (max-width: 520px) {
     .accounting-summary-grid { grid-template-columns: minmax(0, 1fr); }
     .financial-account-form, .financial-account-card > form, .accounting-filter-form { grid-template-columns: minmax(0, 1fr); }
-    .financial-account-form-heading, .accounting-category-map, .financial-account-form > button, .financial-account-card form .availability-toggle, .financial-account-card form > button, .accounting-filter-form label:nth-child(-n+2) { grid-column: auto; }
+    .financial-account-form-heading, .accounting-category-map, .financial-account-form > button, .financial-account-card form .availability-toggle, .financial-account-card form > button, .accounting-filter-form label:nth-child(-n+3) { grid-column: auto; }
     .financial-account-form > button, .financial-account-card form > button { width: 100%; }
     .financial-account-card > summary { grid-template-columns: auto minmax(0, 1fr); }
     .financial-account-card > summary > span:nth-child(3) { grid-column: 2; }

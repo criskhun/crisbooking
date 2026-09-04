@@ -108,45 +108,41 @@
             });
         });
 
-        document.querySelectorAll('[data-account-category-select]').forEach((categorySelect) => {
-            const form = categorySelect.form;
-            const nameInput = form?.querySelector('[data-account-name-input]');
-            const suggestionList = nameInput?.list;
-            let suggestions = {};
-
-            try {
-                suggestions = JSON.parse(categorySelect.dataset.accountSuggestions || '{}');
-            } catch (error) {}
-
-            const syncAccountSuggestions = () => {
-                if (!suggestionList) return;
-                suggestionList.replaceChildren(...(suggestions[categorySelect.value] || []).map((name) => {
-                    const option = document.createElement('option');
-                    option.value = name;
-                    return option;
-                }));
-            };
-
-            categorySelect.addEventListener('change', syncAccountSuggestions);
-            syncAccountSuggestions();
-        });
-
-        document.querySelectorAll('[data-account-filter-form]').forEach((form) => {
-            const categorySelect = form.querySelector('[data-account-category-filter]');
+        document.querySelectorAll('[data-accounting-hierarchy]').forEach((form) => {
+            const typeSelect = form.querySelector('[data-accounting-type-select]');
+            const categorySelect = form.querySelector('[data-account-category-select]');
             const accountSelect = form.querySelector('[data-account-filter-select]');
-            const syncAccountFilter = () => {
+            const syncAccounts = () => {
+                const accountingType = typeSelect?.value || '';
                 const category = categorySelect?.value || '';
                 [...(accountSelect?.options || [])].forEach((option) => {
-                    const matches = !option.value || !category || option.dataset.accountCategory === category;
+                    const matchesType = !accountingType || option.dataset.accountingType === accountingType;
+                    const matchesCategory = !category || option.dataset.accountCategory === category;
+                    const matches = !option.value || (matchesType && matchesCategory);
                     option.hidden = !matches;
                     option.disabled = !matches;
                 });
                 const selected = accountSelect?.selectedOptions[0];
                 if (selected?.disabled) accountSelect.value = '';
             };
+            const syncCategories = () => {
+                const accountingType = typeSelect?.value || '';
+                [...(categorySelect?.options || [])].forEach((option) => {
+                    const matches = !option.value || Boolean(accountingType && option.dataset.accountingType === accountingType);
+                    option.hidden = !matches;
+                    option.disabled = !matches;
+                });
+                const selected = categorySelect?.selectedOptions[0];
+                if (selected?.disabled) {
+                    const fallback = [...categorySelect.options].find((option) => !option.disabled);
+                    categorySelect.value = fallback?.value || '';
+                }
+                syncAccounts();
+            };
 
-            categorySelect?.addEventListener('change', syncAccountFilter);
-            syncAccountFilter();
+            typeSelect?.addEventListener('change', syncCategories);
+            categorySelect?.addEventListener('change', syncAccounts);
+            syncCategories();
         });
 
         document.querySelectorAll('[data-fulfillment-method]').forEach((method) => {
