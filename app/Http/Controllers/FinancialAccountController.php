@@ -12,27 +12,30 @@ class FinancialAccountController extends Controller
     public function store(Request $request): RedirectResponse
     {
         abort_unless($request->user()->isHost() || $request->user()->is_admin, 403);
+        $request->mergeIfMissing(['category' => 'assets']);
         $this->normalizeMoney($request);
         $validated = $request->validate($this->rules($request));
         $request->user()->financialAccounts()->create($this->attributes($validated, true));
 
-        return back()->with('status', 'Financial account added. It is now available for collections and payments.');
+        return back()->with('status', 'Accounting account added. It is now available in categorized transaction selectors.');
     }
 
     public function update(Request $request, FinancialAccount $financialAccount): RedirectResponse
     {
         abort_unless($financialAccount->user_id === $request->user()->id, 403);
+        $request->mergeIfMissing(['category' => $financialAccount->category]);
         $this->normalizeMoney($request);
         $validated = $request->validate($this->rules($request, $financialAccount));
         $financialAccount->update($this->attributes($validated));
 
-        return back()->with('status', 'Financial account updated. Existing ledger records were preserved.');
+        return back()->with('status', 'Accounting account updated. Existing ledger records were preserved.');
     }
 
     /** @return array<string, mixed> */
     private function rules(Request $request, ?FinancialAccount $account = null): array
     {
         return [
+            'category' => ['required', Rule::in(array_keys(FinancialAccount::CATEGORY_LABELS))],
             'name' => [
                 'required', 'string', 'max:100',
                 Rule::unique('financial_accounts')->where('user_id', $request->user()->id)->ignore($account?->id),
@@ -50,6 +53,7 @@ class FinancialAccountController extends Controller
     private function attributes(array $validated, bool $defaultActive = false): array
     {
         return [
+            'category' => $validated['category'],
             'name' => trim($validated['name']),
             'type' => $validated['type'],
             'institution_name' => filled($validated['institution_name'] ?? null) ? trim($validated['institution_name']) : null,

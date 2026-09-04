@@ -108,6 +108,47 @@
             });
         });
 
+        document.querySelectorAll('[data-account-category-select]').forEach((categorySelect) => {
+            const form = categorySelect.form;
+            const nameInput = form?.querySelector('[data-account-name-input]');
+            const suggestionList = nameInput?.list;
+            let suggestions = {};
+
+            try {
+                suggestions = JSON.parse(categorySelect.dataset.accountSuggestions || '{}');
+            } catch (error) {}
+
+            const syncAccountSuggestions = () => {
+                if (!suggestionList) return;
+                suggestionList.replaceChildren(...(suggestions[categorySelect.value] || []).map((name) => {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    return option;
+                }));
+            };
+
+            categorySelect.addEventListener('change', syncAccountSuggestions);
+            syncAccountSuggestions();
+        });
+
+        document.querySelectorAll('[data-account-filter-form]').forEach((form) => {
+            const categorySelect = form.querySelector('[data-account-category-filter]');
+            const accountSelect = form.querySelector('[data-account-filter-select]');
+            const syncAccountFilter = () => {
+                const category = categorySelect?.value || '';
+                [...(accountSelect?.options || [])].forEach((option) => {
+                    const matches = !option.value || !category || option.dataset.accountCategory === category;
+                    option.hidden = !matches;
+                    option.disabled = !matches;
+                });
+                const selected = accountSelect?.selectedOptions[0];
+                if (selected?.disabled) accountSelect.value = '';
+            };
+
+            categorySelect?.addEventListener('change', syncAccountFilter);
+            syncAccountFilter();
+        });
+
         document.querySelectorAll('[data-fulfillment-method]').forEach((method) => {
             if (method.closest('[data-manual-booking-form]')) return;
             const field = method.form?.querySelector('[data-delivery-address-field]');

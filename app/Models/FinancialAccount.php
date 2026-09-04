@@ -8,6 +8,22 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class FinancialAccount extends Model
 {
+    public const CATEGORY_LABELS = [
+        'assets' => 'Assets',
+        'revenue' => 'Revenue',
+        'expenses' => 'Expenses',
+        'liabilities' => 'Liabilities',
+        'equity' => 'Equity',
+    ];
+
+    public const CATEGORY_ACCOUNT_SUGGESTIONS = [
+        'assets' => ['BDO', 'GCash', 'Cash', 'Security Deposits Receivable'],
+        'revenue' => ['Condo Rental Income', 'Car Rental Income'],
+        'expenses' => ['Electricity', 'Water', 'Drinking Water', 'Cleaning', 'Repairs', 'Platform Fees'],
+        'liabilities' => ['Payables', 'Guest Deposits'],
+        'equity' => ['Owner’s Capital', 'Owner’s Drawings'],
+    ];
+
     public const TYPE_LABELS = [
         'cash' => 'Cash on hand',
         'bank' => 'Bank account',
@@ -17,7 +33,7 @@ class FinancialAccount extends Model
     ];
 
     protected $fillable = [
-        'user_id', 'name', 'type', 'institution_name', 'last_four',
+        'user_id', 'category', 'name', 'type', 'institution_name', 'last_four',
         'opening_balance', 'opened_on', 'is_active',
     ];
 
@@ -60,10 +76,20 @@ class FinancialAccount extends Model
         return self::TYPE_LABELS[$this->type] ?? str($this->type)->replace('_', ' ')->title();
     }
 
+    public function categoryLabel(): string
+    {
+        return self::CATEGORY_LABELS[$this->category] ?? str($this->category)->replace('_', ' ')->title();
+    }
+
     public function displayLabel(): string
     {
         $suffix = $this->last_four ? ' · •••• '.$this->last_four : '';
 
         return $this->name.$suffix;
+    }
+
+    public function selectionLabel(): string
+    {
+        return $this->categoryLabel().' → '.$this->displayLabel();
     }
 }

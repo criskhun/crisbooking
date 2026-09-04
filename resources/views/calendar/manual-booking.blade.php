@@ -133,7 +133,7 @@
             @if($manualFinancialAccounts->isNotEmpty())
                 <select id="manual_financial_account_id" name="financial_account_id" data-manual-financial-account-select>
                     <option value="">Choose an account</option>
-                    @foreach($manualFinancialAccounts as $financialAccount)<option value="{{ $financialAccount->id }}" data-host-id="{{ $financialAccount->user_id }}" @selected((int) old('financial_account_id') === $financialAccount->id)>{{ $financialAccount->displayLabel() }} · {{ $financialAccount->typeLabel() }}</option>@endforeach
+                    @foreach($manualFinancialAccounts as $financialAccount)<option value="{{ $financialAccount->id }}" data-host-id="{{ $financialAccount->user_id }}" @selected((int) old('financial_account_id') === $financialAccount->id)>{{ $financialAccount->selectionLabel() }} · {{ $financialAccount->typeLabel() }}</option>@endforeach
                 </select>
                 <small class="field-help">Required when a booking payment or security deposit was collected.</small>
             @else

@@ -12,6 +12,7 @@ abstract class TestCase extends BaseTestCase
     {
         return FinancialAccount::create(array_merge([
             'user_id' => $owner->id,
+            'category' => 'assets',
             'name' => 'Business cash',
             'type' => 'cash',
             'opening_balance' => 0,

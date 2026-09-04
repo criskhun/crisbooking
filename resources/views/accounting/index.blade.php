@@ -4,6 +4,11 @@
 @section('body-class', 'dashboard-body')
 
 @section('content')
+    @php
+        $accountFormCategory = array_key_exists(old('category', ''), $accountCategoryOptions)
+            ? old('category')
+            : 'assets';
+    @endphp
     <div class="dashboard-shell">
         @include('partials.dashboard-sidebar')
         <main class="dashboard-main">
@@ -13,7 +18,7 @@
                 @if($errors->any())<div class="oauth-error account-alert" role="alert"><strong>The accounting change could not be saved.</strong><br>{{ $errors->first() }}</div>@endif
 
                 <section class="accounting-hero">
-                    <div><span class="eyebrow">One source of truth</span><h2>Know where every peso came from and where it went.</h2><p>Collections, deposits, service payments, unit costs, and financing payments appear here after you select the cash, bank, card, or e-wallet account used.</p></div>
+                    <div><span class="eyebrow">One source of truth</span><h2>Know where every peso came from and where it went.</h2><p>Organize accounts under Assets, Revenue, Expenses, Liabilities, or Equity, then select the right account whenever money moves.</p></div>
                     <a class="button button-primary" href="#financial-accounts"><x-fa-icon name="plus" /> Add an account</a>
                 </section>
 
@@ -29,12 +34,18 @@
                 @endif
 
                 <section class="financial-accounts-panel" id="financial-accounts">
-                    <div class="accounting-section-heading"><div><span class="eyebrow">Cash locations</span><h2>Your financial accounts</h2><p>Add multiple accounts, then choose the exact source or destination whenever money moves.</p></div><strong>{{ $report['accounts']->where('is_active', true)->count() }} active</strong></div>
+                    <div class="accounting-section-heading"><div><span class="eyebrow">Chart of accounts</span><h2>Your financial accounts</h2><p>Choose a category first, then register the exact account you use for each transaction.</p></div><strong>{{ $report['accounts']->where('is_active', true)->count() }} active</strong></div>
                     <div class="financial-account-layout">
                         <form class="financial-account-form" method="POST" action="{{ route('accounting.accounts.store') }}">
                             @csrf
-                            <div class="financial-account-form-heading"><span><x-fa-icon name="landmark" /></span><div><strong>Register an account</strong><small>Only the last four digits are stored—never enter a full account number.</small></div></div>
-                            <label><span>Account name</span><input name="name" maxlength="100" value="{{ old('name') }}" required placeholder="Business cash, BDO checking, GCash…"></label>
+                            <div class="financial-account-form-heading"><span><x-fa-icon name="landmark" /></span><div><strong>Register an account</strong><small>Select its accounting category so it appears in the right group and filters.</small></div></div>
+                            <div class="accounting-category-map" aria-label="Suggested chart of accounts">
+                                @foreach($accountCategoryOptions as $value => $label)
+                                    <p><strong>{{ $label }}</strong><span>{{ implode(', ', $accountCategorySuggestions[$value]) }}</span></p>
+                                @endforeach
+                            </div>
+                            <label><span>Account category</span><select name="category" required data-account-category-select data-account-suggestions='@json($accountCategorySuggestions)'>@foreach($accountCategoryOptions as $value => $label)<option value="{{ $value }}" @selected($accountFormCategory === $value)>{{ $label }}</option>@endforeach</select></label>
+                            <label><span>Account name</span><input name="name" maxlength="100" value="{{ old('name') }}" required placeholder="Choose or enter an account" list="account-name-suggestions" data-account-name-input><datalist id="account-name-suggestions">@foreach($accountCategorySuggestions[$accountFormCategory] as $suggestedAccount)<option value="{{ $suggestedAccount }}"></option>@endforeach</datalist></label>
                             <label><span>Account type</span><select name="type" required>@foreach($accountTypeOptions as $value => $label)<option value="{{ $value }}" @selected(old('type', 'cash') === $value)>{{ $label }}</option>@endforeach</select></label>
                             <label><span>Bank or provider <i>Optional</i></span><input name="institution_name" maxlength="120" value="{{ old('institution_name') }}" placeholder="BDO, BPI, GCash, Maya…"></label>
                             <label><span>Last four digits <i>Optional</i></span><input name="last_four" inputmode="numeric" minlength="2" maxlength="4" value="{{ old('last_four') }}" placeholder="1234"></label>
@@ -45,18 +56,22 @@
                         </form>
 
                         <div class="financial-account-list">
-                            @forelse($report['account_summaries'] as $accountSummary)
+                            @forelse($report['account_summaries']->groupBy(fn ($summary) => $summary['account']->category) as $accountCategory => $categorySummaries)
+                                <div class="financial-account-group">
+                                    <div class="financial-account-group-heading"><strong>{{ $accountCategoryOptions[$accountCategory] ?? str($accountCategory)->title() }}</strong><span>{{ $categorySummaries->count() }} {{ Str::plural('account', $categorySummaries->count()) }}</span></div>
+                                @foreach($categorySummaries as $accountSummary)
                                 @php
                                     $account = $accountSummary['account'];
                                 @endphp
                                 <details class="financial-account-card {{ $account->is_active ? '' : 'inactive' }}">
                                     <summary>
                                         <span class="financial-account-card-icon"><x-fa-icon :name="match($account->type) { 'cash' => 'money-bill-wave', 'bank' => 'building-columns', 'e_wallet' => 'mobile-screen-button', 'credit_card' => 'credit-card', default => 'wallet' }" /></span>
-                                        <span><small>{{ $account->typeLabel() }}{{ $account->institution_name ? ' · '.$account->institution_name : '' }}</small><strong>{{ $account->displayLabel() }}</strong><em>{{ $account->is_active ? 'Available for transactions' : 'Archived · ledger only' }}</em></span>
+                                        <span><small>{{ $account->categoryLabel() }} · {{ $account->typeLabel() }}{{ $account->institution_name ? ' · '.$account->institution_name : '' }}</small><strong>{{ $account->displayLabel() }}</strong><em>{{ $account->is_active ? 'Available for transactions' : 'Archived · ledger only' }}</em></span>
                                         <span><small>Current balance</small><strong class="{{ $accountSummary['balance'] < 0 ? 'negative' : '' }}">₱{{ number_format($accountSummary['balance'], 2) }}</strong><em>₱{{ number_format($accountSummary['money_in'], 2) }} in · ₱{{ number_format($accountSummary['money_out'], 2) }} out</em></span>
                                         <b>Manage</b>
                                     </summary>
                                     <form method="POST" action="{{ route('accounting.accounts.update', $account) }}">@csrf @method('PATCH')
+                                        <label><span>Account category</span><select name="category" required>@foreach($accountCategoryOptions as $value => $label)<option value="{{ $value }}" @selected($account->category === $value)>{{ $label }}</option>@endforeach</select></label>
                                         <label><span>Account name</span><input name="name" maxlength="100" value="{{ $account->name }}" required></label>
                                         <label><span>Type</span><select name="type" required>@foreach($accountTypeOptions as $value => $label)<option value="{{ $value }}" @selected($account->type === $value)>{{ $label }}</option>@endforeach</select></label>
                                         <label><span>Bank or provider</span><input name="institution_name" maxlength="120" value="{{ $account->institution_name }}"></label>
@@ -67,8 +82,10 @@
                                         <button class="button button-ghost button-small" type="submit">Save account</button>
                                     </form>
                                 </details>
+                                @endforeach
+                                </div>
                             @empty
-                                <div class="accounting-empty"><span><x-fa-icon name="wallet" /></span><strong>No financial accounts yet.</strong><p>Register where you keep or spend business money before recording another collection or payment.</p></div>
+                                <div class="accounting-empty"><span><x-fa-icon name="wallet" /></span><strong>No accounting accounts yet.</strong><p>Register an Asset, Revenue, Expense, Liability, or Equity account before categorizing transactions.</p></div>
                             @endforelse
                         </div>
                     </div>
@@ -76,12 +93,13 @@
 
                 <section class="accounting-ledger-panel" id="accounting-ledger">
                     <div class="accounting-section-heading"><div><span class="eyebrow">Transaction history</span><h2>Accounting ledger</h2><p>Every row links back to the booking, unit, cost, or obligation that created it.</p></div><strong>{{ $report['movements']->count() }} shown</strong></div>
-                    <form class="accounting-filter-form" method="GET" action="{{ route('accounting.index') }}">
-                        <label><span>Account</span><select name="account"><option value="">All accounts, including unassigned</option>@foreach($report['accounts'] as $account)<option value="{{ $account->id }}" @selected($selectedAccount?->id === $account->id)>{{ $account->displayLabel() }}{{ $account->is_active ? '' : ' (archived)' }}</option>@endforeach</select></label>
+                    <form class="accounting-filter-form" method="GET" action="{{ route('accounting.index') }}" data-account-filter-form>
+                        <label><span>Account category</span><select name="category" data-account-category-filter><option value="">All categories</option>@foreach($accountCategoryOptions as $value => $label)<option value="{{ $value }}" @selected($category === $value)>{{ $label }}</option>@endforeach</select></label>
+                        <label><span>Account</span><select name="account" data-account-filter-select><option value="">All accounts, including unassigned</option>@foreach($report['accounts'] as $account)<option value="{{ $account->id }}" data-account-category="{{ $account->category }}" @selected($selectedAccount?->id === $account->id)>{{ $account->selectionLabel() }}{{ $account->is_active ? '' : ' (archived)' }}</option>@endforeach</select></label>
                         <label><span>Month</span><input name="month" type="month" value="{{ $month?->format('Y-m') }}"></label>
                         <label><span>Cash direction</span><select name="direction"><option value="">Money in and out</option><option value="in" @selected($direction === 'in')>Money in</option><option value="out" @selected($direction === 'out')>Money out</option></select></label>
                         <button class="button button-primary button-small" type="submit">Apply filters</button>
-                        @if($selectedAccount || $month || $direction)<a href="{{ route('accounting.index') }}">Clear</a>@endif
+                        @if($selectedAccount || $category || $month || $direction)<a href="{{ route('accounting.index') }}">Clear</a>@endif
                     </form>
 
                     <div class="accounting-ledger-table-wrap">
@@ -94,7 +112,7 @@
                                         <td data-label="Transaction"><a href="{{ $movement['url'] }}">{{ $movement['title'] }}</a><small>{{ $movement['description'] }}</small>@if($movement['notes'])<em>{{ $movement['notes'] }}</em>@endif</td>
                                         <td data-label="Account">
                                             @if($report['accounts']->where('is_active', true)->isNotEmpty())
-                                                <form method="POST" action="{{ route('accounting.transactions.assign') }}" class="ledger-account-assignment">@csrf @method('PATCH')<input type="hidden" name="source_type" value="{{ $movement['source_type'] }}"><input type="hidden" name="source_id" value="{{ $movement['source_id'] }}"><select name="financial_account_id" required aria-label="Account for {{ $movement['title'] }}"><option value="">Unassigned</option>@foreach($report['accounts']->where('is_active', true) as $account)<option value="{{ $account->id }}" @selected($movement['account']?->id === $account->id)>{{ $account->displayLabel() }}</option>@endforeach</select><button type="submit">{{ $movement['account'] ? 'Change' : 'Assign' }}</button></form>
+                                                <form method="POST" action="{{ route('accounting.transactions.assign') }}" class="ledger-account-assignment">@csrf @method('PATCH')<input type="hidden" name="source_type" value="{{ $movement['source_type'] }}"><input type="hidden" name="source_id" value="{{ $movement['source_id'] }}"><select name="financial_account_id" required aria-label="Account for {{ $movement['title'] }}"><option value="">Unassigned</option>@foreach($report['accounts']->where('is_active', true)->groupBy('category') as $pickerCategory => $pickerAccounts)<optgroup label="{{ $accountCategoryOptions[$pickerCategory] ?? str($pickerCategory)->title() }}">@foreach($pickerAccounts as $account)<option value="{{ $account->id }}" @selected($movement['account']?->id === $account->id)>{{ $account->displayLabel() }}</option>@endforeach</optgroup>@endforeach</select><button type="submit">{{ $movement['account'] ? 'Change' : 'Assign' }}</button></form>
                                             @else
                                                 <a class="ledger-unassigned-link" href="#financial-accounts">Add account first</a>
                                             @endif

@@ -21,6 +21,7 @@ class AccountingController extends Controller
         abort_unless($request->user()->isHost() || $request->user()->is_admin, 403);
         $validated = $request->validate([
             'account' => ['nullable', 'integer'],
+            'category' => ['nullable', Rule::in(array_keys(FinancialAccount::CATEGORY_LABELS))],
             'month' => ['nullable', 'date_format:Y-m'],
             'direction' => ['nullable', Rule::in(['in', 'out'])],
         ]);
@@ -31,10 +32,13 @@ class AccountingController extends Controller
             ? Carbon::createFromFormat('!Y-m', $validated['month'])->startOfMonth()
             : null;
         $direction = $validated['direction'] ?? null;
-        $report = $ledger->report($request->user(), $selectedAccount, $month, $direction);
+        $category = $validated['category'] ?? null;
+        $report = $ledger->report($request->user(), $selectedAccount, $month, $direction, $category);
 
-        return view('accounting.index', compact('report', 'selectedAccount', 'month', 'direction') + [
+        return view('accounting.index', compact('report', 'selectedAccount', 'month', 'direction', 'category') + [
             'accountTypeOptions' => FinancialAccount::TYPE_LABELS,
+            'accountCategoryOptions' => FinancialAccount::CATEGORY_LABELS,
+            'accountCategorySuggestions' => FinancialAccount::CATEGORY_ACCOUNT_SUGGESTIONS,
         ]);
     }
 

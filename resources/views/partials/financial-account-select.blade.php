@@ -9,8 +9,12 @@
     @if($accounts->isNotEmpty())
         <select id="{{ $accountFieldId }}" name="{{ $accountFieldName }}" required>
             <option value="">Choose an account</option>
-            @foreach($accounts as $financialAccount)
-                <option value="{{ $financialAccount->id }}" @selected((int) $accountFieldValue === $financialAccount->id)>{{ $financialAccount->displayLabel() }} · {{ $financialAccount->typeLabel() }}</option>
+            @foreach($accounts->groupBy('category') as $accountCategory => $categoryAccounts)
+                <optgroup label="{{ \App\Models\FinancialAccount::CATEGORY_LABELS[$accountCategory] ?? str($accountCategory)->title() }}">
+                    @foreach($categoryAccounts as $financialAccount)
+                        <option value="{{ $financialAccount->id }}" @selected((int) $accountFieldValue === $financialAccount->id)>{{ $financialAccount->displayLabel() }} · {{ $financialAccount->typeLabel() }}</option>
+                    @endforeach
+                </optgroup>
             @endforeach
         </select>
         <small>Required for the accounting ledger.</small>

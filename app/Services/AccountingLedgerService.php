@@ -14,9 +14,16 @@ use Illuminate\Support\Collection;
 class AccountingLedgerService
 {
     /** @return array<string, mixed> */
-    public function report(User $owner, ?FinancialAccount $selectedAccount = null, ?Carbon $month = null, ?string $direction = null): array
+    public function report(User $owner, ?FinancialAccount $selectedAccount = null, ?Carbon $month = null, ?string $direction = null, ?string $category = null): array
     {
-        $accounts = $owner->financialAccounts()->get();
+        $categoryOrder = array_flip(array_keys(FinancialAccount::CATEGORY_LABELS));
+        $accounts = $owner->financialAccounts()->get()
+            ->sortBy(fn (FinancialAccount $account) => sprintf(
+                '%02d|%s',
+                $categoryOrder[$account->category] ?? 99,
+                str($account->name)->lower(),
+            ))
+            ->values();
         $movements = $this->movements($owner);
         $runningBalances = $accounts->mapWithKeys(fn (FinancialAccount $account) => [
             $account->id => round((float) $account->opening_balance, 2),
@@ -56,6 +63,7 @@ class AccountingLedgerService
 
         $filtered = $movements
             ->when($selectedAccount, fn (Collection $rows) => $rows->where('account.id', $selectedAccount->id))
+            ->when($category, fn (Collection $rows) => $rows->where('account.category', $category))
             ->when($month, fn (Collection $rows) => $rows->filter(fn ($row) => $row['occurred_at']->isSameMonth($month)))
             ->when($direction, fn (Collection $rows) => $rows->where('direction', $direction))
             ->sortByDesc('occurred_at')

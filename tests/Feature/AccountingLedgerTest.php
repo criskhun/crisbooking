@@ -21,6 +21,7 @@ class AccountingLedgerTest extends TestCase
         $otherHost = User::factory()->host()->create();
 
         $this->actingAs($host)->post(route('accounting.accounts.store'), [
+            'category' => 'assets',
             'name' => 'BDO Operations',
             'type' => 'bank',
             'institution_name' => 'BDO',
@@ -31,6 +32,8 @@ class AccountingLedgerTest extends TestCase
 
         $account = FinancialAccount::query()->sole();
         $this->assertTrue($account->is_active);
+        $this->assertSame('assets', $account->category);
+        $this->assertSame('Assets → BDO Operations · •••• 4821', $account->selectionLabel());
         $this->assertSame('BDO Operations · •••• 4821', $account->displayLabel());
         $this->assertSame('12500.00', $account->opening_balance);
 
@@ -42,6 +45,7 @@ class AccountingLedgerTest extends TestCase
         ])->assertForbidden();
 
         $this->actingAs($host)->patch(route('accounting.accounts.update', $account), [
+            'category' => 'assets',
             'name' => 'BDO Operations',
             'type' => 'bank',
             'institution_name' => 'BDO',
@@ -53,6 +57,77 @@ class AccountingLedgerTest extends TestCase
 
         $this->assertFalse($account->fresh()->is_active);
         $this->actingAs(User::factory()->create())->get(route('accounting.index'))->assertForbidden();
+    }
+
+    public function test_accounts_are_registered_and_filtered_by_accounting_category(): void
+    {
+        $host = User::factory()->host()->create();
+        $unit = $this->unit($host, 'Category Filter Condo');
+        $booking = Booking::create([
+            'unit_id' => $unit->id,
+            'client_id' => $host->id,
+            'booking_origin' => 'manual',
+            'start_at' => now()->subDay(),
+            'end_at' => now(),
+            'status' => 'confirmed',
+            'total_amount' => 3000,
+            'party_size' => 2,
+        ]);
+
+        foreach ([
+            ['category' => 'assets', 'name' => 'BDO', 'type' => 'bank'],
+            ['category' => 'revenue', 'name' => 'Condo Rental Income', 'type' => 'other'],
+            ['category' => 'expenses', 'name' => 'Electricity', 'type' => 'other'],
+            ['category' => 'liabilities', 'name' => 'Guest Deposits', 'type' => 'other'],
+            ['category' => 'equity', 'name' => 'Owner’s Capital', 'type' => 'other'],
+        ] as $accountData) {
+            $this->actingAs($host)->post(route('accounting.accounts.store'), $accountData + [
+                'opening_balance' => 0,
+                'is_active' => 1,
+            ])->assertRedirect()->assertSessionHasNoErrors();
+        }
+
+        $revenue = FinancialAccount::where('name', 'Condo Rental Income')->sole();
+        $expense = FinancialAccount::where('name', 'Electricity')->sole();
+        $booking->financialEntries()->create([
+            'recorded_by_user_id' => $host->id,
+            'financial_account_id' => $revenue->id,
+            'kind' => 'payment',
+            'category' => 'downpayment',
+            'amount' => 1200,
+            'occurred_at' => now(),
+        ]);
+        BookingExpense::create([
+            'booking_id' => $booking->id,
+            'recorded_by_user_id' => $host->id,
+            'financial_account_id' => $expense->id,
+            'category' => 'utilities',
+            'amount' => 250,
+            'status' => 'paid',
+            'paid_at' => now(),
+        ]);
+
+        $this->actingAs($host)->get(route('accounting.index'))
+            ->assertOk()
+            ->assertSee('Security Deposits Receivable')
+            ->assertSee('Car Rental Income')
+            ->assertSee('Drinking Water')
+            ->assertSee('Payables')
+            ->assertSee('Owner’s Drawings')
+            ->assertSee('Assets → BDO')
+            ->assertSee('Revenue → Condo Rental Income');
+
+        $this->actingAs($host)->get(route('accounting.index', ['category' => 'expenses']))
+            ->assertOk()
+            ->assertViewHas('report', fn (array $report) =>
+                $report['summary']['transaction_count'] === 1
+                && $report['summary']['money_in'] === 0.0
+                && $report['summary']['money_out'] === 250.0
+                && $report['movements']->first()['account']->is($expense)
+            );
+
+        $this->actingAs($host)->get(route('accounting.index', ['category' => 'not-a-category']))
+            ->assertSessionHasErrors('category');
     }
 
     public function test_ledger_combines_collections_deposits_services_costs_and_financing_by_account(): void
