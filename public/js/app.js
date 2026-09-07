@@ -1422,7 +1422,7 @@
                     if (typeof calendarBookingDialog.showModal !== 'function') return;
                     event.preventDefault();
 
-                    const dialogIcon = bookingDialog.querySelector('[data-calendar-dialog-icon]');
+                    const dialogIcon = calendarBookingDialog.querySelector('[data-calendar-dialog-icon]');
                     if (dialogIcon) dialogIcon.className = `fa-solid fa-${bookingLink.dataset.categoryIcon || 'shapes'} calendar-dialog-icon`;
                     setDialogText('[data-calendar-dialog-category]', bookingLink.dataset.category);
                     setDialogText('[data-calendar-dialog-unit]', bookingLink.dataset.unit);
